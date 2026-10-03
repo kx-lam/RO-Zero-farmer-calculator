@@ -696,11 +696,14 @@ const sessMobs=s=>s.mobIds.map(id=>MOBS.find(m=>m.id===id)).filter(Boolean);
 const sessMap=s=>{const k={},tot={};sessMobs(s).forEach(m=>openMaps(m).forEach(([mp,n])=>{k[mp]=(k[mp]||0)+1;tot[mp]=(tot[mp]||0)+n}));
   let best=null;for(const mp in k)if(best==null||k[mp]>k[best]||(k[mp]===k[best]&&tot[mp]>tot[best]))best=mp;return best};
 const spawnOn=(m,mp)=>((SPAWN[m.id]||[]).find(x=>x[0]===mp)||[])[1]||1;
-function sessMix(s){const mp=sessMap(s);const list=sessMobs(s).map(m=>({m,w:spawnOn(m,mp)}));const W=list.reduce((a,x)=>a+x.w,0);if(!W)return null;
+// keep(m) drops monsters from the mix (and re-weights the rest); if it would drop all of them the full list is kept
+function sessMix(s,keep){const mp=sessMap(s);let list=sessMobs(s).map(m=>({m,w:spawnOn(m,mp)}));if(keep){const k=list.filter(x=>keep(x.m));if(k.length)list=k}
+  const W=list.reduce((a,x)=>a+x.w,0);if(!W)return null;
   const avg=f=>list.reduce((a,x)=>a+x.w*f(x.m),0)/W;return {list,W,mp,avg}}
 function sessionPace(s){
-  const st=stats(s);const mix=sessMix(s);if(!st||!mix||st.avgRaw<=0)return null;
-  const kph=st.avgRaw/(mix.avg(m=>m.exp)*expMul(s));const obs=3600/kph;const same=(s.job||state.job)===state.job;const fight=same?mix.avg(bestFight):NaN;
+  // with this job's attack, monsters you can't hurt aren't being killed, so they're left out of the mix
+  const same=(s.job||state.job)===state.job;const st=stats(s);const mix=sessMix(s,same?m=>isFinite(bestFight(m)):null);if(!st||!mix||st.avgRaw<=0)return null;
+  const kph=st.avgRaw/(mix.avg(m=>m.exp)*expMul(s));const obs=3600/kph;const fight=same?mix.avg(bestFight):NaN;
   return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,zk:mix.avg(zenyKill),mix,st};
 }
 const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
@@ -1013,7 +1016,7 @@ $("cmpTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.tar
 // monsters
 // add or remove a monster from the current session; the first one names a fresh session and sets its job
 const toggleSessMob=id=>{const s=cur();const i=s.mobIds.indexOf(id);if(i>=0){s.mobIds.splice(i,1);return}
-  s.mobIds.push(id);s.job=state.job;const m=MOBS.find(x=>x.id===id);if(s.mobIds.length===1&&m&&s.name==="New session")s.name=m.name};
+  if(!s.mobIds.length)s.job=state.job;s.mobIds.push(id);const m=MOBS.find(x=>x.id===id);if(s.mobIds.length===1&&m&&s.name==="New session")s.name=m.name};
 const pickMob=m=>{if(!m)return;state.calcMobId=m.id;const s=cur();if(!s.mobIds.length)toggleSessMob(m.id);save();renderAll()};
 $("mobList").innerHTML=MOBS.map(m=>`<option value="${esc(m.name)}">Lv ${m.lv} · ${fmtN(m.exp)} EXP</option>`).join("");
 $("mobInput").addEventListener("change",e=>{pickMob(MOBS.find(x=>x.name.toLowerCase()===e.target.value.trim().toLowerCase()))});
