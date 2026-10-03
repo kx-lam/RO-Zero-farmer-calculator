@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rozero Farm Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single column tool. Session bar, 4 stat tiles, EXP chart, log + add form, then mob calculator + ranking table. */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#14171c; --muted:#69707d; --line:#e2e5ea; --grid:#edf0f3;
+  --accent:#3d7fe0; --accent-soft:rgba(61,127,224,.12); --good:#1f9d63; --warn:#c7811a; --bad:#cf3f3f;
+  --display:"Sora",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111418; --surface:#181c22; --fg:#e8ebf0; --muted:#8f97a4; --line:#2a3039; --grid:#22272f;
+  --accent:#6aa2f5; --accent-soft:rgba(106,162,245,.16); --good:#3fc488; --warn:#e3a13f; --bad:#ec6a6a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111418; --surface:#181c22; --fg:#e8ebf0; --muted:#8f97a4; --line:#2a3039; --grid:#22272f;
+  --accent:#6aa2f5; --accent-soft:rgba(106,162,245,.16); --good:#3fc488; --warn:#e3a13f; --bad:#ec6a6a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.5}
+.wrap{max-width:920px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:1.45rem;font-weight:700}
+h2{font-size:1.05rem;font-weight:600}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar .grow{flex:1 1 160px;min-width:0}
+input,select,button{font:inherit;color:var(--fg)}
+input,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--bad)}
+button.small{padding:3px 8px;font-size:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tile.now{background:var(--accent-soft);border-color:transparent}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 18px;min-width:0}
+.tile .k{font-size:12.5px;color:var(--muted)}
+.tile .v{font-family:var(--display);font-size:1.75rem;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .s{font-size:12px;color:var(--muted);margin-top:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-size:12px;cursor:pointer;user-select:none}
+th.on{color:var(--fg)}
+td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.name{font-family:var(--body)}
+tr.sel td{background:var(--accent-soft)}
+tbody tr{cursor:pointer}
+#bestTable td b{font-weight:500}
+#bestTable th[data-bk]{cursor:pointer}
+#bestTable td.mainmobs{white-space:normal;min-width:170px;line-height:1.35}
+#bestTable td{vertical-align:top}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-family:var(--body)}
+.pill.up{color:var(--good);border-color:var(--good)}
+.pill.down{color:var(--warn);border-color:var(--warn)}
+.calc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.el{display:inline-block;font-family:var(--body);font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--grid);color:var(--fg)}
+.el.Fire{background:rgba(226,92,58,.18)}.el.Water{background:rgba(56,132,226,.18)}.el.Wind{background:rgba(70,180,120,.2)}.el.Earth{background:rgba(160,120,60,.22)}.el.Undead,.el.Shadow{background:rgba(120,90,160,.2)}.el.Ghost{background:rgba(150,150,170,.22)}.el.Poison{background:rgba(150,80,170,.2)}.el.Holy{background:rgba(220,190,60,.22)}
+.good{color:var(--good)}.bad{color:var(--bad)}.warnc{color:var(--warn)}
+a{color:var(--accent)}
+.ext{font-size:12px;text-decoration:none;margin-left:4px}
+.map{display:inline-flex;gap:4px;align-items:baseline;font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.map b{font-weight:500;color:var(--fg)}.map span{color:var(--muted)}
+.filters td{padding:4px 3px;border-bottom:1px solid var(--line)}
+.filters input{width:100%;min-width:56px;padding:3px 6px;font-size:12px;font-family:var(--mono);border-radius:6px}
+.filters td:first-child input{min-width:90px}
+.map.off{opacity:.45;text-decoration:line-through}
+.maps{display:flex;flex-wrap:wrap;gap:6px}
+td .map{cursor:default}
+.calc .v{font-size:1.25rem}
+.note{font-size:12px;color:var(--muted)}
+.example{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
+@media (max-width:680px){.row2{grid-template-columns:1fr}.calc,.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile .v{font-size:1.4rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.tile .v{white-space:pre-line}
+@media (max-width:600px){.form[style]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <div class="grow"><h1 id="title">Rozero farm planner</h1><div class="note" id="subtitle"></div></div>
+    <select id="sessionSel" aria-label="Session"></select>
+    <button id="newSession">New session</button>
+    <button id="delSession" class="danger">Delete</button>
+  </header>
+
+  <section class="card">
+    <div class="bar"><h2 class="grow">Your character</h2><span class="note" id="jobNote"></span></div>
+    <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+      <label>Job<select id="job"></select></label>
+      <label>Attack<select id="preset"></select></label>
+      <label>Base level<input id="baseLv" type="number" min="1" max="99"></label>
+      <label>Job level<input id="jobLv" type="number" min="1" max="70"></label>
+      <label>EXP bonus %<input id="bonus" type="number" step="1"></label>
+      <label>Drop rate bonus %<input id="dropBonus" type="number" step="1"></label>
+    </div>
+    <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+      <label>ATK<input id="atkTxt" inputmode="numeric" placeholder="120+300"></label>
+      <label>MATK<input id="matkTxt" inputmode="numeric" placeholder="100+227"></label>
+      <label>HIT<input id="hitTxt" inputmode="numeric" placeholder="267"></label>
+      <label>FLEE<input id="fleeTxt" inputmode="numeric" placeholder="350+1"></label>
+      <label>ASPD<input id="aspd" type="number" min="100" max="199"></label>
+      <label>DEF (soft+hard)<input id="defTxt" inputmode="numeric" placeholder="52+237"></label>
+    </div>
+    <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+      <label>Max HP<input id="maxHp" type="number"></label>
+      <label>Max SP<input id="maxSp" type="number"></label>
+            <label>SP regen per 8s<input id="spRegen" type="number" placeholder="auto"></label>
+      <label>Weapon ATK<input id="wAtk" type="number" min="0" placeholder="all gear"></label>
+      <label>Weapon<select id="weapon"></select></label>
+      <label>Weapon / arrow element<select id="wElem"></select></label>
+    </div>
+    <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+      <label>STR<input id="st_str" inputmode="numeric" placeholder="60+8"></label>
+      <label>AGI<input id="st_agi" inputmode="numeric"></label>
+      <label>VIT<input id="st_vit" inputmode="numeric"></label>
+      <label>INT<input id="intTxt" inputmode="numeric" placeholder="43+12"></label>
+      <label>DEX<input id="st_dex" inputmode="numeric"></label>
+      <label>LUK<input id="st_luk" inputmode="numeric"></label>
+    </div>
+    <div class="note" id="statNote"></div>
+    <details class="card" style="padding:12px 14px;gap:8px;background:var(--bg)" open>
+      <summary><b>Attack details</b> <span class="note" id="atkSummary"></span></summary>
+      <div class="form" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <label>Type<select id="aType"><option value="phys">Physical</option><option value="magic">Magic</option><option value="auto">Basic attacks</option><option value="spellfist">Spell Fist (Sage)</option></select></label>
+        <label>Damage % per hit<input id="aPct" type="number" step="1"></label>
+        <label>Hits per use<input id="aHits" type="number" step="1" min="1"></label>
+        <label>Element<select id="aElem"></select></label>
+        <label>Cast time (s)<input id="aCast" type="number" step="0.1" min="0"></label>
+        <label>Delay after (s)<input id="aDelay" type="number" step="0.1" min="0"></label>
+        <label>SP per use<input id="aSp" type="number" step="1" min="0"></label>
+        <label>Monsters hit per use<input id="aTargets" type="number" step="0.5" min="1"></label>
+      </div>
+      <div class="form" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <label>Extra damage %<input id="dmgBonus" type="number" step="1"></label>
+        <label>+% vs race<span class="bar"><select id="raceSel" style="flex:1"></select><input id="racePct" type="number" step="1" style="width:70px"></span></label>
+        <label>+% vs size<span class="bar"><select id="sizeSel" style="flex:1"><option value="">–</option><option value="S">Small</option><option value="M">Medium</option><option value="L">Large</option></select><input id="sizePct" type="number" step="1" style="width:70px"></span></label>
+        <label>+% vs element<span class="bar"><select id="elSel" style="flex:1"></select><input id="elPct" type="number" step="1" style="width:70px"></span></label>
+      </div>
+      <div class="form" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+        <label>Mastery ATK<input id="mastery" type="number" step="1" placeholder="0"></label>
+        <label>Melee / ranged dmg %<input id="rangePct" type="number" step="1" placeholder="0"></label>
+        <label>Skill dmg %<input id="skillPct" type="number" step="1" placeholder="0"></label>
+        <label>CRIT<input id="crit" type="number" step="0.1" placeholder="0"></label>
+        <label>Crit dmg %<input id="critDmg" type="number" step="1" placeholder="0"></label>
+      </div>
+      <div class="form" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <label>Fixed share of cast %<input id="fixedShare" type="number" step="1" min="0" max="100" placeholder="0"></label>
+        <label>Variable cast −%<input id="vctPct" type="number" step="1" placeholder="0"></label>
+        <label>Fixed cast −%<input id="fctPct" type="number" step="1" placeholder="0"></label>
+        <label>After-cast delay −%<input id="acdPct" type="number" step="1" placeholder="0"></label>
+        <label>Fixed cast −seconds<input id="fctSec" type="number" step="0.1" placeholder="0"></label>
+        <label>vs normal monsters %<input id="normalPct" type="number" step="1" placeholder="0"></label>
+        <label>My attack element %<input id="myElPct" type="number" step="1" placeholder="0" title="Gear like +20% Fire magic damage, when your attack is that element"></label>
+        <label>Ignore DEF / MDEF %<span class="bar"><input id="ignDef" type="number" step="1" placeholder="DEF" style="flex:1"><input id="ignMdef" type="number" step="1" placeholder="MDEF" style="flex:1"></span></label>
+      </div>
+      <div class="note">Presets are the max-level skills from the <a href="https://rozerodb.com/tools/skill-tree" target="_blank" rel="noopener">rozerodb skill tree</a> (Ragnarok Zero), with your 1st-job skills included. Change any number to match your skill level. Mastery ATK is the flat bonus from passives (Sword/Spear/Axe Mastery, Iron Fists, Demon Bane…); melee/ranged % and skill % are gear lines like "+10% melee physical damage". ATK % from gear is already inside the ATK your status window shows. CRIT only counts for basic attacks (×2 with a katar). Cast: rozerodb gives one cast time, so set how much of it is fixed (renewal is usually 20%); the rest shrinks with DEX/INT. After-cast delay −% comes from gear like Kiel-D-01. Each use takes cast time, then the longest of your attack motion (ASPD) and the delay, which run at the same time (<a href="https://m.gamer.com.tw/forum/C.php?bsn=4212&amp;snA=438412" target="_blank" rel="noopener">Bahamut guide</a>). Damage % boxes are separate multipliers, so spreading bonuses across them beats stacking one.</div>
+    </details>
+    <details class="card" id="sagePanel" style="padding:12px 14px;gap:8px;background:var(--bg)" open>
+      <summary><b>Sage options</b> <span class="note">used by the "Spell Fist (full Sage model)" attack</span></summary>
+      <div class="bar note"><span>Spell Fist:</span>
+        <label class="bar" style="flex-direction:row;gap:4px">Lv <input data-sg="sfLv" type="number" min="1" max="10" style="width:56px"></label>
+        <label class="bar" style="flex-direction:row;gap:4px">bolt Lv <input data-sg="boltLv" type="number" min="1" max="10" style="width:56px"></label>
+        <span>bolts you'll use:</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sgbolt="Fire" style="width:auto"> Fire</label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sgbolt="Water" style="width:auto"> Cold</label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sgbolt="Wind" style="width:auto"> Lightning</label>
+      </div>
+      <div class="bar note"><span>Hindsight:</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="hsOn" id="sg_hsOn" style="width:auto"> on</label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="hsAuto" style="width:auto"> auto</label>
+        <label class="bar" style="flex-direction:row;gap:4px">learned Lv <input data-sg="hsLv" type="number" min="0" max="10" style="width:56px"></label>
+        <label class="bar" style="flex-direction:row;gap:4px">worth it under <input data-sg="hsWorth" type="number" step="5000" style="width:100px"> z per 1% EXP</label>
+        <span>Double Bolt:</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="dbOn" style="width:auto"> on</label>
+        <label class="bar" style="flex-direction:row;gap:4px">Lv <input data-sg="dbLv" type="number" min="1" max="5" style="width:56px"></label>
+      </div>
+      <div class="bar note"><span>Cards &amp; skills:</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="vitata" style="width:auto"> Vitata (+<input data-sg="spBonus" type="number" style="width:50px">% SP cost, Heal <input data-sg="healSp" type="number" style="width:50px"> SP → <input data-sg="healHp" type="number" style="width:64px"> HP)</label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="ecOn" style="width:auto"> Energy Coat</label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="hfOn" style="width:auto"> Hunter Fly (<input data-sg="hfPct" type="number" style="width:50px">% · <input data-sg="hfHp" type="number" style="width:60px"> HP/s)</label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="daSF" style="width:auto"> Side Winder double attack <input data-sg="daPct" type="number" style="width:50px">% (2nd hit procs Spell Fist)</label>
+        <label class="bar" style="flex-direction:row;gap:4px">SP items at <input data-sg="autoSpPct" type="number" style="width:56px">% SP</label>
+      </div>
+      <div class="note" id="sageInfo"></div>
+      <div class="note">SP items (box below) are only used while Hindsight is on. Energy Coat SP, Heal SP and Hindsight SP come out of your regen first; whatever is left over is covered by SP items, or Hindsight fires less often without them.</div>
+    </details>
+    <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="converters" style="width:auto"> Use elemental converters (Fire / Water / Earth / Wind) on basic attacks and weapon-element skills: picks the best one per monster and per map</label> <span id="convNote" class="warnc"></span></div>
+    <div class="bar note"><span>ASPD potion:</span>
+      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="potOn" style="width:auto"> using one</label>
+      <label class="bar" style="flex-direction:row;gap:4px">+<input id="potAspd" type="number" step="1" style="width:56px"> ASPD</label>
+      <label class="bar" style="flex-direction:row;gap:4px"><input id="potPrice" type="number" step="100" style="width:80px"> z each</label>
+      <label class="bar" style="flex-direction:row;gap:4px">lasts <input id="potMin" type="number" step="1" style="width:56px"> min</label>
+      <span id="potInfo"></span>
+    </div>
+    <div class="bar note"><span>SP items:</span>
+      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
+      <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
+      <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
+      <span id="itemInfo"></span>
+    </div>
+    <div class="bar note"><span>Taking damage:</span>
+      <label class="bar" style="flex-direction:row;gap:4px">monster swing every <input id="mobInterval" type="number" step="0.1" style="width:64px">s</label>
+      <label class="bar" style="flex-direction:row;gap:4px">× <input id="hitScale" type="number" step="0.01" min="0" style="width:70px"> of swings reach you</label>
+      <label class="bar" style="flex-direction:row;gap:4px">HP back per minute <input id="hpRegen" type="number" style="width:80px"> <span class="muted">(regen, cards, heals)</span></label>
+    </div>
+    <div class="calc" id="charTiles"></div>
+  </section>
+
+  <section class="tiles" aria-label="Summary">
+    <div class="tile now"><div class="k">Current level</div><div class="v" id="tCurLv">–</div><div class="s" id="tCurLvS"></div></div>
+    <div class="tile now"><div class="k">Current EXP</div><div class="v" id="tCurPct">–</div><div class="s" id="tCurPctS"></div></div>
+    <div class="tile"><div class="k">Average EXP/hr</div><div class="v" id="tAvg">–</div><div class="s" id="tAvgS"></div></div>
+    <div class="tile"><div class="k" id="tRecentK">Last interval</div><div class="v" id="tRecent">–</div><div class="s" id="tRecentS"></div></div>
+    <div class="tile"><div class="k">1 full level</div><div class="v" id="tLevel">–</div><div class="s" id="tLevelS"></div></div>
+    <div class="tile"><div class="k" id="tNextK">To next level</div><div class="v" id="tNext">–</div><div class="s" id="tNextS"></div></div>
+    <div class="tile"><div class="k">Kill pace</div><div class="v" id="tPace">–</div><div class="s" id="tPaceS"></div></div>
+    <div class="tile"><div class="k">Zeny / hr</div><div class="v" id="tZeny">–</div><div class="s" id="tZenyS"></div></div>
+    <div class="tile"><div class="k">Job EXP / hr</div><div class="v" id="tJob">–</div><div class="s" id="tJobS"></div></div>
+  </section>
+
+  <section class="card">
+    <div class="bar"><h2 class="grow">EXP progress</h2></div>
+    <svg class="chart" id="chart" viewBox="0 0 800 340" role="img" aria-label="EXP percentage over time"></svg>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <h2>Log EXP</h2>
+      <form class="form" id="addForm">
+        <label>Level<input id="fLevel" type="number" min="1" max="99" required></label>
+        <label>EXP %<input id="fPct" type="number" step="0.01" min="0" max="100" required></label>
+        <label>Time<input id="fTime" type="time" required></label>
+        <label>Party members<input id="partyN" type="number" min="1" max="12" value="1"></label>
+        <label>Party bonus % per extra member<input id="partyBonus" type="number" step="1" min="0" value="20"></label>
+        <div class="note" id="partyNote" style="grid-column:1/-1"></div>
+        <label style="grid-column:1/-1">Job EXP % (optional)<input id="fJob" type="number" step="0.01" min="0" max="100"></label>
+        <button class="primary" type="submit" style="grid-column:1/-1">Add entry</button>
+      </form>
+      <label>Paste several entries (one per line: time EXP% [job%])<textarea id="pasteBox" rows="3" placeholder="15:05 17.9% 63%&#10;15:20 19.2% 64%" style="font:inherit;font-family:var(--mono);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical"></textarea></label>
+      <button type="button" id="pasteAdd">Add pasted entries</button>
+      <div class="note" id="pasteMsg"></div>
+    </div>
+    <div class="card">
+      <h2>Entries</h2>
+      <div class="scroll"><table id="logTable"><thead><tr><th>Time</th><th>Level</th><th>EXP %</th><th>Job %</th><th>Δ / hr</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="note" id="setupNote"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="bar"><h2 class="grow">Compare sessions</h2><span class="note">Click a row to open it</span></div>
+    <div class="scroll"><table id="cmpTable"><thead><tr><th>Session</th><th>Job</th><th>Monster</th><th>When</th><th>Length</th><th>%/hr</th><th>EXP/min</th><th>Kills/hr</th><th>Sec/kill</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <div class="bar"><h2 class="grow">Monsters</h2><span class="note" id="mobNote"></span></div>
+    <div class="bar">
+      <label class="grow">Monster for this session<input id="mobInput" list="mobList" placeholder="Search monster"></label>
+      <label>Level range<span class="bar"><input id="minLv" type="number" style="width:70px"> to <input id="maxLv" type="number" style="width:70px"></span></label>
+      <label><span>&nbsp;</span><span class="bar"><input type="checkbox" id="hideClosed" style="width:auto"> Hide monsters with no open map</span></label>
+    </div>
+    <datalist id="mobList"></datalist>
+    <div class="calc" id="mobTiles"></div>
+    <div class="scroll"><table id="mobTable"><thead><tr>
+      <th data-k="name">Monster</th><th data-k="lv">Lv</th><th data-k="el">Element</th><th data-k="size">Size</th><th data-k="race">Race</th><th data-k="hp">HP</th><th data-k="exp">Base EXP</th><th data-k="ratio" title="Base EXP per HP: how much EXP each point of damage earns">EXP / HP</th><th data-k="mult">Your hit %</th><th data-k="hitc">Hit chance</th><th data-k="uses">Uses / kill</th><th data-k="sec">Sec / kill</th><th data-k="epm">EXP / min</th><th data-k="dodge">Dodge %</th><th data-k="hpm">HP lost / min</th><th data-k="zk">Zeny / kill</th><th data-k="topN">Best map</th><th></th>
+    </tr><tr class="filters"><td><input data-f="name" placeholder="name"></td><td><input data-f="lv" placeholder="50-90"></td><td><input data-f="el" placeholder="fire"></td><td><input data-f="size" placeholder="L"></td><td><input data-f="race" placeholder="undead"></td><td><input data-f="hp" placeholder="<20000"></td><td><input data-f="exp" placeholder=">5000"></td><td><input data-f="ratio" placeholder=">1"></td><td><input data-f="mult" placeholder=">100"></td><td><input data-f="hitc" placeholder=">90"></td><td><input data-f="uses" placeholder="<=3"></td><td><input data-f="sec" placeholder="<5"></td><td><input data-f="epm" placeholder=""></td><td><input data-f="dodge" placeholder=">50"></td><td><input data-f="hpm" placeholder="<500"></td><td><input data-f="zk" placeholder=">20"></td><td><input data-f="topN" placeholder="map"></td><td><button type="button" class="small" id="clearF">Clear</button></td></tr></thead><tbody></tbody></table></div>
+    <div class="note">Click a row to see it in the tiles; "Farming this now" links it to the session. Filters take &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, and "or" to combine. Your hit % = damage % per hit after element, size, MDEF/DEF and your bonuses. EXP / min counts fight time plus walking (learned from your log). Monster data from rozerodb.com.</div>
+  </section>
+
+  <section class="card" id="bestCard">
+    <div class="bar"><h2 class="grow">Best maps for you</h2><span class="note" id="bestBasis"></span></div>
+    <div class="bar">
+      <label>Min monsters on map<input id="bestMin" type="number" value="40" style="width:90px"></label>
+      <label>Show<select id="bestN"><option>10</option><option>20</option><option>50</option></select></label>
+    </div>
+    <div class="scroll"><table id="bestTable"><thead><tr><th>#</th><th data-bk="mp">Map</th><th>Main monsters</th><th data-bk="epm">EXP / min</th><th data-bk="secT">Sec / kill (fight + walk)</th><th data-bk="epk">EXP / kill</th><th data-bk="zph">Zeny / hr</th><th data-bk="hpm">HP lost / min</th><th data-bk="skip">Can't hurt</th><th data-bk="N">Monsters</th><th data-bk="epm">Projected</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">Ranks open maps by EXP per minute with your current attack, weighted by spawn counts. "Can't hurt" lists monsters your attack element does 0% to (skipped). Projected scales your current session's %/hr by EXP / min against your current map. Click a row to open it in the map planner.</div>
+    <div class="maps" id="regions"></div>
+    <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_d03, yun_f02"></label>
+  </section>
+
+  <section class="card" id="mapCard">
+    <div class="bar"><h2 class="grow">Map planner</h2></div>
+    <div class="form" style="grid-template-columns:2fr 1fr">
+      <label>Map<input id="mapInput" list="mapList" placeholder="e.g. gef_d01"></label>
+      <label><span>&nbsp;</span><button type="button" id="mapFromMob">Use session monster's map</button></label>
+    </div>
+    <datalist id="mapList"></datalist>
+    <div class="calc" id="mapTiles"></div>
+    <div class="scroll"><table id="mapTable"><thead><tr><th>Monster</th><th>Count</th><th>Share</th><th>Lv</th><th>Element</th><th>Size</th><th>Your hit %</th><th>Sec / kill</th><th>Base EXP</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <div class="bar"><h2 class="grow">Goal</h2><span class="note" id="goalNote"></span></div>
+    <div class="bar">
+      <label>Reach base level<input id="goalLv" type="number" style="width:90px"></label>
+      <label>By<input id="goalDate" type="date"></label>
+      <label>Walking per kill (s)<input id="walkOverride" type="number" step="0.1" min="0" placeholder="learned" style="width:110px"></label>
+    </div>
+    <div class="calc" id="goalTiles"></div>
+  </section>
+
+  <section class="card">
+    <div class="bar"><h2 class="grow">Backup</h2><span class="note">Your data lives only in this browser</span></div>
+    <div class="bar"><button type="button" id="bkCopy">Copy backup</button><button type="button" id="bkShow">Show backup text</button><button type="button" id="bkRestore" class="danger">Restore from text</button><span class="note" id="bkMsg"></span></div>
+    <textarea id="bkText" rows="3" placeholder="Paste a backup here, then click Restore from text" style="font:inherit;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical;width:100%"></textarea>
+    <div class="note">Formulas follow <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info/mechanics</a>. Physical: (weapon ATK × (1 + STR/200, or DEX/200 for bows, instruments and whips) × size × element + (other gear ATK + 2 × status ATK) × Neutral element) × skill % × your bonuses × (4000+DEF)/(4000+10·DEF) − (monster Lv + VIT)/2, times hit chance (100 + HIT − monster "100% hit"). Magic: (MATK × skill % × (1000+MDEF)/(1000+10·MDEF) − (monster Lv + INT)/4) × element, always hits. Your dodge: 95 + FLEE − monster "95% flee". Cast time × (1 − √((2·DEX + INT)/530)). Status ATK/MATK/HIT/FLEE/soft DEF from stats use the verified formulas on that page. Basic attacks and skills were checked against the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a> (Zero mode) and match its average damage. Weapon damage variance is left out. Area skills split their time across the monsters they hit. EXP tables cover base Lv 1–70 and job levels from the official guide.</div>
+  </section>
+</div>
+
+<script>
+// Base EXP to the next level, Lv 1-70, and Job EXP tables (roz.mygnjoy.com/en/intro/guide/21)
+const EXP_TABLE={1:2100,2:2500,3:3000,4:3600,5:4300,6:5100,7:6100,8:7300,9:8700,10:10400,11:12400,12:14800,13:17700,14:21200,15:25400,16:30400,17:36400,18:43600,19:52300,20:62700,21:75200,22:90200,23:108200,24:129800,25:155700,26:186800,27:224100,28:268900,29:322600,30:387100,31:464500,32:557400,33:668800,34:802500,35:963000,36:1155600,37:1386700,38:1664000,39:1996800,40:2396100,41:2875300,42:3450300,43:4140300,44:4968300,45:5961900,46:7154200,47:8585000,48:10302000,49:12362400,50:14834800,51:17801700,52:21362000,53:25634400,54:30761200,55:36913400,56:44296000,57:53155200,58:63786200,59:76543400,60:91852000,61:110222400,62:132266800,63:158720100,64:190464100,65:228556900,66:274268200,67:329121800,68:394946100,69:473935300,70:568722300};
+const JOB_EXP={novice:[5,12,22,35,50,113,188,256,335,425],first:[150,340,550,760,990,1250,1600,1980,2340,2740,3140,3950,4510,5210,5950,7000,8150,9130,10220,11480,12780,14090,15560,16980,18620,20280,21780,24510,27000,29000,31000,36000,39000,41000,45000,49000,51900,55000,59450,64630,70030,74940,79800,84630,89610,95170,100420,107250,112070,118120],second:[1600,2500,4200,7000,10300,15900,18900,20900,22600,24900,28800,31500,32000,33300,35100,40500,44100,46300,48500,50700,56000,59400,63500,68100,76000,87700,94500,104600,114600,126600,143700,158000,172300,188600,208100,233500,259600,280400,300300,326800,384900,445200,492000,575700,655900,769300,894000,1058700,1207000,1335400,1669250,2086562,2608202,3260252,4075315,5094143,6367678,7959597,9949496,12436870,15546087,19432608,24290760,30363450,37954312,47442890,59303612,74129515,92661893,115827366]};
+const MOBS=[
+[1013,"Wolf",54,3534,2390,634],[1016,"Skeleton Archer",50,3280,1968,393],[1023,"Orc Warrior",52,3266,1959,391],[1026,"Munak",58,4644,2786,795],
+[1034,"Thara Frog",40,1950,1170,234],[1035,"Hunter Fly",63,5991,3594,718],[1036,"Ghoul",61,29630,26667,5332],[1037,"Side Winder",91,15958,9575,2387],
+[1040,"Golem",79,11933,7159,1431],[1042,"Steel Chonchon",57,3368,2592,729],[1044,"Obeaune",53,2158,1277,234],[1045,"Marc",56,2522,1882,0],
+[1057,"Yoyo",41,1564,938,347],[1058,"Metaller",66,5888,3690,1063],[1061,"Nightmare",69,52650,47385,9477],[1064,"Megalodon",46,2665,1826,436],
+[1065,"Strouf",61,3135,2634,0],[1067,"Cornutus",48,1450,883,161],[1069,"Swordfish",57,2203,2113,0],[1070,"Kukre",42,1111,691,126],
+[1073,"Crab",51,3072,1844,567],[1074,"Shellfish",60,4773,2864,809],[1090,"Mastering",50,3780,14130,3452,1],[1091,"Dragon Fly",56,3477,18144,4412,1],
+[1099,"Argiope",97,22508,13504,2475],[1100,"Argos",56,4368,2620,484],[1102,"Bathory",88,106304,63782,12756],[1104,"CocO",41,1564,938,187],
+[1109,"Deviruchi",93,91620,54972,10994],[1110,"Dokebi",68,6095,3657,731],[1111,"Drainliar",47,2777,2499,499],[1114,"Dustiness",80,9614,5990,1758],
+[1116,"Eggyra",53,3275,2130,714],[1117,"Evil Druid",80,18880,11329,2492],[1118,"Flora",70,8673,5203,1040],[1119,"Frilldora",68,6474,3982,1153],
+[1122,"Goblin (1122)",57,3785,2271,419],[1123,"Goblin (1123)",52,2942,1853,342],[1124,"Goblin (1124)",52,3266,1959,362],[1125,"Goblin (1125)",58,4443,2665,492],
+[1126,"Goblin (1126)",67,7545,3834,1108],[1127,"Hode",81,12356,7413,1482],[1129,"Horong",66,5613,3367,673],[1130,"Jakk",63,29940,26946,5388],
+[1131,"Joker",90,115648,69388,13877],[1132,"Khalitzburg",98,133320,19992,0],[1138,"Magnolia",63,5840,3370,965],[1139,"Mantis",84,12901,7741,1973],
+[1140,"Marduk",109,126671,79803,15961],[1141,"Marina",42,1209,726,133],[1142,"Marine Sphere",51,1831,1756,0],[1143,"Marionette",90,78200,8936,3197],
+[1144,"Marse",47,1456,892,162],[1145,"Martin",78,11996,8636,92],[1146,"Matyr",58,1930,1202,241],[1148,"Medusa",102,25887,15962,4929],
+[1149,"Minorous",58,1729,1130,225],[1152,"Orc Skeleton",53,3376,2596,639],[1153,"Orc Zombie",51,3033,2386,583],[1154,"Pasana",118,133635,80181,0],
+[1155,"Petite (Earth)",86,23611,14167,0],[1156,"Petite (Sky)",86,15121,9072,1814],[1158,"Phen",52,1963,1645,0],[1163,"Raydric",85,128900,17340,0],
+[1164,"Requiem",106,129227,77537,0],[1165,"Sand Man",79,11933,10738,2146],[1166,"Savage",70,9063,6524,1196],[1169,"Skel Worker",88,101288,63000,12000],
+[1170,"Sohee",64,5662,3397,679],[1177,"Zenorc",54,3320,2462,707],[1178,"Zerom",105,83926,57385,0],[1179,"Whisper",46,1830,1098,219],
+[1180,"Nine Tail",72,8719,5231,1046],[1188,"Bon Gun",59,4873,3308,828],[1189,"Orc Archer",78,94836,56901,11380],[1191,"Mimic",56,1707,1024,204],
+[1192,"Wraith",77,16997,10199,2244],[1193,"Alarm",88,50000,29906,5981],[1194,"Arclouse",107,14944,9863,1973],[1195,"Rideword",74,10563,6337,0],
+[1198,"Dark Priest",98,31360,18063,3763],[1206,"Anolian",109,70850,51012,9352],[1207,"Sting",104,12000,7579,1515],[1211,"Brilight",75,88720,53232,10646],
+[1213,"High Orc",85,103962,62377,12475],[1216,"Penomena",86,99350,59610,11922],[1219,"Knight of Abyss",122,185457,80520,0],[1242,"Marin",40,1856,1113,329],
+[1243,"Sasquatch",88,79950,47970,2719],[1248,"Cruiser",82,73800,44280,8180],[1249,"Mystcase",78,70200,42120,7781],[1254,"Raggler",57,3368,2592,729],
+[1255,"Neraid",98,21918,13876,4070],[1256,"Pest",89,15357,9664,2953],[1258,"Goblin Archer",66,5888,3690,1063],[1261,"Wild Rose",91,12776,7665,1533],
+[1262,"Mutant Dragon",84,276854,498337,113834,1],[1264,"Merman",60,2324,2230,304],[1265,"Cookie",70,31457,18874,3774],[1266,"Aster",60,4298,2579,809],
+[1269,"Clock",81,36490,21894,4378],[1270,"C Tower Manager",90,57825,34696,0],[1271,"Alligator",68,7911,3982,1153],[1273,"Orc Lady",54,3709,2336,431],
+[1274,"Megalith",65,6335,3978,1175],[1276,"Raydric Archer",82,119716,11829,0],[1277,"Greatest General",66,5563,3337,667],[1278,"Stalactic Golem",68,7183,4426,1315],
+[1279,"Tri Joint",66,6853,4328,1220],[1280,"Steam Goblin",66,12746,6906,2043],[1299,"Goblin Leader",66,85900,277516,64427,1],[1302,"Dark Illusion",96,46255,196489,36632,1],
+[1308,"Panzer Goblin",62,5472,1740,609],[1313,"Mobster",58,5400,2894,840],[1314,"Permeter",90,131422,86738,0],[1315,"Assulter",100,219300,130266,28948],
+[1317,"Fur Seal",56,4368,2486,696],[1318,"Heater",98,188184,111782,24841],[1319,"Freezer",94,196131,117678,23535],[1321,"Dragon Tail",86,112165,67299,13459],
+[1322,"Spring Rabbit",88,130834,78500,15700],[1323,"See Otter",57,5041,3025,729],[1368,"Geographer",94,104110,62466,0],[1369,"Grand Peco",97,97220,58332,0],
+[1372,"Goat",112,113875,68326,0],[1376,"Harpy",116,180830,108498,0],[1377,"Elder",92,71576,42945,8589],[1380,"Driller",84,12901,7010,1973],
+[1386,"Sleeper",113,178170,106902,0],[1391,"Galapago",54,3181,1909,634],[1392,"Rotar Zairo",57,4411,2592,729],[1400,"Karakasa",100,158917,95351,0],
+[1406,"Kapha",116,179009,107405,0],[1408,"Blood Butterfly",122,204521,122712,0],[1409,"Rice Cake Boy",90,155389,93233,0],[1410,"Live Peach Tree",119,189552,113731,0],
+[1412,"Evil Cloud Hermit",124,224222,134533,0],[1413,"Wild Ginseng",117,186578,111946,0],[1415,"Baby Leopard",102,181056,108633,0],[1416,"Wicked Nymph",126,248013,148807,0],
+[1001, "Scorpion", 16, 136, 338, 75],[1002, "Poring", 1, 55, 150, 30],[1004, "Hornet", 11, 85, 316, 58],[1005, "Familiar", 24, 396, 360, 72],[1007, "Fabre", 6, 59, 158, 31],[1008, "Pupa", 4, 51, 314, 36],[1009, "Condor", 12, 105, 320, 62],[1010, "Willow", 8, 78, 160, 32],[1011, "Chonchon", 5, 48, 300, 39],[1012, "Roda Frog", 13, 140, 324, 65],[1014, "Spore", 18, 223, 350, 81],[1015, "Zombie", 17, 204, 283, 55],[1018, "Creamy", 25, 339, 269, 53],[1019, "Pecopeco", 27, 525, 330, 150],[1020, "Mandragora", 13, 140, 340, 65],[1024, "Worm Tail", 17, 186, 360, 78],[1025, "Snake", 18, 203, 366, 81],[1028, "Skeleton Soldier", 34, 1174, 964, 218],[1031, "Poporing", 33, 887, 532, 213],[1033, "Elder Willow", 37, 1088, 1054, 278],[1047, "Peco Peco Egg", 7, 70, 304, 46],[1048, "Thief Bug Egg", 22, 350, 438, 106],[1050, "Picky (chick)", 10, 77, 310, 55],[1051, "Thief Bug", 23, 301, 474, 115],[1052, "Rocker", 15, 155, 174, 34],[1055, "Muka", 25, 463, 562, 132],[1056, "Smokie", 31, 705, 423, 83],[1060, "Bigfoot", 31, 862, 517, 103],[1063, "Lunatic", 3, 48, 150, 30],[1068, "Hydra", 34, 1123, 807, 147],[1076, "Skeleton", 27, 600, 634, 136],[1077, "Poison Spore", 28, 583, 642, 161],[1088, "Vocal", 18, 3317, 14700, 2535],[1089, "Toad", 29, 1052, 3874, 943, 1],[1093, "Eclipse", 34, 1168, 1445, 577, 1],[1094, "Ambernite", 19, 265, 356, 84],[1095, "Andre", 36, 1063, 638, 128],[1097, "Ant Egg", 30, 773, 694, 138],[1103, "Caramel", 27, 473, 348, 69],[1105, "Deniro", 34, 897, 807, 160],[1107, "Desert Wolf B", 14, 113, 328, 68],[1113, "Drops", 2, 46, 300, 29],[1128, "Horn", 35, 1085, 651, 130],[1160, "Piere", 35, 977, 879, 175],[1167, "Savage Babe", 14, 127, 172, 34],[1174, "Stainer", 23, 268, 237, 115],[1176, "Vitata", 35, 756, 537, 106],[1283, "Chimera", 125, 26407, 136574, 0, 1],[1498, "Wootan Shooter", 87, 14804, 7566, 2139],[1499, "Wootan Fighter", 87, 11988, 7192, 1438],[1500, "Parasite", 98, 20097, 12058, 3101],[1503, "Gibbet", 105, 153300, 91980, 18396],[1504, "Dullahan", 108, 192348, 22160, 5921],[1505, "Loli Ruri", 109, 180220, 108132, 21626],[1506, "Disguise", 103, 149427, 89656, 17931],[1507, "Bloody Murderer", 110, 184926, 20988, 6514],[1508, "Quve", 100, 115410, 69246, 13849],[1509, "Lude", 101, 128290, 76974, 15394],[1510, "Hylozoist", 102, 132023, 79213, 15842],[1514, "Dancing Dragon", 106, 143105, 85864, 0],[1515, "Garm Baby", 94, 94150, 56490, 52094],[1516, "Increase Soil", 103, 138764, 104487, 0],[1584, "Tamruan", 109, 212705, 127624, 0],[1587, "Kraben", 105, 178522, 107114, 0],[1686, "Orc Baby", 51, 2766, 1659, 307],[1687, "Grove", 66, 6866, 4119, 823],[25327, "Boulder Dwarf Siege Trooper", 64, 32952, 32110, 6422],[25328, "Boulder Dwarf Squad Leader", 65, 55602, 33361, 6672],[25329, "Boulder Dwarf Captain", 64, 54704, 32822, 6564],[1493,"Dryad",88,16113,7812,2212],[1494,"Kind of Beetle",66,5888,3872,1063],[1495,"Stone Shooter",83,9926,5955,1191],[1497,"Wooden Golem",93,21949,9538,2719]
+].map(m=>({id:m[0],name:m[1],lv:m[2],hp:m[3],exp:m[4],job:m[5],boss:!!m[6]}));
+const SPAWN={"1001":[["moc_f18",160],["moc_fild11",41]],"1002":[["maz_d01",5],["pay_f01",38],["pay_f03",25],["pay_f04",16],["prt_f08",197],["xma_d01",12],["gef_fild00",34],["gef_fild07",20],["prt_fild01",42],["prt_fild06",32]],"1004":[["mjolnir_09",34],["prt_fild05",199]],"1005":[["an_d01",20],["an_d02",20],["mjo_d01",31],["orc_d01",15],["pay_d00",15],["prt_d01",66],["prt_d02",10],["prt_d03",20],["pry_d01",72]],"1007":[["gef_f04",25],["maz_d01",5],["pay_f01",38],["pay_f03",130],["prt_f08",177],["gef_fild00",34],["gef_fild07",20],["prt_fild01",42],["prt_fild06",149]],"1008":[["maz_d01",5],["pay_f03",20],["prt_f08",20],["gef_fild07",134]],"1009":[["moc_f12",39],["moc_f18",34],["moc_fild11",137]],"1010":[["pay_f01",181],["pay_f03",25],["mjolnir_09",34]],"1011":[["gef_f04",25],["maz_d01",5],["gef_fild00",160],["gef_fild07",20],["moc_fild07",46]],"1012":[["gef_fild01",112],["gef_fild09",24],["prt_fild00",169],["prt_fild04",27],["treasure_n1",30]],"1014":[["pay_f08",148],["prt_d02",20],["pay_fild02",30],["pay_fild06",30],["treasure_n1",24]],"1015":[["gef_d01",25],["pay_d00",40],["treasure_n1",6],["treasure_n2",16]],"1018":[["gef_f05",143],["maz_d01",1],["prt_f02",40],["mjolnir_01",23],["mjolnir_06",30],["pay_fild07",26]],"1019":[["moc_fild01",93],["moc_fild02",153]],"1020":[["gef_f04",125],["pay_d02",3],["pay_d03",10]],"1024":[["pay_f08",31],["pay_fild02",30],["pay_fild06",140]],"1025":[["maz_d01",5],["pay_f08",31],["pay_fild02",142],["pay_fild06",30]],"1028":[["pay_d01",53],["pay_d02",45],["pry_d02",31]],"1031":[["gef_d00",15],["maz_d01",5],["maz_d03",52],["pay_d00",15],["pay_d02",10],["pay_f04",141],["pry_d01",28],["pry_d02",20],["xma_d01",24],["gef_fild02",24],["mjolnir_02",22],["prt_fild03",38],["prt_fild10",22],["prt_maze02",32]],"1033":[["gef_fild02",24],["mjolnir_02",154],["pay_fild09",25],["prt_fild10",157]],"1047":[["moc_f12",45],["moc_fild01",31],["moc_fild02",11],["moc_fild07",15]],"1048":[["gef_f05",10],["prt_d01",106],["prt_d02",20],["prt_d03",10],["prt_d04",10],["prt_fild05",42]],"1050":[["moc_f12",65],["moc_fild07",23]],"1051":[["gef_f05",10],["prt_d01",40],["prt_d02",70],["prt_d03",20],["prt_d04",20],["prt_fild05",42]],"1052":[["maz_d01",5],["prt_f07",203]],"1055":[["moc_fild01",202],["moc_fild02",58]],"1056":[["ayo_f01",40],["gef_f05",20],["maz_d01",5],["mjolnir_06",70]],"1060":[["ama_f01",14],["maz_d01",5],["mjolnir_01",23],["pay_fild07",174],["prt_maze02",6]],"1063":[["gef_f04",25],["maz_d01",5],["prt_f08",167],["prt_fild01",196],["prt_fild06",32]],"1068":[["ama_f01",14],["bea_d02",10],["bea_d03",30],["iz_d00",20],["iz_d01",30],["iz_d02",40],["iz_d03",30],["iz_d04",18],["pay_d02",31],["pay_d03",17],["tre_d01",71],["tre_d02",18]],"1076":[["pay_d00",35]],"1077":[["gef_d00",25],["prt_d03",15],["mjolnir_06",100]],"1088":[["maz_d03",1],["prt_f07",1]],"1089":[["cmd_fild03",1],["gef_fild01",1]],"1093":[["maz_d03",1],["prt_f02",1]],"1094":[["gef_fild01",28],["prt_fild00",65],["prt_fild04",111]],"1095":[["an_d01",15],["an_d02",50],["cmd_fild08",62],["cmd_fild09",16]],"1097":[["an_d01",87],["an_d02",15],["cmd_fild08",37],["cmd_fild09",10]],"1103":[["maz_d01",5],["mjolnir_01",167],["pay_fild07",40]],"1105":[["an_d01",40],["an_d02",15],["cmd_fild08",62],["cmd_fild09",16]],"1107":[["moc_f18",34],["moc_fild11",137]],"1113":[["moc_f12",39],["pay_f04",21],["xma_d01",12],["moc_fild07",214]],"1128":[["maz_d01",5],["gef_fild02",24],["mjolnir_02",33],["pay_fild09",181],["prt_fild03",38],["prt_fild10",22]],"1160":[["an_d01",50],["an_d02",15],["cmd_fild08",62],["cmd_fild09",16]],"1167":[["prt_f07",67],["mjolnir_09",159],["prt_fild00",26]],"1174":[["gef_f05",20],["maz_d01",5],["prt_f02",188],["mjolnir_01",23],["pay_fild07",26]],"1176":[["an_d01",10],["an_d02",30]],"1283":[["gl_c02",3]],"1498":[["um_fild01",16],["um_fild02",17],["um_fild03",20],["um_fild04",6]],"1499":[["um_fild01",16],["um_fild02",68],["um_fild03",20],["um_fild04",6]],"1500":[["um_fild03",121]],"1503":[["nif_f01",11],["nif_f02",20],["niflheim",17]],"1504":[["nif_f01",22],["nif_f02",10],["niflheim",8]],"1505":[["nif_f02",21]],"1506":[["nif_f01",56]],"1507":[["nif_f02",11]],"1508":[["nif_f01",33],["niflheim",35]],"1509":[["nif_f02",10],["niflheim",35]],"1510":[["nif_f01",11],["nif_f02",10],["niflheim",17]],"1514":[["lou_d02",7],["lou_d03",30]],"1515":[["xma_f01",1]],"1516":[["lou_d01",17],["lou_f01",60]],"1584":[["ayo_d02",116]],"1587":[["ayo_d01",8],["ayo_d02",23],["ayo_f02",9]],"1686":[["gef_f10",27],["gef_fild03",24]],"1687":[["cmd_fild01",202]],"25327":[["nrd_dun02",70]],"25328":[["nrd_dun02",70]],"25329":[["nrd_dun02",70]],"1013":[["maz_d01",5],["moc_fild03",164],["moc_fild13",15]],"1016":[["pay_d01",32],["pay_d02",20],["pay_d04",15],["pry_d02",31]],"1023":[["gef_f10",179],["gef_fild03",73]],"1026":[["lou_d02",35],["pay_d02",40],["pay_d03",3]],"1034":[["bea_d03",50],["tur_d01",10]],"1035":[["gef_d00",30],["gef_d02",10],["gl_chy",4],["gl_pri",12],["maz_d01",4],["maz_d03",30],["mjolnir_12",43]],"1036":[["ayo_d01",48],["gef_d01",40],["gef_d02",10]],"1037":[["maz_d01",3],["maz_d03",30],["sp_d05",22],["gef_fild06",36],["mjolnir_03",140],["mjolnir_04",43]],"1040":[["cmd_fild06",165],["cmd_fild08",2]],"1042":[["maz_d01",5],["orc_d01",10],["orc_d02",20],["moc_fild03",23],["moc_fild13",140]],"1044":[["iz_d02",40]],"1045":[["iz_d03",40]],"1057":[["ayo_f01",40],["ayo_f02",82],["maz_d01",4],["mjolnir_02",22],["prt_fild03",127]],"1058":[["cmd_fild06",55],["cmd_fild09",155],["moc_fild13",15],["prt_fild09",91]],"1061":[["gef_d01",30],["gef_d02",20]],"1064":[["bea_d03",30]],"1065":[["iz_d04",58]],"1067":[["iz_d01",15],["iz_d02",60]],"1069":[["iz_d03",40],["iz_d04",11]],"1070":[["iz_d00",20],["iz_d01",50],["tre_d01",10],["tre_d02",20]],"1073":[["cmd_f02",27],["cmd_fild04",24],["cmd_fild07",34]],"1074":[["cmd_f02",27],["cmd_fild04",24],["cmd_fild07",34]],"1090":[["maz_d03",1],["pay_f04",1]],"1091":[["moc_f18",1]],"1099":[["maz_d01",3],["mjolnir_05",166],["mjolnir_11",170]],"1100":[["maz_d01",3],["mjolnir_10",194],["mjolnir_11",45],["moc_fild03",23],["moc_fild13",15]],"1102":[["alde_dun04",57]],"1104":[["ayo_f01",40],["maz_d01",5],["gef_fild02",172],["gef_fild09",98],["pay_fild09",38],["prt_fild10",22]],"1109":[["gef_d02",45]],"1110":[["pay_d04",40]],"1111":[["gef_d01",20],["mjo_d02",23],["orc_d01",5],["orc_d02",20],["pay_d01",5],["pry_d02",20],["pry_d03",5],["sp_d01",76],["sp_d02",24],["alde_dun01",47],["alde_dun03",55],["gl_sew04",12]],"1114":[["maz_d01",5],["yun_f01",52],["mjolnir_12",162]],"1116":[["pay_d01",16]],"1117":[["gl_c02",9],["gl_chu",85],["gl_chy",15]],"1118":[["cmd_fild01",67],["cmd_fild03",64],["gef_fild08",37],["mjolnir_07",34],["mjolnir_08",36],["mjolnir_10",41],["mjolnir_11",45]],"1119":[["moc_f16",10],["moc_fild17",13]],"1122":[["gef_f11",58],["prt_f11",10]],"1123":[["gef_f11",58],["prt_f11",10]],"1124":[["gef_f11",58],["prt_f11",10]],"1125":[["gef_f11",58],["prt_f11",10]],"1126":[["prt_f11",60]],"1127":[["moc_f16",30],["moc_fild17",170]],"1129":[["ama_d02",10],["pay_d04",30]],"1130":[["gef_d01",40]],"1131":[["alde_dun04",11]],"1132":[["gl_c02",6],["gl_k01",14],["gl_knt02",50]],"1138":[["moc_fild13",15],["prt_fild09",212]],"1139":[["lou_f01",28],["maz_d01",3],["maz_d03",30],["yun_f01",52],["yun_f12",34],["gef_fild06",36],["gef_fild08",37],["mjolnir_03",37],["mjolnir_04",43],["mjolnir_05",44],["mjolnir_12",43]],"1140":[["sp_d03",82]],"1141":[["iz_d00",61],["iz_d01",15]],"1142":[["iz_d03",20],["iz_d04",11]],"1143":[["gef_d02",30],["gl_in01",25]],"1144":[["iz_d02",40]],"1145":[["maz_d01",5],["mjo_d01",21],["mjo_d02",71],["mjo_d03",5]],"1146":[["pry_d03",10],["pry_d04",24],["sp_d01",19],["sp_d02",32],["sp_d03",18],["sp_d05",11]],"1148":[["bea_d01",60]],"1149":[["pry_d05",78],["sp_d04",77]],"1152":[["orc_d01",10],["orc_d02",50]],"1153":[["orc_d01",80]],"1154":[["sp_d03",6],["sp_d04",30],["sp_d05",79]],"1155":[["gef_fild06",158]],"1156":[["gef_fild08",163]],"1158":[["iz_d03",45]],"1163":[["gl_c02",36],["gl_k01",126],["gl_knt02",101]],"1164":[["sp_d01",38],["sp_d02",80]],"1165":[["moc_f16",130],["moc_fild17",39]],"1166":[["maz_d01",8],["mjolnir_07",161],["mjolnir_08",36],["pay_fild10",64]],"1169":[["mjo_d02",23],["mjo_d03",78]],"1170":[["pay_d03",70]],"1177":[["orc_d02",50]],"1178":[["sp_d01",38],["sp_d02",80]],"1179":[["ayo_d01",16],["ayo_d02",23],["gef_d02",20],["gl_c01",17],["tre_d02",10],["alde_dun04",11],["c_tower4",5],["gl_sew01",66]],"1180":[["pay_d03",2],["pay_d04",30]],"1188":[["pay_d02",30],["pay_d03",3]],"1189":[["alde_dun02",20]],"1191":[["ama_d03",5],["gl_c02",2],["gl_chu",12],["gl_chy",4],["lou_d02",7],["pry_d03",5],["pry_d04",18],["pry_d06",35],["sp_d03",6],["sp_d04",6],["sp_d05",7],["tow_d02",4],["tow_d03",9],["c_tower4",12]],"1192":[["gl_chu",78],["gl_chy",55]],"1193":[["tow_d03",109],["c_tower4",30]],"1194":[["pry_d06",23],["alde_dun01",58],["gl_dun01",53],["gl_sew01",16]],"1195":[["gl_c01",26],["gl_c02",29],["gl_k01",29],["tow_d01",107],["tow_d02",16],["tow_d03",8],["c_tower4",15],["gl_in01",10]],"1198":[["gl_chy",95]],"1206":[["gl_sew04",126]],"1207":[["gl_dun01",43],["gl_sew03",99]],"1211":[["alde_dun02",20]],"1213":[["alde_dun02",50]],"1216":[["alde_dun03",85]],"1219":[["gl_c02",7],["gl_k01",14],["gl_knt02",7],["glast_01",2]],"1242":[["pay_f04",32],["xma_d01",24],["xma_f01",65]],"1243":[["xma_f01",9],["prt_maze02",1]],"1248":[["xma_d02",49]],"1249":[["xma_d02",70]],"1254":[["cmd_fild07",116]],"1255":[["bea_d01",20]],"1256":[["bea_d01",20],["tur_d01",15],["tur_d02",15]],"1258":[["prt_f11",50]],"1261":[["um_fild04",38]],"1262":[["cmd_fild03",5]],"1264":[["iz_d04",61]],"1265":[["xma_d01",49],["xma_d02",28]],"1266":[["cmd_f02",13],["cmd_fild04",12],["cmd_fild07",34]],"1269":[["tow_d02",55],["c_tower4",35]],"1270":[["tow_d01",1],["tow_d02",1],["tow_d03",4],["c_tower4",3]],"1271":[["cmd_fild03",194]],"1273":[["gef_f10",55],["gef_fild03",160]],"1274":[["bea_d02",15]],"1276":[["gl_c02",20],["gl_k01",14],["gl_knt02",38]],"1277":[["pay_d03",3],["pay_d04",15],["pay_fild10",129]],"1278":[["bea_d02",65]],"1279":[["bea_d02",20]],"1280":[["prt_f11",30]],"1299":[["gef_f11",1]],"1302":[["gl_chy",1]],"1308":[["prt_f11",1]],"1313":[["cmd_f02",1]],"1314":[["tur_d01",10],["tur_d02",41],["tur_d03",15],["tur_d04",4]],"1315":[["tur_d03",35],["tur_d04",42]],"1317":[["cmd_f02",162]],"1318":[["tur_d03",10],["tur_d04",33]],"1319":[["tur_d02",20],["tur_d03",40],["tur_d04",15]],"1321":[["tur_d01",25]],"1322":[["tur_d01",25]],"1323":[["cmd_fild04",149]],"1368":[["yun_f01",75],["yun_f04",36],["yun_f06",29],["yun_f08",36],["yun_f09",42],["yun_f11",55],["yun_f12",68]],"1369":[["yun_f02",50],["yun_f07",30],["yun_f08",157],["yun_f09",182]],"1372":[["yun_f03",46],["yun_f04",36],["yun_f07",90],["yun_f08",36],["yun_f11",139]],"1376":[["yun_f02",50],["yun_f03",174],["yun_f04",133],["yun_f07",50]],"1377":[["tow_d02",2],["c_tower4",2]],"1380":[["mjolnir_03",37],["mjolnir_04",162],["mjolnir_05",44]],"1386":[["yun_f02",185],["yun_f03",46],["yun_f06",117],["yun_f09",42]],"1391":[["cmd_f02",40],["cmd_fild04",37]],"1392":[["prt_f11",50]],"1400":[["ama_f01",72]],"1406":[["ama_f01",57]],"1408":[["gon_d01",60],["gon_d02",26]],"1409":[["gon_f01",70]],"1410":[["gon_d01",38],["gon_d02",27]],"1412":[["gon_d02",26],["gon_d03",40]],"1413":[["gon_d03",26]],"1415":[["gon_d02",7],["gon_f01",51]],"1416":[["gon_d03",67]],"1493":[["um_fild01",97]],"1494":[["mjolnir_07",34],["mjolnir_08",169],["mjolnir_10",41],["pay_fild10",64]],"1495":[["um_fild01",40],["um_fild02",25],["um_fild03",30],["um_fild04",19]],"1497":[["um_fild01",16],["um_fild04",12]]};
+const LOOT={"1001":[31,8,8,[[904,27.5],[601,5.0],[7041,5.0],[943,1.05],[990,0.35],[757,0.29],[625,0.1],[4068,0.01]]],"1002":[13,8,8,[[909,70.0],[512,10.0],[601,5.0],[938,4.0],[1202,1.0],[619,0.2],[4001,0.2],[12846,0.2]]],"1004":[27,8,8,[[939,80.0],[909,30.0],[511,5.0],[601,5.0],[518,1.0],[992,0.8],[4019,0.2],[510129,0.2]]],"1005":[14,8,8,[[913,27.5],[601,5.0],[507,3.5],[514,0.5],[645,0.25],[500084,0.1],[2209,0.08],[4020,0.01]]],"1007":[12,7,7,[[914,70.0],[511,30.0],[705,10.0],[949,10.0],[601,5.0],[590072,2.0],[4002,0.2]]],"1008":[20,8,8,[[915,70.0],[935,10.0],[938,7.0],[1010,6.0],[601,5.0],[1002,5.0],[460068,0.2],[4003,0.01]]],"1009":[36,8,8,[[917,80.0],[1750,50.0],[916,30.0],[582,6.0],[601,5.0],[517,4.0],[700099,1.0],[4015,0.01]]],"1010":[19,8,8,[[902,90.0],[1068,30.0],[907,20.0],[1067,20.0],[516,10.0],[1066,10.0],[1019,1.0],[4010,0.1]]],"1011":[17,8,8,[[935,70.0],[909,20.0],[601,5.0],[1002,2.0],[998,0.5],[510144,0.5],[4009,0.2],[742,0.06]]],"1012":[16,6,6,[[918,45.0],[601,5.0],[908,5.0],[511,3.0],[721,0.08],[4014,0.01]]],"1013":[28,8,8,[[920,45.0],[919,27.5],[528,5.25],[601,5.0],[620049,1.0],[1011,0.1],[450349,0.05],[4029,0.01]]],"1014":[32,8,8,[[921,80.0],[507,10.0],[578,6.0],[601,5.0],[2221,0.3],[743,0.1],[4022,0.1],[7033,0.1]]],"1015":[69,7,7,[[957,90.0],[938,10.0],[601,5.0],[727,0.7],[958,0.5],[4038,0.1],[724,0.06]]],"1016":[34,9,9,[[932,22.5],[507,9.0],[601,5.0],[1752,5.0],[620049,1.0],[756,0.35],[700083,0.18],[2285,0.02],[4094,0.01]]],"1018":[60,8,8,[[924,80.0],[601,5.0],[712,5.0],[518,2.0],[692,1.0],[2207,0.2],[450345,0.2],[4040,0.01]]],"1019":[25,7,7,[[925,45.0],[582,5.0],[601,5.0],[508,1.0],[550138,0.5],[470257,0.1],[4031,0.01]]],"1020":[35,8,8,[[905,80.0],[601,5.0],[511,4.0],[620039,1.0],[993,0.6],[530052,0.3],[706,0.01],[4030,0.01]]],"1023":[39,7,7,[[931,45.0],[601,5.0],[756,0.2],[620039,0.05],[1309,0.03],[2267,0.02],[4066,0.01]]],"1024":[20,8,8,[[906,27.5],[601,5.0],[10015,0.5],[508,0.35],[993,0.3],[530055,0.15],[1011,0.13],[4034,0.01]]],"1025":[83,8,8,[[926,80.0],[578,30.0],[507,8.0],[937,8.0],[601,5.0],[1011,1.0],[600048,0.2],[4037,0.1]]],"1026":[62,7,7,[[901,45.0],[450311,0.5],[609,0.1],[470229,0.08],[2264,0.01],[2337,0.01],[4090,0.01]]],"1028":[39,8,8,[[932,27.5],[601,5.0],[507,3.5],[756,0.3],[510131,0.25],[510130,0.06],[4086,0.01],[450310,0.01]]],"1031":[32,8,8,[[938,60.0],[511,10.0],[910,10.0],[601,5.0],[514,2.0],[512,1.25],[510129,0.2],[4033,0.1]]],"1033":[38,7,7,[[907,45.0],[601,5.0],[604,0.5],[690,0.5],[990,0.25],[757,0.2],[4052,0.01]]],"1034":[30,8,8,[[908,27.5],[918,10.0],[601,5.0],[911,3.0],[1011,0.23],[509,0.15],[725,0.03],[4058,0.01]]],"1035":[82,8,8,[[943,26.68],[912,6.5],[756,0.65],[999,0.5],[996,0.15],[2259,0.01],[27266,0.01],[510132,0.01]]],"1036":[77,7,7,[[958,30.0],[511,4.0],[509,3.5],[934,0.75],[756,0.55],[2609,0.3],[4110,0.01]]],"1037":[103,7,7,[[954,26.68],[926,25.0],[937,12.5],[912,7.0],[509,5.0],[756,0.67],[4117,0.01]]],"1040":[52,8,8,[[953,45.0],[998,1.75],[912,1.1],[715,1.0],[999,0.75],[757,0.35],[460070,0.03],[4072,0.01]]],"1042":[16,8,8,[[935,45.0],[910,12.0],[601,5.0],[998,1.0],[992,0.45],[943,0.15],[999,0.15],[4042,0.01]]],"1044":[12,6,6,[[950,45.0],[951,2.5],[995,0.07],[720,0.05],[450354,0.05],[4093,0.01]]],"1045":[94,7,7,[[956,45.0],[951,5.0],[509,3.5],[756,0.48],[995,0.09],[720,0.05],[4105,0.01]]],"1047":[2,6,6,[[935,7.5],[507,2.0],[1010,1.25],[736,0.05],[4007,0.01],[460068,0.01]]],"1048":[11,8,8,[[915,50.0],[1010,6.0],[938,3.0],[1002,1.25],[716,0.5],[737,0.05],[4012,0.01],[460068,0.01]]],"1050":[13,8,8,[[916,70.0],[507,10.0],[519,10.0],[949,10.0],[601,5.0],[5015,0.3],[4011,0.2],[10012,0.2]]],"1051":[15,7,7,[[955,30.0],[909,10.0],[601,5.0],[507,1.75],[1002,1.25],[450347,0.6],[4016,0.2]]],"1052":[24,7,7,[[940,80.0],[601,5.0],[530056,0.8],[703,0.1],[752,0.1],[2298,0.05],[4021,0.01]]],"1055":[27,8,8,[[952,45.0],[507,5.0],[601,5.0],[511,2.0],[1002,1.25],[993,0.35],[630044,0.25],[4036,0.01]]],"1056":[25,9,9,[[919,27.5],[945,27.5],[601,5.0],[516,4.0],[510131,1.0],[729,0.01],[754,0.01],[2213,0.01],[4044,0.01]]],"1057":[42,8,8,[[942,45.0],[513,7.5],[601,5.0],[7182,4.5],[500112,1.0],[756,0.12],[753,0.05],[4051,0.01]]],"1058":[9,5,5,[[940,32.5],[935,15.0],[990,0.3],[707,0.1],[4057,0.01]]],"1060":[55,8,8,[[948,45.0],[919,25.0],[516,7.5],[601,5.0],[518,2.25],[756,0.22],[2289,0.03],[4074,0.01]]],"1061":[11,7,7,[[944,30.0],[510,2.5],[505,0.5],[984,0.3],[603,0.15],[2608,0.01],[4127,0.01]]],"1063":[18,8,8,[[705,70.0],[515,30.0],[949,30.0],[601,5.0],[500096,1.0],[622,0.2],[4006,0.2],[2262,0.04]]],"1064":[42,9,9,[[959,27.5],[932,7.5],[601,5.0],[510132,1.0],[510,0.4],[624,0.1],[719,0.05],[603,0.01],[4067,0.01]]],"1065":[74,8,8,[[951,26.68],[949,15.0],[956,7.5],[756,0.58],[720,0.1],[4111,0.01],[450310,0.01],[630037,0.01]]],"1067":[52,8,8,[[961,27.5],[601,5.0],[943,5.0],[911,4.0],[757,0.27],[991,0.23],[460071,0.03],[4061,0.01]]],"1068":[20,8,8,[[962,27.5],[938,7.5],[601,5.0],[517,3.5],[1011,0.13],[971,0.1],[525,0.03],[4035,0.01]]],"1069":[65,8,8,[[963,45.0],[956,3.0],[757,0.25],[756,0.17],[600048,0.13],[995,0.05],[2257,0.01],[4089,0.01]]],"1070":[19,8,8,[[955,27.5],[601,5.0],[528,2.5],[928,2.25],[910,2.0],[991,0.15],[623,0.1],[4027,0.01]]],"1073":[24,6,6,[[964,27.5],[960,7.5],[601,5.0],[7049,3.5],[1001,0.07],[4153,0.01]]],"1074":[26,8,8,[[965,27.5],[601,5.0],[966,5.0],[1056,5.0],[7049,2.5],[757,0.09],[1001,0.05],[4273,0.01]]],"1076":[43,7,7,[[909,30.0],[932,16.0],[507,10.0],[601,5.0],[1010,0.9],[2609,0.3],[4025,0.1]]],"1077":[34,8,8,[[7033,45.0],[921,6.0],[601,5.0],[511,2.75],[510,0.3],[972,0.25],[2221,0.1],[4048,0.01]]],"1079":[25,7,7,[[510,27.5],[514,5.0],[711,5.0],[712,5.0],[905,2.5],[522,0.25],[2270,0.01]]],"1088":[538,6,6,[[940,40.0],[752,7.5],[721,5.0],[2420,5.0],[2247,0.25],[4211,0.01]]],"1089":[408,7,7,[[518,10.0],[729,5.0],[5125,5.0],[970,0.5],[971,0.5],[2244,0.25],[4306,0.01]]],"1090":[407,8,8,[[512,40.0],[531,20.0],[722,5.0],[2116,5.0],[2257,1.0],[619,0.25],[12846,0.25],[4197,0.01]]],"1091":[2722,8,8,[[507,40.0],[533,15.0],[2607,15.0],[742,10.0],[719,7.5],[2245,1.0],[625,0.25],[4179,0.01]]],"1093":[443,7,7,[[507,40.0],[727,6.0],[2355,5.0],[2250,1.0],[622,0.25],[706,0.01],[4266,0.01]]],"1094":[42,8,8,[[946,80.0],[935,30.0],[910,20.0],[601,5.0],[1002,2.0],[991,0.5],[757,0.2],[4032,0.01]]],"1095":[22,8,8,[[955,45.0],[601,5.0],[910,5.0],[938,2.5],[1002,1.75],[993,0.25],[757,0.14],[4043,0.01]]],"1096":[6,7,7,[[509,10.0],[2254,0.5],[450344,0.3],[714,0.2],[512,0.14],[2282,0.01],[4054,0.01]]],"1097":[4,7,7,[[909,10.0],[935,10.0],[938,3.25],[1010,1.6],[1002,1.0],[510130,1.0],[4013,0.01]]],"1099":[79,7,7,[[1042,26.68],[511,7.5],[912,6.0],[757,0.88],[719,0.05],[470230,0.03],[4114,0.01]]],"1100":[58,8,8,[[1025,45.0],[911,6.0],[601,5.0],[511,3.35],[1042,2.5],[757,0.31],[10017,0.08],[4075,0.01]]],"1102":[10,5,7,[[1061,24.25],[1001,1.0],[1000,0.15],[637,0.1],[1006,0.08],[2252,0.02],[4119,0.01]]],"1103":[53,7,7,[[1027,45.0],[919,27.5],[601,5.0],[530055,0.1],[530052,0.08],[630043,0.05],[4063,0.01]]],"1104":[31,8,8,[[1026,45.0],[914,15.0],[919,12.5],[601,5.0],[516,2.5],[470257,0.13],[480414,0.1],[4041,0.01]]],"1105":[29,9,9,[[955,45.0],[910,15.0],[938,6.0],[601,5.0],[1002,2.25],[500112,1.0],[990,0.25],[757,0.17],[4043,0.01]]],"1107":[20,7,7,[[919,27.5],[582,5.0],[601,5.0],[2302,1.0],[1010,0.43],[450311,0.4],[4023,0.01]]],"1109":[5,6,6,[[1038,26.68],[1039,2.0],[756,0.77],[1009,0.03],[984,0.01],[4122,0.01]]],"1110":[7,6,6,[[1021,45.0],[757,0.75],[1005,0.03],[969,0.01],[1613,0.01],[4098,0.01]]],"1111":[37,8,8,[[7006,27.5],[913,15.0],[507,5.0],[601,5.0],[1011,0.3],[756,0.2],[725,0.1],[4069,0.01]]],"1113":[13,7,7,[[909,70.0],[512,10.0],[938,6.0],[601,5.0],[550139,0.8],[620,0.2],[4004,0.2]]],"1114":[40,7,7,[[1057,45.0],[928,10.0],[507,6.0],[1058,2.5],[1001,0.05],[2291,0.02],[4056,0.01]]],"1116":[89,8,8,[[507,5.0],[911,5.0],[7032,2.75],[643,1.5],[645,1.25],[757,0.29],[5015,0.1],[4070,0.01]]],"1117":[0,3,3,[[7478,0.02],[1615,0.01],[4141,0.01]]],"1118":[47,7,7,[[1032,45.0],[905,10.0],[521,0.25],[629,0.1],[704,0.05],[2253,0.02],[4080,0.01]]],"1119":[45,6,6,[[1012,27.5],[903,7.5],[715,1.0],[757,0.45],[721,0.08],[4088,0.01]]],"1120":[6,8,8,[[1059,26.68],[604,2.5],[695,0.5],[2274,0.5],[450317,0.25],[714,0.15],[603,0.05],[4047,0.01]]],"1122":[37,8,8,[[911,45.0],[507,9.0],[601,5.0],[756,0.22],[510143,0.05],[460069,0.03],[2297,0.02],[4060,0.01]]],"1123":[34,7,7,[[911,45.0],[601,5.0],[998,1.25],[460070,0.03],[2297,0.02],[5010,0.02],[4060,0.01]]],"1124":[35,8,8,[[911,45.0],[507,5.0],[601,5.0],[998,1.15],[5088,0.08],[2275,0.02],[4060,0.01],[460069,0.01]]],"1125":[9,7,7,[[507,7.5],[601,5.0],[993,0.5],[5087,0.08],[460070,0.03],[2263,0.02],[4060,0.01]]],"1126":[28,6,6,[[911,45.0],[507,7.5],[508,1.1],[5089,0.08],[550138,0.08],[4060,0.01]]],"1127":[67,8,8,[[1055,45.0],[938,15.0],[993,0.6],[757,0.4],[632,0.1],[500097,0.05],[4081,0.01],[7021,0.01]]],"1128":[28,8,8,[[935,27.5],[947,27.5],[601,5.0],[993,0.4],[943,0.35],[1011,0.18],[630044,0.08],[4045,0.01]]],"1129":[39,8,8,[[1752,50.0],[953,32.5],[912,2.5],[757,0.59],[970,0.25],[633,0.1],[2279,0.03],[4103,0.01]]],"1130":[16,6,6,[[1062,45.0],[535,5.0],[912,4.5],[985,0.16],[1008,0.03],[4109,0.01]]],"1131":[25,6,8,[[912,10.0],[508,5.0],[695,0.5],[984,0.5],[641,0.1],[616,0.01],[4139,0.01],[610090,0.01]]],"1132":[46,5,5,[[932,40.0],[985,0.96],[1004,0.05],[4136,0.01],[5017,0.01]]],"1138":[46,8,8,[[7031,45.0],[910,4.0],[508,2.0],[911,0.5],[737,0.2],[912,0.05],[12127,0.03],[4076,0.01]]],"1139":[56,8,8,[[1031,45.0],[911,7.0],[507,3.25],[943,1.25],[993,0.55],[757,0.35],[721,0.05],[4079,0.01]]],"1140":[2,7,7,[[1045,21.83],[691,0.5],[994,0.18],[642,0.1],[1614,0.02],[2617,0.01],[4112,0.01]]],"1141":[16,7,7,[[1052,25.0],[938,7.5],[601,5.0],[991,0.23],[631,0.1],[995,0.01],[4055,0.01]]],"1142":[57,5,5,[[1050,25.0],[1051,12.5],[720,0.05],[10003,0.05],[4084,0.01]]],"1143":[5,7,7,[[1060,45.0],[699,0.5],[2294,0.03],[5141,0.02],[2407,0.01],[2605,0.01],[4113,0.01]]],"1144":[20,8,8,[[1024,45.0],[962,15.0],[601,5.0],[514,1.5],[995,0.06],[720,0.05],[1007,0.03],[4095,0.01]]],"1145":[7,7,7,[[1017,45.0],[1018,25.0],[10010,0.05],[610066,0.05],[2225,0.03],[4046,0.01],[5009,0.01]]],"1146":[14,6,6,[[919,27.5],[528,25.0],[514,1.0],[757,0.5],[2618,0.05],[4097,0.01]]],"1148":[42,5,5,[[1048,26.68],[722,1.25],[702,1.0],[1007,0.02],[4124,0.01]]],"1149":[6,7,7,[[941,26.68],[568,1.5],[1301,1.0],[756,0.98],[6254,0.5],[1005,0.05],[4126,0.01]]],"1152":[24,6,6,[[922,27.5],[932,17.5],[757,0.4],[511,0.25],[2299,0.01],[4085,0.01]]],"1153":[8,4,4,[[1043,27.5],[938,15.0],[714,0.01],[4071,0.01]]],"1154":[4,5,5,[[7110,21.83],[7121,12.5],[2522,0.5],[757,0.1],[4099,0.01]]],"1155":[8,7,7,[[1035,26.68],[509,5.0],[1037,1.5],[756,0.7],[6260,0.5],[606,0.08],[4118,0.01]]],"1156":[24,7,7,[[1036,26.68],[912,7.5],[509,5.0],[1037,1.5],[985,0.31],[606,0.08],[4120,0.01]]],"1158":[23,8,8,[[1023,27.5],[963,10.0],[517,5.0],[6096,5.0],[951,2.5],[756,0.13],[720,0.03],[4077,0.01]]],"1160":[22,9,9,[[955,45.0],[910,5.5],[601,5.0],[938,3.0],[1002,2.0],[510130,1.0],[757,0.16],[992,0.15],[4043,0.01]]],"1163":[91,6,6,[[7054,24.25],[985,0.53],[1004,0.05],[2266,0.01],[4133,0.01],[450310,0.01]]],"1164":[76,8,8,[[958,17.5],[912,12.5],[934,7.5],[603,0.18],[450349,0.05],[714,0.01],[4104,0.01],[7477,0.01]]],"1165":[54,6,6,[[1056,26.68],[7043,1.75],[1001,1.0],[757,0.59],[997,0.18],[4101,0.01]]],"1166":[47,8,8,[[1028,45.0],[514,1.5],[757,0.35],[6249,0.25],[526,0.01],[702,0.01],[2276,0.01],[4078,0.01]]],"1167":[14,8,8,[[919,45.0],[601,5.0],[949,4.25],[517,2.5],[520037,0.5],[1010,0.4],[627,0.2],[4017,0.01]]],"1169":[16,8,8,[[1041,27.5],[601,5.0],[998,2.0],[1003,1.0],[999,0.5],[757,0.45],[4092,0.01],[5009,0.01]]],"1170":[17,7,7,[[1020,45.0],[662,1.75],[1049,0.25],[450312,0.03],[510131,0.03],[2277,0.01],[4100,0.01]]],"1174":[32,9,9,[[1013,45.0],[910,10.5],[601,5.0],[1002,1.5],[510143,1.0],[992,0.35],[1011,0.15],[757,0.13],[4039,0.01]]],"1176":[55,9,9,[[955,25.0],[601,5.0],[518,1.75],[526,1.0],[911,1.0],[510131,1.0],[993,0.45],[756,0.13],[4053,0.01]]],"1177":[8,7,7,[[1044,27.5],[938,12.5],[508,0.5],[756,0.35],[640,0.1],[1006,0.03],[4096,0.01]]],"1178":[2,7,7,[[1002,1.5],[2339,1.0],[998,0.95],[1011,0.28],[2408,0.05],[2265,0.02],[4064,0.01]]],"1179":[15,5,5,[[1059,26.68],[601,5.0],[1001,0.75],[2282,0.01],[4102,0.01]]],"1180":[77,8,8,[[1022,23.28],[525,1.75],[526,1.25],[746,1.0],[603,0.5],[604,0.5],[756,0.5],[4159,0.01]]],"1188":[4,7,7,[[1094,27.5],[508,6.25],[618,0.3],[7014,0.2],[609,0.08],[4212,0.01],[5046,0.01]]],"1189":[6,5,8,[[1063,23.28],[1755,12.5],[1756,12.5],[507,7.0],[1753,5.0],[509,4.5],[1734,0.01],[4256,0.01]]],"1191":[16,4,4,[[1065,6.0],[757,1.35],[603,0.23],[4205,0.01]]],"1192":[10,6,6,[[1059,29.1],[716,3.25],[2206,0.05],[480381,0.05],[731,0.03],[4190,0.01]]],"1193":[20,4,7,[[1095,26.68],[912,7.5],[7005,7.5],[984,0.53],[7026,0.1],[2607,0.01],[4244,0.01]]],"1194":[51,7,7,[[1096,17.5],[938,15.0],[912,12.5],[943,4.0],[716,1.5],[997,0.1],[4240,0.01]]],"1195":[0,7,7,[[1097,24.25],[1006,0.1],[1553,0.02],[1554,0.02],[1555,0.01],[1556,0.01],[4185,0.01]]],"1198":[5,7,7,[[716,2.25],[505,0.5],[2608,0.15],[1557,0.03],[2319,0.03],[1009,0.01],[4171,0.01]]],"1206":[4,5,5,[[7003,24.25],[984,0.67],[10019,0.05],[526,0.03],[4234,0.01]]],"1207":[6,5,5,[[7004,24.25],[1003,0.65],[997,0.13],[10007,0.05],[4226,0.01]]],"1211":[31,4,6,[[7009,26.68],[509,13.0],[912,6.0],[757,1.1],[992,1.0],[4213,0.01]]],"1213":[48,6,8,[[931,37.5],[7002,12.5],[912,6.5],[508,4.5],[756,0.98],[999,0.45],[1304,0.05],[4322,0.01]]],"1216":[40,7,8,[[962,40.0],[938,35.0],[7013,24.25],[716,2.75],[525,1.0],[719,0.08],[4314,0.01],[610067,0.01]]],"1219":[0,6,6,[[1064,26.68],[985,1.85],[1421,0.13],[7023,0.03],[2318,0.01],[4140,0.01]]],"1242":[15,8,8,[[910,16.0],[938,7.5],[601,5.0],[529,1.75],[700,0.5],[510,0.38],[4196,0.01],[5035,0.01]]],"1243":[39,7,7,[[948,25.0],[509,4.0],[912,3.75],[757,0.45],[727,0.15],[4216,0.01],[5030,0.01]]],"1246":[13,7,7,[[538,20.0],[507,8.5],[912,1.0],[722,0.23],[480414,0.13],[644,0.03],[4235,0.01]]],"1248":[19,7,7,[[911,17.5],[601,5.0],[1098,4.5],[756,0.44],[996,0.03],[2251,0.01],[4297,0.01]]],"1249":[35,8,8,[[539,10.0],[601,5.0],[529,1.7],[722,0.75],[530,0.45],[603,0.1],[731,0.03],[4206,0.01]]],"1254":[61,8,8,[[916,25.0],[7053,15.0],[601,5.0],[645,1.0],[992,0.45],[756,0.16],[2225,0.04],[4186,0.01]]],"1255":[45,7,7,[[1055,25.5],[7053,5.0],[514,1.25],[510,1.15],[757,0.9],[985,0.19],[4167,0.01]]],"1256":[35,8,8,[[1055,27.5],[716,1.25],[7054,1.0],[510182,1.0],[756,0.58],[605,0.5],[702,0.05],[4315,0.01]]],"1258":[7,8,8,[[1765,15.0],[911,5.0],[507,3.0],[514,1.5],[998,1.25],[700098,0.13],[2297,0.02],[4157,0.01]]],"1261":[136,8,8,[[7053,26.68],[528,3.0],[5037,0.6],[748,0.25],[624,0.18],[2244,0.01],[4257,0.01],[450317,0.01]]],"1262":[92,6,6,[[7054,24.25],[7296,7.5],[930,2.5],[1035,2.5],[1036,2.5],[4203,0.01]]],"1264":[44,6,6,[[1054,6.5],[568,2.0],[756,1.02],[720,0.2],[995,0.18],[4199,0.01]]],"1265":[8,7,7,[[538,15.0],[601,5.0],[529,1.6],[530,0.75],[12001,0.5],[470257,0.15],[4293,0.01]]],"1266":[9,8,8,[[1052,6.0],[601,5.0],[938,2.5],[508,1.0],[512,0.5],[912,0.3],[7013,0.2],[4247,0.01]]],"1269":[6,3,7,[[1095,26.68],[509,9.5],[568,1.6],[985,0.82],[7026,0.15],[7027,0.15],[4299,0.01]]],"1270":[112,3,8,[[1095,26.68],[7054,26.68],[7026,10.0],[7027,10.0],[520,4.25],[999,2.5],[2109,0.01],[4229,0.01]]],"1271":[15,6,6,[[7003,10.0],[912,5.0],[1099,3.0],[756,0.65],[608,0.01],[4252,0.01]]],"1273":[76,9,9,[[7053,23.28],[601,5.0],[7477,0.02],[450312,0.02],[2206,0.01],[2338,0.01],[2602,0.01],[4255,0.01],[500112,0.01]]],"1274":[5,5,5,[[7049,5.0],[757,1.04],[912,0.5],[985,0.31],[4200,0.01]]],"1276":[88,5,5,[[7054,23.28],[1764,10.0],[985,0.53],[4187,0.01],[450310,0.01]]],"1277":[54,8,8,[[1019,10.0],[7054,10.0],[662,1.5],[508,1.25],[686,0.5],[590072,0.5],[2272,0.01],[4283,0.01]]],"1278":[98,7,7,[[7054,24.25],[7004,10.0],[757,1.25],[1000,1.25],[985,0.82],[997,0.15],[4223,0.01]]],"1279":[17,7,7,[[943,1.9],[606,1.0],[993,0.8],[1001,0.7],[757,0.53],[7053,0.5],[4308,0.01]]],"1280":[74,7,7,[[7053,19.4],[911,12.5],[1003,1.6],[998,1.5],[757,0.62],[999,0.28],[4156,0.01]]],"1283":[102,8,8,[[7054,26.68],[1048,12.5],[7295,7.5],[568,5.0],[984,0.8],[1306,0.01],[1364,0.01],[4300,0.01]]],"1299":[53,8,8,[[7054,7.5],[999,4.0],[508,3.25],[756,0.6],[5090,0.25],[5113,0.05],[4155,0.01],[460071,0.01]]],"1302":[130,7,7,[[7054,26.68],[509,7.75],[522,0.6],[1615,0.02],[480382,0.02],[4169,0.01],[5017,0.01]]],"1308":[144,7,7,[[7053,22.07],[7054,17.5],[1003,2.9],[998,1.8],[999,0.9],[994,0.8],[4310,0.01]]],"1313":[38,6,7,[[726,22.8],[912,12.5],[6264,2.5],[6265,2.5],[525,2.25],[2621,0.01],[4317,0.01]]],"1314":[22,5,7,[[967,22.07],[507,12.25],[912,6.2],[6263,1.0],[522,0.13],[605,0.01],[4311,0.01]]],"1315":[1,1,5,[[967,22.07],[7069,6.0],[7072,4.2],[603,0.01],[4246,0.01]]],"1317":[83,8,8,[[912,21.83],[7053,6.0],[601,5.0],[525,1.0],[746,0.6],[450346,0.03],[4312,0.01],[630044,0.01]]],"1318":[25,1,6,[[967,22.07],[7068,6.25],[7070,3.75],[526,0.7],[697,0.5],[4331,0.01]]],"1319":[50,4,7,[[967,22.07],[912,9.0],[7066,6.25],[7070,4.25],[526,0.8],[689,0.5],[4319,0.01]]],"1321":[10,5,6,[[7064,22.07],[943,4.0],[1096,2.0],[2207,0.04],[2226,0.01],[4178,0.01]]],"1322":[108,6,7,[[511,22.5],[7054,17.5],[949,12.5],[7053,12.5],[509,4.0],[510,1.0],[4227,0.01]]],"1323":[57,8,8,[[965,27.5],[7065,21.83],[7053,6.0],[601,5.0],[746,3.25],[722,0.75],[726,0.25],[4326,0.01]]],"1368":[33,4,6,[[1032,31.0],[1033,27.5],[12002,0.5],[2207,0.25],[2253,0.15],[4280,0.01]]],"1369":[93,4,6,[[7101,24.25],[992,5.0],[582,2.5],[522,1.5],[969,0.01],[4161,0.01]]],"1372":[6,4,7,[[511,27.5],[7106,22.8],[508,12.5],[7107,12.5],[510,5.0],[507,2.5],[4150,0.01]]],"1376":[2,2,6,[[7115,24.25],[7116,12.5],[508,7.5],[709,0.1],[1820,0.1],[4325,0.01]]],"1377":[0,1,6,[[7099,20.0],[7027,15.0],[7117,7.5],[1564,0.05],[616,0.01],[4251,0.01]]],"1380":[130,4,4,[[1012,37.5],[715,19.4],[716,17.5],[4180,0.01]]],"1386":[235,4,6,[[1056,26.68],[7124,24.74],[997,12.5],[7043,6.0],[756,1.5],[4228,0.01]]],"1391":[90,8,8,[[7053,26.68],[508,17.5],[601,5.0],[6263,1.5],[6264,1.5],[500111,1.0],[606,0.5],[4152,0.01]]],"1392":[68,7,7,[[910,27.5],[912,12.5],[601,5.0],[7053,5.0],[7126,2.5],[999,2.25],[4192,0.01]]],"1400":[54,3,8,[[7151,25.0],[7150,21.34],[912,20.37],[1019,16.0],[7111,11.0],[746,0.15],[13012,0.03],[4286,0.01]]],"1406":[73,3,7,[[7149,32.5],[7053,17.5],[521,11.5],[13304,0.1],[13008,0.03],[708,0.01],[4287,0.01]]],"1408":[12,1,5,[[924,27.5],[7163,23.04],[7168,12.5],[1962,0.01],[4327,0.01]]],"1409":[1,2,7,[[7192,25.0],[7150,16.0],[7187,15.0],[7151,12.5],[553,5.0],[2262,0.01],[4154,0.01]]],"1410":[179,5,6,[[7164,21.83],[526,5.0],[604,2.0],[532,0.5],[603,0.03],[4217,0.01]]],"1412":[11,5,7,[[553,34.0],[548,28.0],[7162,23.28],[550,22.5],[757,0.75],[693,0.5],[4262,0.01]]],"1413":[64,5,6,[[1032,24.0],[1033,19.0],[520,17.5],[521,17.5],[578,5.0],[4232,0.01]]],"1415":[5,3,6,[[7171,26.0],[7172,16.0],[517,10.0],[756,0.75],[510130,0.5],[4233,0.01]]],"1416":[0,1,6,[[7165,19.89],[7166,6.9],[12002,0.5],[984,0.05],[1918,0.05],[4258,0.01]]],"1493":[6,8,8,[[7197,26.68],[7100,15.0],[7188,15.0],[7198,5.0],[6265,1.5],[2270,0.05],[1964,0.01],[4177,0.01]]],"1494":[59,6,6,[[7190,32.5],[7202,22.5],[928,5.0],[955,2.5],[4307,0.01],[460068,0.01]]],"1495":[10,7,7,[[7201,25.0],[7203,25.0],[1019,10.0],[7049,5.0],[7188,5.0],[756,0.5],[4225,0.01]]],"1497":[8,7,7,[[7201,25.0],[7188,20.0],[7189,20.0],[757,0.55],[604,0.5],[2270,0.05],[4259,0.01]]],"1498":[5,7,7,[[7195,22.5],[7200,17.5],[513,5.0],[7049,5.0],[7182,0.5],[5116,0.05],[4260,0.01]]],"1499":[8,7,7,[[517,22.5],[7196,20.0],[7198,5.0],[5116,0.03],[1801,0.02],[4261,0.01],[560062,0.01]]],"1500":[6,8,8,[[7193,27.5],[7186,19.4],[7194,10.0],[6265,4.0],[7198,2.5],[1969,0.01],[4309,0.01],[580066,0.01]]],"1503":[6,3,7,[[7218,26.68],[7222,20.37],[7212,9.0],[724,1.5],[716,0.5],[604,0.05],[4278,0.01]]],"1504":[0,1,5,[[7210,24.25],[7209,16.0],[480381,0.07],[2614,0.01],[4176,0.01]]],"1505":[0,1,6,[[7214,25.22],[7219,15.0],[7206,4.0],[985,0.5],[4191,0.01],[7019,0.01]]],"1506":[1,3,7,[[7216,24.25],[7221,18.43],[518,0.5],[480382,0.25],[2529,0.03],[4181,0.01],[480378,0.01]]],"1507":[0,2,8,[[7207,20.86],[7208,10.0],[7223,5.0],[984,0.5],[2288,0.25],[1229,0.02],[4214,0.01],[13002,0.01]]],"1508":[0,1,5,[[7220,28.62],[7205,16.0],[7154,0.5],[756,0.05],[4294,0.01]]],"1509":[1,4,7,[[7220,28.62],[7225,16.0],[1059,5.0],[12001,0.5],[757,0.05],[2282,0.05],[4193,0.01]]],"1510":[0,3,8,[[7217,26.68],[7215,21.83],[7213,10.0],[7220,1.5],[740,0.4],[757,0.05],[4321,0.01],[5113,0.01]]],"1514":[1,1,6,[[7266,21.83],[7038,15.0],[7265,15.0],[1036,5.0],[7268,4.0],[4272,0.01]]],"1515":[4,6,6,[[7066,21.83],[7269,12.5],[7270,7.5],[749,0.5],[12000,0.5],[4323,0.01]]],"1516":[2,3,5,[[7264,21.83],[7004,11.5],[997,0.05],[969,0.01],[4231,0.01]]],"1584":[0,1,4,[[7301,24.25],[7069,15.0],[450310,0.02],[4304,0.01]]],"1587":[54,5,7,[[7299,24.25],[912,17.5],[521,5.0],[7286,5.0],[603,0.05],[4295,0.01],[460068,0.01]]],"1686":[10,8,8,[[519,25.0],[601,5.0],[7126,5.0],[7270,1.0],[7269,0.5],[10004,0.5],[2299,0.01],[4375,0.01]]],"1687":[21,9,9,[[528,10.0],[521,7.5],[511,5.0],[520,5.0],[903,5.0],[6264,2.5],[620033,0.1],[606,0.05],[4377,0.01]]]};
+const ITEMN={"505":"Blue Potion","507":"Red Herb","508":"Yellow Herb","509":"White Herb","510":"Blue Herb","511":"Green Herb","512":"Apple","513":"Banana","514":"Grape","515":"Carrot","516":"Sweet Potato","517":"Meat","518":"Honey","519":"Milk","520":"Hinalle Leaflet","521":"Aloe Leaflet","522":"Mastela Fruit","525":"Panacea","526":"Royal Jelly","528":"Monster's Feed","529":"Candy","530":"Candy Cane","531":"Apple Juice","532":"Banana Juice","533":"Grape Juice","535":"Pumpkin","538":"Well-Baked Cookie","539":"Piece of Cake","548":"Cheese","550":"Rice Cake","553":"Bao","568":"Lemon","578":"Strawberry","582":"Orange","601":"Fly Wing","603":"Old Blue Box","604":"Dead Branch","605":"Anodyne","606":"Aloevera","608":"Yggdrasil Seed","609":"Amulet","616":"Old Card Album","618":"Worn Out Scroll","619":"Unripe Apple","620":"Orange Juice","622":"Rainbow Carrot","623":"Earthworm the Dude","624":"Rotten Fish","625":"Rusty Iron","627":"Sweet Milk","629":"Singing Flower","631":"Deadly Noxious Herb","632":"Fatty Chubby Earthworm","633":"Baked Sweet Potato","637":"Old Broom","640":"Shining Stone","641":"Contract in Shadow","642":"Book of the Devil","643":"Pet Incubator","644":"Gift Box","645":"Concentration Potion","662":"Authoritative Badge","686":"Lv.3 Earth Spike","689":"Lv.5 Cold Bolt","690":"Lv.3 Fire Bolt","691":"Lv.5 Fire Bolt","692":"Lv.3 Lightning Bolt","693":"Lv.5 Lightning Bolt","694":"Lv.3 Soul Strike","695":"Lv.5 Soul Strike","697":"Level 5 Fire Ball","699":"Lv.5 Fire Wall","700":"Lv.1 Frost Diver","702":"Animal Blood","703":"Hinalle","704":"Aloe","705":"Clover","706":"Four-Leaf Clover","707":"Singing Plant","708":"Ment","709":"Izidor","711":"Shoot","712":"Flower","714":"Emperium","715":"Yellow Gemstone","716":"Red Gemstone","719":"Amethyst","720":"Aquamarine","721":"Emerald","722":"Pearl","724":"Cursed Ruby","725":"Sardonyx","726":"Sapphire","727":"Opal","729":"Zircon","731":"2 Carat Diamond","736":"China","737":"Black Ladle","740":"Puppet","742":"Chonchon Doll","743":"Spore Doll","746":"Glass Bead","748":"Witherless Rose","749":"Frozen Rose","752":"Rocker Doll","753":"Yoyo Doll","754":"Racoon Doll","756":"Rough Oridecon","757":"Rough Elunium","901":"Daenggie","902":"Tree Root","903":"Reptile Tongue","904":"Scorpion Tail","905":"Stem","906":"Pointed Scale","907":"Resin","908":"Spawn","909":"Jellopy","910":"Garlet","911":"Scell","912":"Zargon","913":"Tooth of Bat","914":"Fluff","915":"Chrysalis","916":"Feather of Birds","917":"Talon","918":"Sticky Webfoot","919":"Animal Skin","920":"Wolf Claw","921":"Mushroom Spore","922":"Orc's Fang","924":"Powder of Butterfly","925":"Bill of Birds","926":"Snake Scale","928":"Insect Feeler","930":"Rotten Bandage","931":"Orcish Voucher","932":"Skel-Bone","934":"Memento","935":"Shell","937":"Venom Canine","938":"Sticky Mucus","939":"Bee Sting","940":"Grasshopper's Leg","941":"Nose Ring","942":"Yoyo Tail","943":"Solid Shell","944":"Horseshoe","945":"Raccoon Leaf","946":"Snail's Shell","947":"Horn","948":"Bear's Footskin","949":"Feather","950":"Mermaid's Heart","951":"Fin","952":"Cactus Needle","953":"Stone Heart","954":"Shining Scale","955":"Worm Peeling","956":"Gill","957":"Decayed Nail","958":"Horrendous Mouth","959":"Stinky Scale","960":"Nipper","961":"Conch","962":"Tentacle","963":"Sharp Scale","964":"Crab Shell","965":"Clam Shell","966":"Clam Flesh","967":"Turtle Shell","969":"Gold","970":"Alcohol","971":"Detrimindexta","972":"Karvodailnirol","983":"Black Dyestuffs","984":"Oridecon","985":"Elunium","990":"Red Blood","991":"Crystal Blue","992":"Wind of Verdure","993":"Green Live","994":"Flame Heart","995":"Mystic Frozen","996":"Rough Wind","997":"Great Nature","998":"Iron","999":"Steel","1000":"Star Crumb","1001":"Star Dust","1002":"Iron Ore","1003":"Coal","1004":"Chivalry Emblem","1005":"Hammer of Blacksmith","1006":"Old Magicbook","1007":"Necklace of Wisdom","1008":"Necklace of Oblivion","1009":"Hand of God","1010":"Phracon","1011":"Emveretarcon","1012":"Frill","1013":"Rainbow Shell","1017":"Mole Whiskers","1018":"Mole Claw","1019":"Trunk","1020":"Black Hair","1021":"Dokebi Horn","1022":"Nine Tails","1023":"Fish Tail","1024":"Squid Ink","1025":"Cobweb","1026":"Acorn","1027":"Porcupine Quill","1028":"Mane","1031":"Mantis Scythe","1032":"Maneater Blossom","1033":"Maneater Root","1035":"Dragon Canine","1036":"Dragon Scale","1037":"Dragon Tail","1038":"Little Evil Horn","1039":"Little Evil Wing","1041":"Lantern","1042":"Bug Leg","1043":"Orc Claw","1044":"Zenorc's Fang","1045":"Cultish Masque","1048":"Horrendous Hair","1049":"Skirt of Virgin","1050":"Tendon","1051":"Detonator","1052":"Single Cell","1054":"Ancient Lips","1055":"Earthworm Peeling","1056":"Grit","1057":"Moth Dust","1058":"Moth Wings","1059":"Fabric","1060":"Golden Hair","1061":"Witch Starsand","1062":"Jack o' Pumpkin","1063":"Fang","1064":"Reins","1065":"Trap","1066":"Fine-grained Trunk","1067":"Solid Trunk","1068":"Barren Trunk","1094":"Short Daenggie","1095":"Clock Hands","1096":"Round Shell","1097":"Worn-out Page","1098":"Manacles","1099":"Worn-out Prison Uniform","1202":"Knife","1229":"Kitchen Knife","1301":"Axe","1304":"Orcish Axe","1306":"War Axe","1309":"Orcish Axe","1364":"Great Axe","1421":"Battle Hook","1553":"Book of Billows","1554":"Book of Mother Earth","1555":"Book of the Blazing Sun","1556":"Book of Gust of Wind","1557":"Book of the Apocalypse","1564":"Encyclopedia","1613":"Mighty Staff","1614":"Wand of Occult","1615":"Evil Bone Wand","1734":"Orc Archer Bow","1750":"Arrow","1752":"Fire Arrow","1753":"Steel Arrow","1755":"Arrow of Wind","1756":"Stone Arrow","1764":"Sharp Arrow","1765":"Oridecon Arrow","1801":"Waghnak","1820":"Electric Fist","1918":"Oriental Lute","1962":"Lariat Whip","1964":"Chemeti Whip","1969":"Blade Whip","2109":"Memory Book","2116":"Angelic Guard","2206":"Wedding Veil","2207":"Fancy Flower","2209":"Ribbon","2213":"Kitty Band","2221":"Hat","2225":"Goggles","2226":"Cap","2244":"Big Ribbon","2245":"Sweet Gent","2247":"Romantic Gent","2250":"Cute Ribbon","2251":"Monk Hat","2252":"Wizard Hat","2253":"Sunflower","2254":"Angel Wing","2255":"Evil Wing","2257":"Unicorn Horn","2259":"Mini Propeller","2262":"Clown Nose","2263":"Zorro Masque","2264":"Munak Hat","2265":"Gangster Mask","2266":"Iron Cain","2267":"Cigarette","2270":"Romantic Leaf","2272":"Stop Post","2274":"Ghost Bandana","2275":"Red Bandana","2276":"Angled Glasses","2277":"Nurse Cap","2279":"Bomb Wick","2282":"Halo","2285":"Apple of Archer","2288":"Mr. Scream","2289":"Poo Poo Hat","2291":"Masquerade","2294":"Stellar","2297":"Goblin Mask","2298":"Green Feeler","2299":"Orc Helm","2302":"Cotton Shirt","2318":"Lord's Clothes","2319":"Glittering Jacket","2337":"Ninja Suit","2338":"Wedding Dress","2339":"Pantie","2355":"Angelic Protection","2407":"Crystal Pumps","2408":"Shackles","2420":"Angel's Reincarnation","2522":"Undershirt","2529":"Rider Insignia","2602":"Earring","2605":"Brooch","2607":"Clip","2608":"Rosary","2609":"Skull Ring","2614":"Eye of Dullahan","2617":"Acolyte Gloves","2618":"Matyr's Leash","2621":"Ring","4001":"Poring Card","4002":"Fabre Card","4003":"Pupa Card","4004":"Drops Card","4006":"Lunatic Card","4007":"Peco Peco Egg Card","4009":"Chonchon Card","4010":"Willow Card","4011":"Picky Egg Card","4012":"Thief Bug Egg Card","4013":"Andre Egg Card","4014":"Roda Frog Card","4015":"Condor Card","4016":"Thief Bug Card","4017":"Savage Babe Card","4019":"Hornet Card","4020":"Familiar Card","4021":"Rocker Card","4022":"Spore Card","4023":"Baby Desert Wolf Card","4025":"Skeleton Card","4027":"Kukre Card","4029":"Wolf Card","4030":"Mandragora Card","4031":"Peco Peco Card","4032":"Ambernite Card","4033":"Poporing Card","4034":"Wormtail Card","4035":"Hydra Card","4036":"Muka Card","4037":"Snake Card","4038":"Zombie Card","4039":"Stainer Card","4040":"Creamy Card","4041":"Coco Card","4042":"Steel Chonchon Card","4043":"Andre Card","4044":"Smokie Card","4045":"Horn Card","4046":"Martin Card","4047":"Ghostring Card","4048":"Poison Spore Card","4051":"Yoyo Card","4052":"Elder Willow Card","4053":"Vitata Card","4054":"Angeling Card","4055":"Marina Card","4056":"Dustiness Card","4057":"Metaller Card","4058":"Thara Frog Card","4060":"Goblin Card","4061":"Cornutus Card","4063":"Caramel Card","4064":"Zerom Card","4066":"Orc Warrior Card","4067":"Megalodon Card","4068":"Scorpion Card","4069":"Drainliar Card","4070":"Eggyra Card","4071":"Orc Zombie Card","4072":"Golem Card","4074":"Bigfoot Card","4075":"Argos Card","4076":"Magnolia Card","4077":"Phen Card","4078":"Savage Card","4079":"Mantis Card","4080":"Flora Card","4081":"Hode Card","4084":"Marine Sphere Card","4085":"Orc Skeleton Card","4086":"Soldier Skeleton Card","4088":"Frilldora Card","4089":"Swordfish Card","4090":"Munak Card","4092":"Skeleton Worker Card","4093":"Obeaune Card","4094":"Archer Skeleton Card","4095":"Marse Card","4096":"Zenorc Card","4097":"Matyr Card","4098":"Dokebi Card","4099":"Pasana Card","4100":"Sohee Card","4101":"Sandman Card","4102":"Whisper Card","4103":"Horong Card","4104":"Requiem Card","4105":"Marc Card","4109":"Jakk Card","4110":"Ghoul Card","4111":"Strouf Card","4112":"Marduk Card","4113":"Marionette Card","4114":"Argiope Card","4117":"Sidewinder Card","4118":"Earth Petite Card","4119":"Bathory Card","4120":"Sky Petite Card","4122":"Deviruchi Card","4124":"Medusa Card","4126":"Minorous Card","4127":"Nightmare Card","4133":"Raydric Card","4136":"Khalitzburg Card","4139":"Joker Card","4140":"Abysmal Knight Card","4141":"Evil Druid Card","4150":"Goat Card","4152":"Galapago Card","4153":"Crab Card","4154":"Dumpling Child Card","4155":"Goblin Leader Card","4156":"Goblin Steamrider Card","4157":"Goblin Archer Card","4159":"Nine Tail Card","4161":"Grand Peco Card","4167":"Nereid Card","4169":"Dark Illusion Card","4171":"Dark Priest Card","4176":"Dullahan Card","4177":"Dryad Card","4178":"Dragon Tail Card","4179":"Dragon Fly Card","4180":"Driller Card","4181":"Disguise Card","4185":"Rideword Card","4186":"Raggler Card","4187":"Raydric Archer Card","4190":"Wraith Card","4191":"Loli Ruri Card","4192":"Rotar Zairo Card","4193":"Lude Card","4196":"Marin Card","4197":"Mastering Card","4199":"Merman Card","4200":"Megalith Card","4203":"Mutant Dragonoid Card","4205":"Mimic Card","4206":"Myst Case Card","4211":"Vocal Card","4212":"Bongun Card","4213":"Brilight Card","4214":"Bloody Murderer Card","4216":"Sasquatch Card","4217":"Enchanted Peach Tree Card","4223":"Stalactic Golem Card","4225":"Stone Shooter Card","4226":"Sting Card","4227":"Spring Rabbit Card","4228":"Sleeper Card","4229":"Tower Keeper Card","4231":"Mi Gao Card","4232":"Hermit Plant Card","4233":"Baby Leopard Card","4234":"Anolian Card","4235":"Christmas Cookie Card","4240":"Arclouse Card","4244":"Alarm Card","4246":"Assaulter Card","4247":"Aster Card","4251":"Elder Card","4252":"Alligator Card","4255":"Orc Lady Card","4256":"Orc Archer Card","4257":"Wild Rose Card","4258":"Evil Nymph Card","4259":"Wooden Golem Card","4260":"Wootan Shooter Card","4261":"Wootan Fighter Card","4262":"Cloud Hermit Card","4266":"Eclipse Card","4272":"Zhu Po Long Card","4273":"Shell Fish Card","4278":"Gibbet Card","4280":"Geographer Card","4283":"Greatest General Card","4286":"Karakasa Card","4287":"Kapha Card","4293":"Cookie Card","4294":"Quve Card","4295":"Kraben Card","4297":"Cruiser Card","4299":"Clock Card","4300":"Chimera Card","4304":"Tamruan Card","4306":"Toad Card","4307":"Beetle King Card","4308":"Tri-Joint Card","4309":"Parasite Card","4310":"Panzer Goblin Card","4311":"Permeter Card","4312":"Fur Seal Card","4314":"Penomena Card","4315":"Pest Card","4317":"Mobster Card","4319":"Freezer Card","4321":"Hylozoist Card","4322":"High Orc Card","4323":"Hatii Bebe Card","4325":"Harpy Card","4326":"Sea-Otter Card","4327":"Bloody Butterfly Card","4331":"Heater Card","4375":"Orc Baby Card","4377":"Grove Card","5009":"Safety Helmet","5010":"Indian Fillet","5015":"Egg Shell","5017":"Bone Helm","5030":"Panda Hat","5035":"Poring Hat","5037":"Nut Shell","5046":"Bongun Hat","5087":"Poker Face","5088":"Surprised Mask","5089":"Annoyed Mask","5090":"Goblin Leader Mask","5113":"Angry Snarl","5116":"Banana Hat","5125":"Angel's Kiss","5141":"Marionette Doll","6096":"Fish With Blue Back","6249":"Savage Meat","6254":"Beef Head","6260":"Petite's Tail","6263":"Coconut Fruit","6264":"Melon","6265":"Pineapple","7002":"Ogre Tooth","7003":"Anolian Skin","7004":"Mud Lump","7005":"Skull","7006":"Wing of Red Bat","7009":"Glitter Shell","7013":"Coral Reef","7014":"Old Portrait","7019":"Loki's Whispers","7021":"Foolishness of the Blind","7023":"Blade of Darkness","7026":"Clock Tower Key","7027":"Key of the Underground","7031":"Old Frying Pan","7032":"Piece of Egg Shell","7033":"Poison Spore","7038":"Yarn","7041":"Fine Grit","7043":"Fine Sand","7049":"Stone","7053":"Cyfar","7054":"Brigan","7064":"Wing of Dragonfly","7065":"Sea-otter Fur","7066":"Ice Cubic","7068":"Burnt Tree","7069":"Destroyed Armor","7070":"Broken Shell","7072":"Old Shuriken","7099":"Worn-out Magic Scroll","7100":"Sharp Leaf","7101":"Peco Peco Feather","7106":"Antelope Horn","7107":"Antelope Skin","7110":"Broken Sword","7111":"Slick Paper","7115":"Harpy Feather","7116":"Harpy Talon","7117":"Torn Magic Book","7121":"Honey Pot","7124":"Sand Clump","7126":"Large Jellopy","7149":"Yellow Plate","7150":"Piece of Bamboo","7151":"Oil Paper","7154":"Poisonous Powder","7162":"Cloud Crumb","7163":"Hard Feeler","7164":"Solid Peach","7165":"Transparent Celestial Robe","7166":"Soft Silk","7168":"Giant Butterfly Wing","7171":"Leopard Skin","7172":"Leopard Claw","7182":"Cacao","7186":"Thin Trunk","7187":"Festival Mask","7188":"Brown Root","7189":"Wooden Heart","7190":"Solid Husk","7192":"Vane","7193":"Sprout","7194":"Soft Blade of Grass","7195":"Slingshot","7196":"Shoulder Protector","7197":"Tough Vines","7198":"Huge Leaf","7200":"Elastic Band","7201":"Log","7202":"Pincher of Beetle","7203":"Strong Branch","7205":"Piece of Black Cloth","7206":"Black Cat Doll","7207":"Old Manteau","7208":"Rusty Kitchen Knife","7209":"Helm of Dullahan","7210":"Armor Piece of Dullahan","7212":"Hung Doll","7213":"Needle Packet","7214":"Bat Cage","7215":"Broken Needle","7216":"Red Muffler","7217":"Spool","7218":"Decomposed Rope","7219":"Striped Sock","7220":"Ectoplasm","7221":"Tangled Chains","7222":"Wooden Gnarl","7223":"Contorted Self-Portrait","7225":"Pumpkin Lantern","7264":"Dry Sand","7265":"Dragon Horn","7266":"Denture from Dragon Mask","7268":"Little Ghost Doll","7269":"Pinafore","7270":"Nursing Bottle","7286":"Red Chili","7295":"Citrin","7296":"Pyroxene","7299":"Straw Basket","7301":"Tassel","7477":"Lv.6 Cookbook","7478":"Lv.7 Cookbook","10003":"Transparent Head Protector","10004":"Pacifier","10007":"Silk Ribbon","10010":"Battered Pot","10012":"Tiny Egg Shell","10015":"Green Lace","10017":"Bark Shorts","10019":"Red Scarf","12000":"Lv.5 Frost Diver","12001":"Lv.3 Heal","12002":"Level 5 Heal","12127":"Professional Cooking Kit","12846":"Little Unripe Apple","13002":"Ginnungagap","13008":"Jitte","13012":"Murasame","13304":"Huuma Calm Mind","27266":"Hunter Fly Card","450310":"Chain Mail","450311":"Adventurer's Suit","450312":"Puente Robe","450317":"Thief Clothes","450344":"Scapulare","450345":"Silk Robe","450346":"Coat","450347":"Jacket","450349":"Mantle","450354":"Saint's Robe","460068":"Guard","460069":"Buckler","460070":"Silver Guard","460071":"Shield","470229":"Shoes","470230":"Boots","470257":"Sandals","480378":"Muffler","480381":"Cloak","480382":"Ragamuffin Manteau","480414":"Hood","500084":"Falchion","500096":"Sword","500097":"Town Sword","500111":"Scimitar","500112":"Ring Pommel Saber","510129":"Main Gauche","510130":"Dagger","510131":"Stiletto","510132":"Damascus","510143":"Dirk","510144":"Cutter","510182":"Gladius","520037":"Axe","530052":"Spear","530055":"Pike","530056":"Javelin","550138":"Wand","550139":"Rod","560062":"Finger","580066":"Rante Whip","590072":"Club","600048":"Katana","610066":"Jur","610067":"Erupting Flame Katar","610090":"Katar of Piercing Wind","620033":"Buster","620039":"Battle Axe","620049":"Hammer","630037":"Trident","630043":"Glaive","630044":"Guisarme","700083":"Great Bow","700098":"Composite Bow","700099":"Bow"};
+const MSTAT={"1001":[16,5,7,7,10,5,0],"1002":[2,5,13,17,1,1,0],"1004":[7,1,2,2,4,5,0],"1005":[26,5,17,17,20,5,0],"1007":[24,0,1,1,5,5,0],"1008":[24,2,1,1,3,3,0],"1009":[7,5,3,3,6,1,0],"1010":[38,2,1,1,8,5,0],"1011":[27,0,1,1,4,1,0],"1012":[12,5,4,4,4,1,0],"1013":[55,3,106,106,30,15,0],"1014":[12,10,8,8,10,1,0],"1015":[20,3,8,8,17,1,1],"1016":[47,10,101,101,20,10,1],"1018":[28,20,17,17,1,1,0],"1019":[48,0,25,25,13,5,0],"1020":[13,2,4,4,5,5,1],"1023":[62,3,100,100,24,15,1],"1024":[16,0,8,8,14,5,0],"1025":[9,8,9,9,18,10,0],"1026":[77,15,141,141,25,10,1],"1028":[53,5,43,43,32,5,1],"1031":[39,18,34,34,20,18,0],"1033":[45,0,47,47,25,1,1],"1034":[37,17,49,49,10,18,0],"1035":[46,20,153,153,22,25,1],"1036":[78,5,188,188,19,11,1],"1037":[101,12,274,274,35,20,1],"1040":[190,12,223,223,67,5,0],"1042":[57,20,100,100,20,10,0],"1044":[48,26,192,236,21,40,1],"1045":[55,24,222,280,22,15,1],"1047":[16,5,1,1,22,8,0],"1048":[64,10,1,1,50,1,0],"1050":[48,10,1,1,8,5,0],"1051":[24,3,13,13,10,1,0],"1052":[16,3,6,6,8,10,0],"1055":[28,0,20,20,28,5,0],"1056":[26,0,101,129,16,5,0],"1057":[40,0,60,60,34,20,0],"1058":[72,12,151,151,10,1,0],"1060":[60,7,36,36,7,1,0],"1061":[116,15,225,225,20,15,1],"1062":[220,80,7,9,1,10,0],"1063":[18,0,1,1,3,1,0],"1064":[67,21,85,85,30,28,0],"1065":[67,21,246,314,31,20,1],"1067":[42,28,143,175,45,26,0],"1068":[20,32,31,31,14,1,1],"1069":[52,12,231,295,25,15,1],"1070":[33,23,119,145,22,20,0],"1073":[36,11,62,62,24,7,0],"1074":[43,5,85,85,48,25,0],"1076":[21,2,25,25,30,5,0],"1077":[40,8,25,25,22,5,1],"1079":[100,99,2,4,1,1,0],"1088":[77,26,71,71,26,30,1],"1089":[24,6,77,77,27,10,1],"1090":[57,37,96,96,41,12,1],"1091":[57,28,122,122,30,15,1],"1093":[50,20,66,66,35,17,1],"1094":[28,0,9,9,11,10,0],"1095":[55,16,44,44,40,10,0],"1096":[93,285,508,508,33,105,1],"1097":[68,45,1,1,65,5,0],"1099":[114,41,351,351,40,30,1],"1100":[58,8,116,116,25,5,1],"1102":[61,150,353,455,40,77,1],"1103":[39,0,23,23,15,10,0],"1104":[37,0,60,60,30,20,0],"1105":[52,16,37,37,30,10,0],"1107":[13,0,5,5,8,5,0],"1109":[72,16,312,312,30,85,1],"1110":[85,20,161,161,35,20,0],"1111":[50,15,73,73,24,22,1],"1113":[16,0,1,1,1,1,0],"1114":[89,65,191,191,46,60,0],"1116":[85,20,116,116,25,15,0],"1117":[88,45,444,596,24,45,1],"1118":[99,29,208,208,35,5,1],"1119":[84,10,163,163,38,15,1],"1120":[88,72,539,539,66,66,1],"1122":[56,5,111,111,25,20,1],"1123":[52,5,92,92,24,15,1],"1124":[47,5,92,92,24,15,1],"1125":[70,3,127,127,46,15,1],"1126":[64,5,126,126,22,15,1],"1127":[91,24,252,252,42,5,0],"1128":[52,8,44,44,36,25,0],"1129":[84,35,169,169,35,45,1],"1130":[90,25,169,169,42,25,1],"1131":[300,76,427,555,30,50,1],"1132":[125,10,1224,1718,40,31,1],"1138":[51,8,98,98,21,50,0],"1139":[90,0,258,258,24,5,1],"1140":[99,64,297,377,21,40,1],"1141":[20,19,124,154,18,22,0],"1142":[41,28,61,63,35,25,0],"1143":[35,24,325,325,28,105,1],"1144":[38,18,148,182,25,10,0],"1145":[116,1439,120,148,28,15,0],"1146":[63,5,226,288,21,17,1],"1148":[87,66,491,491,65,79,1],"1149":[100,10,320,420,36,43,1],"1152":[82,10,116,116,24,5,1],"1153":[71,5,106,106,32,5,1],"1154":[139,52,505,681,33,20,1],"1155":[99,49,397,527,38,37,1],"1156":[86,42,301,301,31,55,1],"1158":[44,11,187,229,35,15,0],"1160":[57,16,40,40,36,8,0],"1163":[89,15,964,1326,55,32,1],"1164":[132,30,407,547,35,12,1],"1165":[126,24,244,244,55,15,1],"1166":[151,3,217,217,54,10,0],"1167":[22,0,5,5,9,5,0],"1169":[90,10,1000,1200,22,10,1],"1170":[61,21,140,140,29,20,0],"1174":[22,25,13,13,24,1,0],"1176":[44,12,109,137,24,20,0],"1177":[69,5,109,109,20,5,0],"1178":[139,22,389,521,30,15,1],"1179":[20,40,66,66,20,35,1],"1180":[95,40,225,225,30,20,1],"1188":[88,5,146,146,24,5,1],"1189":[67,31,361,477,24,30,1],"1191":[63,15,290,384,20,15,1],"1192":[80,40,434,582,30,55,1],"1193":[106,53,413,541,40,25,1],"1194":[101,36,447,587,45,35,1],"1195":[61,38,450,606,32,44,1],"1198":[56,30,472,658,41,89,1],"1206":[61,11,759,1019,55,66,1],"1207":[146,34,847,1165,68,34,1],"1211":[350,25,391,527,38,32,1],"1213":[101,45,498,670,40,31,1],"1216":[85,32,545,739,35,35,1],"1219":[102,50,1630,2324,68,70,1],"1242":[35,8,46,46,10,5,0],"1243":[270,48,321,321,60,10,1],"1244":[90,25,256,324,42,25,0],"1245":[56,5,159,197,25,20,0],"1246":[96,72,114,142,30,20,0],"1247":[500,200,21,27,1,50,0],"1248":[40,36,102,124,23,15,1],"1249":[100,22,119,147,40,35,0],"1254":[56,10,100,100,38,15,1],"1255":[100,37,433,433,60,30,1],"1256":[55,33,283,283,48,15,1],"1258":[69,0,136,136,20,15,1],"1261":[75,15,247,247,31,35,0],"1262":[130,20,1528,1528,30,68,1],"1264":[62,8,121,121,30,19,1],"1265":[112,56,97,121,35,12,0],"1266":[70,7,121,121,15,1,0],"1269":[91,43,503,681,35,41,0],"1270":[96,60,511,683,40,25,0],"1271":[62,30,130,130,24,15,0],"1273":[99,20,111,111,28,10,1],"1274":[66,18,199,199,35,10,1],"1276":[63,40,467,633,40,15,1],"1277":[114,36,151,151,20,25,1],"1278":[230,5,218,218,48,1,0],"1279":[22,5,187,187,24,10,1],"1280":[85,5,243,243,32,15,0],"1283":[159,10,894,1306,110,88,1],"1299":[72,30,207,207,45,18,1],"1302":[145,30,1110,1578,55,100,1],"1308":[60,25,153,153,35,35,1],"1313":[88,18,141,141,33,21,1],"1314":[144,50,391,509,55,40,0],"1315":[169,49,701,953,30,20,1],"1317":[42,16,86,86,30,39,1],"1318":[199,50,718,984,50,30,1],"1319":[127,38,645,887,50,45,1],"1321":[63,25,307,387,35,40,1],"1322":[108,42,409,537,35,30,0],"1323":[31,18,90,90,33,26,1],"1368":[205,54,401,525,35,56,1],"1369":[123,39,416,556,50,23,0],"1372":[133,60,481,653,48,40,0],"1376":[96,61,426,562,50,31,1],"1377":[72,41,446,590,35,99,1],"1380":[96,18,258,258,25,15,1],"1386":[141,40,395,517,57,27,1],"1391":[70,16,97,97,29,18,0],"1392":[57,34,122,122,45,26,1],"1400":[130,40,275,345,33,20,0],"1406":[85,53,394,518,40,31,1],"1408":[102,65,452,598,40,55,1],"1409":[144,18,217,271,29,5,0],"1410":[141,52,448,590,55,40,1],"1412":[85,59,647,893,45,60,1],"1413":[72,80,626,856,60,60,0],"1415":[115,7,346,464,20,4,1],"1416":[59,58,534,712,45,70,1],"1493":[153,8,309,309,40,35,1],"1494":[94,9,151,151,10,1,0],"1495":[88,15,227,227,36,15,1],"1497":[249,26,379,379,45,5,1],"1498":[91,21,287,287,38,20,1],"1499":[103,8,250,250,36,5,1],"1500":[63,30,328,328,33,50,1],"1503":[116,45,551,551,62,55,1],"1504":[111,38,614,614,51,43,1],"1505":[53,44,635,635,47,79,1],"1506":[85,58,613,613,57,75,1],"1507":[84,41,656,656,66,41,1],"1508":[96,55,406,406,55,50,1],"1509":[90,53,424,424,55,82,1],"1510":[101,68,393,393,72,88,1],"1514":[107,46,377,495,40,30,0],"1515":[62,43,697,697,55,61,1],"1516":[140,48,442,588,41,49,0],"1582":[87,91,406,406,33,75,1],"1584":[94,45,401,537,40,20,1],"1587":[162,30,347,459,35,15,1],"1686":[58,3,87,87,32,20,1],"1687":[96,18,172,172,22,5,0],"25327":[198,15,null,null,null,null,0],"25328":[179,30,null,null,null,null,0],"25329":[224,23,null,null,null,null,0]};
+const ELEM={1001:["Fire", 1, 232, 206],1002:["Water", 1, 203, 178],1004:["Wind", 1, 236, 188],1005:["Shadow", 1, 243, 214],1007:["Earth", 1, 212, 189],1008:["Earth", 1, 206, 184],1009:["Wind", 1, 220, 196],1010:["Earth", 1, 212, 191],1011:["Wind", 1, 210, 184],1012:["Water", 1, 220, 200],1014:["Water", 1, 223, 200],1015:["Undead", 1, 225, 202],1018:["Wind", 1, 230, 202],1019:["Fire", 1, 238, 226],1020:["Earth", 3, 217, 194],1024:["Earth", 1, 230, 210],1025:["Earth", 1, 229, 207],1028:["Undead", 1, 244, 234],1031:["Poison", 1, 260, 240],1033:["Fire", 2, 251, 236],1047:["Neutral", 3, 218, 188],1048:["Shadow", 1, 226, 200],1050:["Fire", 1, 218, 190],1051:["Neutral", 3, 231, 206],1052:["Earth", 1, 234, 203],1055:["Earth", 1, 235, 239],1056:["Earth", 1, 266, 229],1060:["Earth", 1, 235, 213],1063:["Neutral", 3, 207, 182],1068:["Water", 2, 243, 239],1076:["Undead", 1, 242, 216],1077:["Poison", 1, 246, 219],1088:["Earth", 1, 252, 254],1089:["Water", 1, 249, 224],1093:["Neutral", 3, 273, 249],1094:["Water", 1, 240, 211],1095:["Earth", 1, 258, 233],1097:["Neutral", 3, 237, 220],1103:["Earth", 1, 238, 230],1105:["Earth", 1, 253, 232],1107:["Fire", 1, 227, 203],1113:["Fire", 1, 203, 178],1128:["Earth", 1, 254, 237],1160:["Earth", 1, 257, 237],1167:["Earth", 1, 225, 211],1174:["Wind", 1, 236, 237],1176:["Earth", 1, 247, 227],1283:["Fire", 3, 380, 414],1498:["Earth", 2, 312, 336],1499:["Fire", 2, 304, 324],1500:["Wind", 2, 400, 387],1503:["Shadow", 1, 368, 360],1504:["Undead", 2, 337, 379],1505:["Shadow", 4, 374, 400],1506:["Earth", 4, 365, 368],1507:["Shadow", 3, 380, 395],1508:["Undead", 1, 366, 375],1509:["Undead", 1, 350, 372],1510:["Shadow", 2, 381, 375],1514:["Wind", 2, 364, 335],1515:["Water", 2, 364, 385],1516:["Earth", 3, 312, 357],1584:["Shadow", 3, 315, 322],1587:["Ghost", 2, 325, 314],1686:["Earth", 1, 259, 263],1687:["Earth", 2, 300, 280],25327:["Earth", 2, null, null],25328:["Earth", 2, null, null],25329:["Earth", 3, null, null],1013:["Earth",1,279,258],1016:["Undead",1,280,256],1023:["Earth",1,269,241],1026:["Undead",1,269,264],1034:["Water",2,250,240],1035:["Wind",2,338,338],1036:["Undead",2,275,264],1037:["Poison",1,326,339],1040:["Neutral",3,307,284],1042:["Wind",1,321,286],1044:["Water",2,305,271],1045:["Water",2,284,285],1057:["Earth",1,254,233],1058:["Fire",1,296,298],1061:["Ghost",3,304,321],1064:["Undead",1,273,250],1065:["Water",3,281,273],1067:["Water",1,278,250],1069:["Water",2,316,276],1070:["Water",1,276,250],1073:["Water",1,268,254],1074:["Water",1,273,262],1090:["Water",1,283,269],1091:["Wind",1,303,275],1099:["Poison",1,326,301],1100:["Poison",1,276,257],1102:["Shadow",1,336,341],1104:["Earth",1,256,252],1109:["Shadow",1,393,383],1110:["Shadow",1,329,312],1111:["Shadow",2,285,273],1114:["Wind",2,323,360],1116:["Ghost",2,282,286],1117:["Undead",4,313,336],1118:["Earth",1,315,312],1119:["Fire",1,312,299],1122:["Wind",1,313,266],1123:["Fire",1,270,283],1124:["Poison",1,270,242],1125:["Earth",1,287,265],1126:["Water",1,306,282],1127:["Earth",2,305,296],1129:["Fire",4,303,306],1130:["Fire",2,309,299],1131:["Wind",4,396,363],1132:["Undead",1,352,403],1138:["Water",1,305,292],1139:["Earth",1,320,305],1140:["Fire",1,390,366],1141:["Water",2,272,246],1142:["Water",2,268,251],1143:["Ghost",3,373,352],1144:["Water",2,266,253],1145:["Earth",2,309,281],1146:["Shadow",1,280,278],1148:["Neutral",2,373,360],1149:["Fire",2,305,297],1152:["Undead",1,270,248],1153:["Undead",1,269,279],1154:["Fire",2,355,369],1155:["Earth",1,322,327],1156:["Wind",1,342,370],1158:["Water",2,270,255],1163:["Shadow",2,377,370],1164:["Shadow",1,342,329],1165:["Earth",3,292,291],1166:["Earth",2,294,297],1169:["Undead",1,314,332],1170:["Water",1,293,283],1177:["Shadow",1,273,253],1178:["Fire",1,378,343],1179:["Ghost",3,298,274],1180:["Fire",3,320,364],1188:["Undead",1,285,269],1189:["Earth",1,313,372],1191:["Neutral",3,376,335],1192:["Undead",4,304,339],1193:["Neutral",3,365,332],1194:["Earth",2,383,450],1195:["Neutral",3,328,370],1198:["Undead",4,366,376],1206:["Water",2,381,365],1207:["Earth",3,357,360],1211:["Fire",1,300,322],1213:["Fire",2,305,344],1216:["Poison",1,326,366],1219:["Shadow",4,384,440],1242:["Water",2,248,245],1243:["Neutral",3,327,335],1248:["Neutral",3,294,289],1249:["Neutral",3,302,287],1254:["Wind",1,304,290],1255:["Earth",1,353,367],1256:["Shadow",2,371,373],1258:["Poison",1,304,295],1261:["Wind",1,394,356],1262:["Fire",2,326,373],1264:["Water",3,291,288],1265:["Neutral",3,296,276],1266:["Earth",1,275,262],1269:["Earth",2,308,353],1270:["Neutral",4,327,363],1271:["Water",1,321,286],1273:["Earth",2,266,282],1274:["Neutral",4,279,335],1276:["Shadow",2,312,396],1277:["Fire",2,300,270],1278:["Neutral",4,316,308],1279:["Earth",1,303,303],1280:["Wind",2,332,334],1299:["Wind",1,337,316],1302:["Undead",4,349,477],1308:["Wind",2,328,317],1313:["Neutral",1,295,274],1314:["Neutral",2,323,318],1315:["Wind",2,395,419],1317:["Water",1,299,267],1318:["Fire",2,354,385],1319:["Water",2,346,341],1321:["Wind",2,355,324],1322:["Earth",2,355,317],1323:["Water",3,293,277],1368:["Earth",3,311,335],1369:["Fire",2,325,314],1372:["Fire",3,326,338],1376:["Wind",3,324,450],1377:["Neutral",4,367,388],1380:["Earth",1,363,308],1386:["Earth",2,327,325],1391:["Earth",1,285,259],1392:["Wind",2,328,289],1400:["Neutral",3,357,326],1406:["Water",1,346,334],1408:["Wind",2,368,382],1409:["Neutral",1,305,280],1410:["Earth",2,354,370],1412:["Neutral",2,362,460],1413:["Fire",2,351,367],1415:["Ghost",1,306,302],1416:["Shadow",3,355,379],1493:["Earth",4,304,335],1494:["Earth",1,302,275],1495:["Fire",3,341,343],1497:["Earth",4,324,323]};
+// ---- extra monster data: size + race ----
+const RACES=["Formless","Undead","Brute","Plant","Insect","Fish","Demon","Demi-Human","Angel","Dragon"];
+const SIZES={};"1001S4,1002M3,1004S4,1005S2,1007S4,1008S4,1009M2,1010M3,1011S4,1012M5,1013M2,1014M3,1015M1,1016M1,1018S4,1019L2,1020M3,1023M7,1024M3,1025M2,1026M1,1028M1,1029L6,1031M3,1032M1,1033M3,1034M5,1035S4,1036M1,1037M2,1038M1,1039L6,1040L0,1041M1,1042S4,1044M5,1045M5,1046M6,1047S0,1048S4,1049S2,1050S2,1051S4,1052M4,1053M4,1054M4,1055L3,1056S2,1057S2,1058M4,1059S4,1060L2,1061L6,1062M3,1063S2,1064M1,1065L5,1066S5,1067S5,1068S3,1069L5,1070S5,1071M1,1072M6,1073S5,1074S5,1076M1,1077M3,1078S3,1079S3,1080S3,1081S3,1082S3,1083S3,1084S3,1085S3,1086L4,1087L7,1088M4,1089M5,1090M3,1091S9,1092M2,1093M2,1094L4,1095S4,1096M8,1097S0,1098L1,1099L4,1100L4,1101S6,1102M7,1103S2,1104S2,1105S4,1107S2,1108M5,1109S6,1110S6,1111S2,1112M1,1113M3,1114S4,1115L2,1116M0,1117L1,1118L3,1119M2,1120M6,1121S6,1122M7,1123M7,1124M7,1125M7,1126M7,1127M2,1128M4,1129S0,1130M0,1131L7,1132L1,1138S6,1139M4,1140L7,1141S3,1142S3,1143S6,1144S5,1145S2,1146M2,1147L4,1148M6,1149L2,1150M6,1151L0,1152M1,1153M1,1154M7,1155M9,1156M9,1157L7,1158M5,1159L2,1160S4,1161S3,1163L7,1164M7,1165M0,1166L2,1167S2,1169M1,1170M6,1174S4,1175S2,1176S4,1177M7,1178M7,1179S6,1180M2,1185S6,1188M1,1189M7,1190L7,1191M0,1192L1,1193M0,1194M4,1195S0,1196M1,1197M1,1198M1,1199S3,1200M7,1201L6,1202L7,1206M5,1207M0,1208M6,1209S2,1211S4,1213L7,1214S2,1216M5,1219L7,1242M3,1243L2,1244M0,1245M7,1246S7,1247M7,1248M0,1249M0,1251L0,1252L2,1253M6,1254S2,1255S2,1256S2,1257M1,1258S7,1260M6,1261S2,1262L9,1263M6,1264M7,1265S7,1266S5,1267M6,1268L0,1269M0,1270L0,1271M2,1272L1,1273M7,1274L0,1275M7,1276M6,1277M0,1278L0,1279S4,1280M7,1281S2,1283L2,1285L7,1286L7,1287L7,1288S8,1291L1,1293S4,1295L6,1297M1,1298M1,1299M7,1300S4,1302L1,1303S4,1305L4,1306L2,1308M7,1310L2,1311L2,1312L2,1313M7,1314M2,1315M7,1316M2,1317M2,1318M2,1319M2,1320L6,1321M9,1322M2,1323M2,1324S0,1325S0,1363S0,1365L0,1366L0,1367M6,1368M3,1369L2,1372M2,1373L6,1375M0,1376M6,1377L7,1379L6,1380M2,1381L2,1382S6,1383S2,1384M9,1385M9,1386M0,1387S2,1389L6,1391S2,1392L0,1400M0,1401M7,1402M2,1403M1,1404M6,1405L6,1406M5,1408M4,1409S7,1410M3,1412L0,1413S3,1415S2,1416M6,1417M2,1418L2,1492L7,1493M3,1494S4,1495M3,1497L3,1498M7,1499M7,1500M3,1503L6,1504M1,1505L6,1506M6,1507L7,1508S1,1509S1,1510S6,1511L7,1512M1,1513M2,1514M9,1515M2,1516M0,1517M6,1582M6,1583L6,1584L6,1586S2,1587M0,1588M7,1630L7,1631M7,1668L7,1670M0,1671M0,1672M0,1673M0,1676M0,1677M0,1678M0,1679M0,1685L2,1686S7,1687M2,1688L3,1960S6,2210S0,2288S0,2380S2,2398S3,2404S1,2405M1,2406M1,2450M3,3032M1,3810L0,3811L0,3812L0,3813S0,3814S0,3815S0,3816S0,3948M7,3949M7,3950S7,3951M7,3952M7,3953L7,3954L7,3965M2,3966M0,3967M2,3968L2,3973S4,20081L5,20168M6,20169M6,20170M6,20175L7,20176M7,20177M5,20178L7,20179M4,20367L7,20368M6,20370M0,20371M1,20372M6,20373L6,20374M9,20375M9,20376S2,20377M0,20378L0,20379M6,20380M6,22336M5,22337M5,22338S2,22339M2,22340M2,25143M1,25187M3,25188M0,25253M9,25255L6,25321M7,25322M7,25323M3,25324L0,25325M7,25326M7,25327M7,25328M7,25329M7,25336M7".split(",").forEach(x=>{const m=x.match(/^(\d+)([SML])(\d)$/);if(m)SIZES[m[1]]=[m[2],+m[3]]});
+MOBS.forEach(m=>{const e=ELEM[m.id];if(e){m.el=e[0];m.elv=e[1];m.hit100=e[2];m.flee95=e[3]}
+  const st=MSTAT[m.id];if(st){m.def=st[0];m.mdef=st[1];m.atkMin=st[2];m.atkMax=st[3];m.vit=st[4];m.int=st[5];m.agg=!!st[6]}
+  const lt=LOOT[m.id];if(lt){m.loot=lt[0];m.priced=lt[1];m.dropsN=lt[2];m.drops=lt[3]}else m.drops=[];
+  const sz=SIZES[m.id];if(sz){m.size=sz[0];m.race=RACES[sz[1]]}});
+
+// ---- element table: defender element -> element level 1-4 -> attacker element (rozerodb.com/guides/elements-sizes) ----
+const AE=["Neutral","Water","Earth","Fire","Wind","Poison","Holy","Shadow","Ghost","Undead"];
+const ET0={
+Neutral:["100,100,100,100,100,100,100,100,90,100","100,100,100,100,100,100,100,100,70,100","100,100,100,100,100,100,100,100,50,100","100,100,100,100,100,100,100,100,0,100"],
+Water:["100,25,100,90,150,150,100,100,100,100","100,0,100,80,175,150,100,100,100,100","100,0,100,70,200,125,100,100,100,100","100,0,100,60,200,125,100,100,100,100"],
+Earth:["100,100,25,150,90,150,100,100,100,100","100,100,0,175,80,150,100,100,100,100","100,100,0,200,70,125,100,100,100,100","100,100,0,200,60,125,100,100,100,100"],
+Fire:["100,150,90,25,100,150,100,100,100,90","100,175,80,0,100,150,100,100,100,80","100,200,70,0,100,125,100,100,100,70","100,200,60,0,100,125,100,100,100,60"],
+Wind:["100,90,150,100,25,150,100,100,100,100","100,80,175,100,0,150,100,100,100,100","100,70,200,100,0,125,100,100,100,100","100,60,200,100,0,125,100,100,100,100"],
+Poison:["100,150,150,150,150,0,75,75,75,75","100,150,150,150,150,0,75,75,75,50","100,125,125,125,125,0,50,50,50,25","100,125,125,125,125,0,50,50,50,0"],
+Holy:["100,100,100,100,100,75,0,125,90,125","100,100,100,100,100,75,0,150,80,150","100,100,100,100,100,50,0,175,70,175","100,100,100,100,100,50,0,200,60,200"],
+Shadow:["100,100,100,100,100,75,125,0,90,0","100,100,100,100,100,75,150,0,80,0","100,100,100,100,100,50,175,0,70,0","100,100,100,100,100,50,200,0,60,0"],
+Ghost:["90,100,100,100,100,75,100,100,125,100","70,100,100,100,100,75,100,100,150,125","50,100,100,100,100,50,100,100,175,150","0,100,100,100,100,50,100,100,200,175"],
+Undead:["100,100,100,125,100,75,125,0,100,0","100,100,100,150,100,50,150,0,125,0","100,100,100,175,100,25,175,0,150,0","100,100,100,200,100,0,200,0,175,0"]};
+const ET={};Object.entries(ET0).forEach(([d,rows])=>ET[d]=rows.map(r=>r.split(",").map(Number)));
+const elemMult=(m,atkEl)=>{const r=ET[m.el||"Neutral"];if(!r)return 100;const row=r[Math.min(4,Math.max(1,m.elv||1))-1];const i=AE.indexOf(atkEl);return i<0?100:row[i]};
+
+// ---- weapons: size modifier S/M/L ----
+// weapon size modifiers from the official guide: roz.mygnjoy.com/en/intro/guide/12 (applies to basic attacks and physical skills, not magic)
+const WEAPONS={"Bare hands":[100,100,100],"Dagger":[100,75,50],"One-handed sword":[75,100,75],"Two-handed sword":[75,75,100],"One-handed spear":[75,75,100],"Two-handed spear":[75,75,100],"One-handed axe":[50,75,100],"Two-handed axe":[50,75,100],"One-handed mace":[75,100,100],"Two-handed mace":[75,100,100],"One-handed staff":[100,100,100],"Two-handed staff":[100,100,100],"Bow":[100,100,75],"Katar":[75,100,75],"Knuckle":[100,100,75],"Musical instrument":[75,100,75],"Whip":[75,100,75],"Book":[100,100,50]};
+const WREN={"Bare hand":"Bare hands","Spear":"Two-handed spear","Axe":"Two-handed axe","Mace":"One-handed mace","Staff / Rod":"One-handed staff","Instrument":"Musical instrument"};
+const sizeMod=(m,w)=>{const t=WEAPONS[w]||WEAPONS[WREN[w]]||WEAPONS["Bare hands"];return t[{S:0,M:1,L:2}[m.size]??1]};
+
+// ---- jobs and attack presets: max-level values from rozerodb.com/tools/skill-tree (Ragnarok Zero) ----
+// type: phys / magic / auto · pct per hit · hits per use · el ("W" = weapon/arrow element) · cast = rozerodb base cast (lower it for your DEX/gear) · delay = cooldown · sp · targets
+const A=(name,type,pct,hits,el,cast,delay,sp,targets,note,extra)=>({name,type,pct,hits,el,cast,delay,sp,targets,note:note||"",...(extra||{})});
+const BASIC=A("Basic attack","auto",100,1,"W",0,0,0,1);
+// Zero skill data from Landgris ROCalculator (skills_zero.json + Zero Global overrides): fixed / variable cast, cooldown, global delay,
+// base-level scaling (blv) and stat add-ons (sadd: [stat, % per point]); ratios cross-checked with rozerodb
+const Z=(fct,vct,cd,gcd,more)=>({fct,vct,cd,gcd,...(more||{})});
+const A2=(name,type,pct,hits,el,sp,targets,note,z)=>A(name,type,pct,hits,el,Math.round(((z.fct||0)+(z.vct||0))*100)/100,Math.max(z.cd||0,z.gcd||0),sp,targets,note,z);
+const SWORD=[A2("Bash Lv10","phys",400,1,"W",15,1,"",Z(0,0,0,0)),A2("Magnum Break Lv10","phys",300,1,"Fire",30,3,"5x5 around you",Z(0,0,2,0))];
+const BOLT3=[A2("Fire Bolt Lv10","magic",100,10,"Fire",30,1,"",Z(1.2,3.2,0,1.4,{sadd:[["int",0.5]]})),A2("Cold Bolt Lv10","magic",100,10,"Water",30,1,"",Z(1.2,3.2,0,1.4,{sadd:[["int",0.5]]})),A2("Lightning Bolt Lv10","magic",100,10,"Wind",30,1,"",Z(1.2,3.2,0,1.4,{sadd:[["int",0.5]]}))];
+const MAGE=[...BOLT3,A2("Earth Spike Lv5","magic",200,5,"Earth",30,1,"",Z(0.28,1.12,0.7,0.3,{sadd:[["int",1]]})),A2("Soul Strike Lv10","magic",100,5,"Ghost",38,1,"+50% vs Undead element not included",Z(0.1,0.4,0,0)),
+ A2("Fire Ball Lv10","magic",340,1,"Fire",25,3,"340% centre, 255% around it",Z(0.1,0.4,0.35,0.3)),A2("Frost Driver Lv10","magic",200,1,"Water",16,1,"",Z(0.16,0.64,0,0)),
+ A2("Napalm Beat Lv10","magic",170,1,"Ghost",18,1,"Damage is split when it hits several monsters",Z(0.1,0.4,0,0)),A2("Thunder Storm Lv10","magic",100,10,"Wind",74,3,"5x5 area",Z(0.8,3.2,1,0.3,{sadd:[["int",1]]}))];
+const ARCH=[A2("Double Strafe Lv10","phys",190,2,"W",12,1,"",Z(0,0,0,0.1)),A2("Arrow Shower Lv10","phys",250,1,"W",15,3,"3x3 area",Z(0,0,0,0))];
+const ACO=[A2("Holy Light","magic",125,1,"Holy",15,1,"",Z(0.2,0.8,0,0))];
+const MERC=[A2("Mammonite Lv10","phys",600,1,"W",5,1,"Also costs 1,000 z per use",Z(0,0,0,0)),A2("Cart Revolution","phys",150,1,"W",12,3,"Quest skill; +100% per 8,000 cart weight",Z(0,0,0,0))];
+const THIEF=[A("Basic attack (Double Attack Lv10)","auto",100,1.5,"W",0,0,0,1,"Dagger: about half your hits strike twice"),A2("Envenom Lv10","phys",100,1,"Poison",12,1,"Plus a flat +150 damage, not included",Z(0,0,0,0)),A2("Sand Attack","phys",130,1,"Earth",9,1,"",Z(0,0,0,0))];
+const JOBS={
+ "Novice":{w:"Dagger",p:[BASIC]},
+ "Knight":{w:"Two-handed spear",p:[A2("Bowling Bash Lv10","phys",500,3,"W",38,2,"Hits 3–5 times (more with a two-handed sword); +STR% per hit",Z(0.4,1.6,4,0.3,{sadd:[["str",1]]})),
+   A2("Brandish Spear Lv10","phys",1400,1,"W",24,3,"Spear, mounted only. +5×STR%",Z(0,0,2,0.3,{sadd:[["str",5]]})),A2("Pierce Lv10","phys",200,3,"W",10,1,"Spear only. Hits 2/3/4 times on small/medium/large; +2×STR%",Z(0,0,0,0,{sizeHits:[2,3,4],sadd:[["str",2]]})),
+   A2("Spear Stab Lv10","phys",300,1,"W",9,2,"Spear only. Hits everything in a line",Z(0,0,0,0)),A2("Spear Boomerang Lv5","phys",350,1,"W",10,1,"Spear only. Range 11",Z(0,0,0,0)),
+   A2("Clashing Spiral Lv5","phys",400,5,"W",30,1,"5 hits, scales with base level and weapon weight",Z(0.12,0.44,0.5,0.3,{blv:true})),A2("Traumatic Blow Lv5","phys",300,1,"W",23,1,"",Z(0,0,0,0)),A2("Vital Strike Lv10","phys",150,1,"W",20,1,"Spear only",Z(0,0,0,0)),...SWORD,BASIC]},
+ "Crusader":{w:"One-handed sword",p:[A2("Holy Cross Lv10","phys",450,1,"Holy",20,1,"+2×VIT%",Z(0,0,0,0,{sadd:[["vit",2]]})),A2("Holy Cross Lv10 (spear)","phys",900,1,"Holy",20,1,"Spear: (450 + 5×VIT)% × 2",Z(0,0,0,0,{sadd:[["vit",10]]})),
+   A2("Grand Cross Lv10","phys",500,3,"Holy",100,3,"Uses ATK and MATK, costs 20% of your HP. Modelled on ATK",Z(0.3,1.2,1,0)),A2("Shield Boomerang Lv5","phys",400,1,"Neutral",12,1,"+ shield weight + 4×shield refine",Z(0,0,0,0)),
+   A2("Smite Lv5","phys",200,1,"W",10,1,"Shield only",Z(0,0,0,0)),A2("Rapid Smiting Lv5","phys",2600,1,"W",40,1,"Shield only, + shield weight and refine",Z(0.2,0.8,0,0)),A2("Cannon Spear Lv5","phys",600,1,"W",28,3,"Spear only. (120 + STR)% × 5 × base level / 100",Z(0.1,0.4,0,1,{blv:true,sadd:[["str",5]]})),
+   A2("Gloria Domini Lv5","magic",1450,1,"Holy",50,1,"",Z(0.28,1.12,0,0)),...SWORD,BASIC]},
+ "Wizard":{w:"One-handed staff",p:[A2("Jupitel Thunder Lv10","magic",100,12,"Wind",47,1,"",Z(0.56,2.24,0,0)),A2("Heaven's Drive Lv5","magic",200,5,"Earth",44,3,"5x5 area, +INT%",Z(0.4,0.6,0.5,0.3,{sadd:[["int",1]]})),
+   A2("Napalm Vulcan Lv5","magic",350,5,"Ghost",70,2,"3x3 area, scales with base level",Z(0.1,0.4,0.3,0.5,{blv:true})),A2("Storm Gust Lv10","magic",570,3,"Water",78,5,"(570 + INT)% per hit, up to 10 hits but monsters freeze after ~3",Z(1.2,4.8,2.5,0.3,{sadd:[["int",1]]})),
+   A2("Lord of Vermilion Lv10","magic",1400,1,"Wind",96,5,"13x13 area, +INT%",Z(0.84,3.36,1.5,0.3,{sadd:[["int",1]]})),A2("Meteor Storm Lv10","magic",625,1,"Fire",64,4,"(125 + INT)% × 5 per meteor, 7 meteors over 13x13",Z(1.2,4.8,2.5,0.3,{sadd:[["int",5]]})),
+   A2("Gravitational Field Lv5","magic",500,10,"Neutral",100,4,"5x5 area, scales with base level",Z(1,4,4.5,0.3,{blv:true})),A2("Sightrasher Lv10","magic",300,1,"Fire",53,3,"Needs Sight",Z(0.08,0.32,0,0)),...MAGE,BASIC]},
+ "Sage":{w:"Book",p:[A("Spell Fist (full Sage model)","spellfist",0,1,"Fire",0,0,0,1,"Spell Fist procs with the best of your ticked bolts, plus the Sage options below"),A2("Heaven's Drive Lv5","magic",200,5,"Earth",44,3,"5x5 area, +INT%",Z(0.4,0.6,0.5,0.3,{sadd:[["int",1]]})),...MAGE,BASIC]},
+ "Hunter":{w:"Bow",p:[A2("Focused Arrow Strike Lv5","phys",1800,1,"W",24,2,"5x5 around the target, scales with base level",Z(0.5,0.5,0.15,0.5,{blv:true})),...ARCH,BASIC]},
+ "Bard":{w:"Musical instrument",p:[A2("Arrow Vulcan Lv10","phys",3000,1,"W",30,1,"Instrument only, scales with base level",Z(0.38,1.52,1.5,0.3,{blv:true})),A2("Melody Strike Lv5","phys",300,2,"W",15,1,"Instrument only. +INT% per hit",Z(0.1,0.4,0,0.3,{sadd:[["int",1]]})),...ARCH,BASIC]},
+ "Dancer":{w:"Whip",p:[A2("Arrow Vulcan Lv10","phys",3000,1,"W",30,1,"Whip only, scales with base level",Z(0.38,1.52,1.5,0.3,{blv:true})),A2("Slinging Arrow Lv5","phys",300,2,"W",15,1,"Whip only. +INT% per hit",Z(0.1,0.4,0,0.3,{sadd:[["int",1]]})),...ARCH,BASIC]},
+ "Priest":{w:"One-handed mace",p:[A2("Magnus Exorcismus Lv10","magic",100,10,"Holy",58,4,"Costs a Blue Gemstone. 130% vs Demon, Undead and Shadow",Z(0.5,2,3,0.3)),...ACO,BASIC]},
+ "Monk":{w:"Knuckle",p:[A2("Throw Spirit Sphere Lv5","phys",1600,1,"W",28,1,"Uses 1 spirit sphere",Z(0.2,0.8,1,0)),A2("Occult Impaction Lv5","phys",500,1,"W",20,1,"Uses 1 spirit sphere. More vs high DEF",Z(0.2,0.8,0,0)),
+   A2("Excruciating Palm","phys",800,1,"W",40,1,"Costs 200 HP",Z(0,0,0,0)),A2("Combo: Quadruple Blow + Raging Thrust","phys",2100,1,"W",16,1,"After a Triple Attack proc; Thrust uses a sphere",Z(0,0,0,0)),...ACO,BASIC]},
+ "Blacksmith":{w:"Two-handed axe",p:[A2("Power Swing Lv10","phys",1300,1,"W",19,1,"+STR% +DEX%",Z(0,0,0,0.2,{sadd:[["str",1],["dex",1]]})),A2("Axe Tornado Lv5","phys",4300,1,"W",45,3,"Axe only. 7x7 around you. (4300 + 10×VIT)% × base level / 100",Z(0,0,2,0.3,{blv:true,sadd:[["vit",10]]})),
+   A2("Axe Boomerang Lv5","phys",500,1,"W",14,1,"Plus axe weight, scales with base level",Z(0,0,0.6,0,{blv:true})),...MERC,BASIC]},
+ "Alchemist":{w:"Two-handed axe",p:[A2("Acid Terror Lv5","phys",1000,1,"W",15,1,"Costs an Acid Bottle",Z(0.2,0.8,0,0)),A2("Acid Bomb Lv10","phys",4000,1,"W",50,1,"Costs an Acid Bottle and a Molotov Cocktail. Scales with base level",Z(0.2,0.8,0.5,0.3,{blv:true,sadd:[["int",2]]})),...MERC,BASIC]},
+ "Assassin":{w:"Katar",p:[A2("Sonic Blow Lv10","phys",1100,1,"W",28,1,"Katar only. +50% below half HP. 1100% on Zero Global",Z(0,0,1,0)),A2("Meteor Assault Lv10","phys",1400,1,"W",40,3,"5x5 around you. (1400 + 5×AGI)% × base level / 100",Z(0,0,0.7,0.3,{blv:true,sadd:[["agi",5]]})),
+   A2("Soul Destroyer Lv10","phys",1500,1,"W",60,1,"(1500 + STR + INT)% × base level / 100",Z(0.1,0.4,0.5,0.3,{blv:true,sadd:[["str",1],["int",1]]})),A2("Venom Splasher Lv10","phys",1400,1,"W",30,2,"Explodes after 2s, 5x5",Z(0.2,0.8,1,0)),
+   A2("Grimtooth Lv5","phys",200,1,"W",8,2,"Katar, from Hiding. (200 + AGI)%",Z(0,0,1,0,{sadd:[["agi",1]]})),
+   A2("Venom Knife","phys",500,1,"W",35,1,"Costs a Venom Knife",Z(0,0,0,0)),A("Basic attack (katar)","auto",100,1.2,"W",0,0,0,1,"Katar extra hit averaged in"),...THIEF]},
+ "Rogue":{w:"Dagger",p:[A2("Back Stab Lv10","phys",700,2,"W",12,1,"Hits twice with a dagger, half damage with a bow",Z(0,0,0.7,0.3)),A2("Triangle Shot Lv10","phys",2300,1,"W",20,1,"Bow, costs 3 arrows. (2300 + 3×AGI)% × base level / 100",Z(0.2,0.8,0,0.2,{blv:true,sadd:[["agi",3]]})),
+   A2("Sightless Mind Lv5","phys",850,1,"W",15,3,"From Hiding, 7x7. +3×AGI% +DEX/2%",Z(0,0,0.7,0.3,{sadd:[["agi",3],["dex",0.5]]})),A2("Double Strafe Lv10","phys",190,2,"W",12,1,"Bow",Z(0,0,0,0.1)),...THIEF]}
+};
+const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="magic";
+  const c={baseLv:60,atkTxt:mag?"60+50":"120+200",matkTxt:mag?"100+200":"40+30",hitTxt:"300",fleeTxt:"250",aspd:170,defTxt:"40+60",maxHp:6000,maxSp:600,intTxt:mag?"60+10":"10",spRegen:0,weapon:J.w,wElem:"Neutral",
+    preset:0,a:{...J.p[0]},dmgBonus:0,raceSel:"",racePct:0,sizeSel:"",sizePct:0,elSel:"",elPct:0,autoSp:false,itemSp:37,itemPrice:200,potOn:false,potAspd:3,potPrice:2200,potMin:30,mobInterval:1.5,hitScale:0.3,hpRegen:0};
+  if(job==="Sage")Object.assign(c,{matkTxt:"100+200",intTxt:"40+10",maxSp:800,maxHp:4000,sage:{hsAuto:true,hsWorth:50000,hsLv:10}});
+  return c};
+
+// ---- storage ----
+const $=id=>document.getElementById(id);
+const ROOTQ=sel=>[...document.querySelectorAll(sel)];
+const KEY="rozero-farm-planner-v1";
+const store={get(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}},set(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}};
+let state=store.get()||{};
+if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",job:"Knight",mobId:null,entries:[]}];
+if(!JOBS[state.job])state.job="Knight";
+if(!state.chars)state.chars={};
+if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
+const D={bonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[],prices:{}};
+for(const k in D)if(state[k]==null)state[k]=JSON.parse(JSON.stringify(D[k]));
+const save=()=>store.set(state);
+const C=()=>{if(!state.chars[state.job])state.chars[state.job]=charDefault(state.job);const c=state.chars[state.job];const d=charDefault(state.job);for(const k in d)if(c[k]==null)c[k]=d[k];if(!c.a)c.a={...d.a};return c};
+const cur=()=>state.sessions.find(s=>s.id===state.current)||state.sessions[0];
+
+// skills v2: presets now come from rozerodb; reset each saved job to its first preset
+(function weaponsV2(){if(state.weaponsV2)return;state.weaponsV2=true;for(const j in state.chars){const c=state.chars[j];if(c&&WREN[c.weapon])c.weapon=WREN[c.weapon]}save()})();
+(function sfV2(){if(state.sfV2)return;state.sfV2=true;const c=state.chars&&state.chars.Sage;if(c&&c.preset>=0&&c.preset<3){c.a={...JOBS.Sage.p[c.preset]}}save()})();
+(function sfV3(){if(state.sfV3)return;state.sfV3=true;const c=state.chars&&state.chars.Sage;if(c){c.preset=0;c.a={...JOBS.Sage.p[0]}}save()})();
+(function skillsV3(){if(state.skillsV3)return;state.skillsV3=true;for(const j in state.chars){if(!JOBS[j])continue;const c=state.chars[j];if(c.preset==null||c.preset>=0){c.preset=Math.min(c.preset||0,JOBS[j].p.length-1);c.a={...JOBS[j].p[c.preset]}}}save()})();
+(function skillsV2(){if(state.skillsV2)return;state.skillsV2=true;for(const j in state.chars){if(!JOBS[j]){delete state.chars[j];continue}const c=state.chars[j];if(c.preset==null||c.preset>=0){c.preset=0;c.a={...JOBS[j].p[0]}}}save()})();
+// ---- helpers ----
+const sumStat=v=>String(v??"").split("+").reduce((a,x)=>a+(parseFloat(x)||0),0);
+const fmtN=n=>isFinite(n)?Math.round(n).toLocaleString("en-GB"):"–";
+const fmtT=t=>new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+const pct=(n,d=2)=>isFinite(n)?n.toFixed(d)+"%":"–";
+function fmtDur(h){if(!isFinite(h)||h<0)return "–";const m=Math.round(h*60),hh=Math.floor(m/60),mm=m%60;if(hh>=24){const d=Math.floor(hh/24);return `~${d}d ${hh%24}h ${mm}m\n~${hh}h ${mm}m`}return hh?`~${hh}h ${mm}m`:`~${mm}m`}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+const num=(v,d=0)=>{const x=+v;return isFinite(x)?x:d};
+const dbUrl=m=>`https://rozerodb.com/monsters/${m.id}`;
+const lvExp=lv=>EXP_TABLE[lv]||null;
+// your share of each kill: EXP bonus, then Even Share (irowiki.org/wiki/Party): 100% + 20% per member beyond the first, split evenly
+const partyN=(s=cur())=>Math.min(12,Math.max(1,Math.round(num(s&&s.partyN,1))));
+const partyBonus=(s=cur())=>s&&s.partyBonus!=null&&s.partyBonus!==""?num(s.partyBonus):20;
+const expMul=(s=cur())=>(1+num(state.bonus)/100)*(1+partyBonus(s)/100*(partyN(s)-1))/partyN(s);
+
+// ---- attack model ----
+let EL_OVR=null;
+const atkEl=()=>{const a=C().a;if(a.type==="spellfist")return EL_OVR||sfBolts()[0]||"Fire";return a.el==="W"?(EL_OVR||C().wElem):a.el};
+// elemental converters (Fire/Water/Earth/Wind) change the weapon element for basic attacks and weapon-element skills
+const convOn=()=>!!C().converters&&C().a.el==="W";
+const elOptions=()=>C().a.type==="spellfist"?(sfBolts().length?sfBolts():[null]):convOn()?[...new Set([C().wElem,"Fire","Water","Earth","Wind"])]:[null];
+const withEl=(el,fn)=>{const k=EL_OVR;EL_OVR=el;try{return fn()}finally{EL_OVR=k}};
+const elTag=el=>el&&(convOn()||C().a.type==="spellfist")?` <span class="el ${el}">${el}</span>`:"";
+// ASPD potion adds a flat bonus to your status window ASPD (Zero cap 190); its cost counts against zeny/hr
+const aspdEff=()=>Math.min(190,Math.max(100,num(C().aspd,170)+(C().potOn?num(C().potAspd):0)));
+const potCostHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice):0;
+const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
+// seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
+// variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)
+const vctFactor=()=>{const c=C();const dex=c.st&&c.st.dex!=null&&c.st.dex!==""?sumStat(c.st.dex):null;if(dex==null)return 1;return Math.max(0,1-Math.sqrt((2*dex+sumStat(c.intTxt))/530))};
+const castSec=()=>{const c=C(),a=c.a;
+  if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-num(c.vctPct)/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-num(c.fctPct)/100));
+  const base=num(a.cast),f=Math.min(100,Math.max(0,num(c.fixedShare)))/100;
+  return Math.max(0,base*(1-f)*vctFactor()*(1-num(c.vctPct)/100))+Math.max(0,(base*f-num(c.fctSec))*(1-num(c.fctPct)/100))};
+const delaySec=()=>Math.max(0,num(C().a.delay)*(1-num(C().acdPct)/100));
+const useSec=()=>{const a=C().a;if(a.type==="auto"||a.type==="spellfist")return 1/atkPerSec();return Math.max(castSec()+Math.max(delaySec(),1/atkPerSec()),0.1)};
+const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});return a.blv?p*num(c.baseLv,99)/100:p};
+const targets=()=>Math.max(1,num(C().a.targets,1));
+const bonusMul=m=>{const c=C();let k=1+num(c.dmgBonus)/100;
+  if(c.raceSel&&m.race===c.raceSel)k*=1+num(c.racePct)/100;
+  if(c.sizeSel&&m.size===c.sizeSel)k*=1+num(c.sizePct)/100;
+  if(c.elSel&&(m.el||"Neutral")===c.elSel)k*=1+num(c.elPct)/100;
+  if(!m.boss)k*=1+num(c.normalPct)/100;k*=1+num(c.myElPct)/100;return k};
+// ignore DEF / MDEF %: lowers the monster's hard defence before the (4000+DEF)/(4000+10·DEF) or (1000+MDEF)/(1000+10·MDEF) factor
+const effDef=m=>(m.def||0)*(1-Math.min(100,Math.max(0,num(C().ignDef)))/100);
+const effMdef=m=>(m.mdef||0)*(1-Math.min(100,Math.max(0,num(C().ignMdef)))/100);
+// Formulas from roz.prontera.info/mechanics (Ragnarok Zero, renewal core)
+// ATK is "status + gear". The weapon share takes size and element; status ATK counts twice and, with other gear, stays Neutral.
+const atkParts=()=>{const p=String(C().atkTxt||"0").split("+").map(x=>parseFloat(x)||0);const st=p[0]||0,gear=p.slice(1).reduce((x,y)=>x+y,0);
+  const w=num(C().wAtk)>0?Math.min(num(C().wAtk),gear):gear;
+  // weapon ATK +0.5% per STR (melee) or DEX (bow, instrument, whip); checked against Landgris ROCalculator
+  const c=C(),main=statVal(c,RANGED.includes(c.weapon)?"dex":"str");const wb=main!=null?1+main/200:1;
+  return {st,gear,weapon:w*wb,neutral:Math.max(0,gear-w)+2*st}};
+const mobSoftDef=m=>Math.max(0,Math.floor(((m.lv||0)+(m.vit||0))/2));
+const mobSoftMdef=m=>Math.max(0,Math.floor(((m.lv||0)+(m.int||0))/4));
+// "Your hit %": skill % after element, size and your bonuses, as a share of your full ATK (before monster DEF/MDEF)
+const hitPctOf=m=>{const a=C().a;if(a.type==="spellfist")return sfPct()*elemMult(m,atkEl())/100*bonusMul(m);if(a.type==="magic")return pctEff()*elemMult(m,atkEl())/100*bonusMul(m);
+  const P=atkParts(),tot=P.weapon+P.neutral;if(tot<=0)return 0;
+  const k=(P.weapon*sizeMod(m,C().weapon)/100*elemMult(m,atkEl())/100+P.neutral*elemMult(m,"Neutral")/100)/tot;return pctEff()*k*bonusMul(m)};
+// hit chance = 100 + your HIT − the monster's "100% hit" value, 5–100%; magic always lands
+const hitChance=m=>{if(C().a.type==="magic"||C().a.type==="spellfist")return 100;if(m.hit100==null)return 95;return Math.max(5,Math.min(100,100+sumStat(C().hitTxt)-m.hit100))};
+function dmgPerHit(m){
+  const a=C().a;if(a.type==="spellfist")return magicDmg(m,sfPct(),atkEl());
+  if(a.type==="magic"){const el=elemMult(m,atkEl())/100;if(el<=0)return 0;const md=effMdef(m);return Math.max(1,Math.floor((sumStat(C().matkTxt)*pctEff()/100*bonusMul(m)*(1+num(C().skillPct)/100)*(1000+md)/(1000+10*md)-mobSoftMdef(m))*el))}
+  const P=atkParts();const pool=P.weapon*sizeMod(m,C().weapon)/100*elemMult(m,atkEl())/100+P.neutral*elemMult(m,"Neutral")/100;if(pool<=0)return 0;
+  const c=C(),skill=a.type!=="auto";const rng=(1+num(c.rangePct)/100)*(skill?1+num(c.skillPct)/100:1);
+  // mastery ATK (flat, from passive skills) is added after the skill ratio, before cards and DEF
+  const df=effDef(m);return Math.max(1,Math.floor((pool*pctEff()/100+num(c.mastery)*elemMult(m,"Neutral")/100)*bonusMul(m)*rng*(4000+df)/(4000+10*df)-mobSoftDef(m)))}
+// crits (basic attacks only): chance = CRIT (doubled with a katar), always hit, × 1.4 × (1 + crit damage %). Monster crit shield (its LUK) isn't in the data.
+const critChance=()=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,num(c.crit)*(c.weapon==="Katar"?2:1)))/100};
+// uses needed per kill: whole hits that land, spread over misses
+function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m);if(d<=0)return Infinity;const a=C().a;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);const cr=critChance();
+  if(cr>0){const exp=per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hitChance(m)/100);return m.hp/exp}
+  return Math.ceil(m.hp/per)/(hitChance(m)/100)}
+// SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s unless typed
+const spRegen8=()=>num(C().spRegen)>0?num(C().spRegen):1+Math.floor(num(C().maxSp)/100)+Math.floor(sumStat(C().intTxt)/6);
+const spNeedPerSec=()=>isSF()?sgUpkeep()+sgDefSP()+hsFullSP()*hsSustain():num(C().a.sp)/useSec();
+const regenPerSec=()=>spRegen8()/8;
+// items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
+const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&num(C().itemSp)>0?Math.max(0,spNeedPerSec()-regenPerSec())/num(C().itemSp):0;
+const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&num(C().itemSp)>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
+const rawFight=m=>{const u=usesPerKill(m);return isFinite(u)?u*useSec()/targets():Infinity};
+const fightSec=m=>rawFight(m)*restFactor();
+// damage taken: monster ATK through your DEF, its hit chance on you, a swing every interval times "swings reach you"
+const defParts=()=>{const p=String(C().defTxt||"0").split("+").map(x=>parseFloat(x)||0);return {soft:p[0]||0,hard:p.slice(1).reduce((a,b)=>a+b,0)}};
+// dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
+const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(C().fleeTxt)-m.flee95));
+const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,(m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)};
+const hpLossPerMin=m=>{if(isSF()){const d=sgDefense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)):null}const raw=mobHitDmg(m);if(raw==null)return null;const dg=dodge(m);const hits=Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5));return Math.max(0,raw*hits*60-num(C().hpRegen))};
+// ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, Vitata, Energy Coat, Hunter Fly, Side Winder, SP items) ----
+const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5,vitata:true,spBonus:25,healSp:13,healHp:357,ecOn:true,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7,autoSpPct:50};
+const G=()=>{const c=C();if(!c.sage)c.sage={};for(const k in SAGE_D)if(c.sage[k]==null)c.sage[k]=JSON.parse(JSON.stringify(SAGE_D[k]));return c.sage};
+const isSF=()=>C().a.type==="spellfist";
+let HS_OVR=null; // Hindsight forced on/off while comparing
+const withHs=(v,fn)=>{const k=HS_OVR;HS_OVR=v;try{return fn()}finally{HS_OVR=k}};
+const hsOnNow=()=>HS_OVR!=null?HS_OVR:!!G().hsOn;
+const sfBolts=()=>["Fire","Water","Wind"].filter(b=>G().bolts[b]);
+// Spell Fist: Lv × 5% proc chance on each basic attack; damage (1000 + 100 × bolt Lv)% MATK of the bolt's element (Landgris Zero data, checked in game)
+const sfChance=()=>Math.min(10,Math.max(0,num(G().sfLv)))*5/100;
+const sfPct=()=>1000+100*Math.min(10,Math.max(1,num(G().boltLv,10)));
+const magicDmg=(m,pct,el)=>{const e=elemMult(m,el)/100;if(e<=0||pct<=0)return 0;const md=effMdef(m);return Math.max(1,Math.floor((sumStat(C().matkTxt)*pct/100*bonusMul(m)*(1+num(C().skillPct)/100)*(1000+md)/(1000+10*md)-mobSoftMdef(m))*e))};
+// Hindsight: Lv × 2% chance per attack to auto-cast a bolt at half its level (100% MATK per hit); costs 2/3 of the bolt's SP
+const hsLvN=()=>Math.min(10,Math.max(0,num(G().hsLv)));
+const hsChance=()=>hsOnNow()?hsLvN()*2/100:0;
+const hsBoltLv=()=>Math.floor(hsLvN()/2);
+const sgSpMult=()=>1+(G().vitata?num(G().spBonus):0)/100; // Vitata Card: +25% SP cost
+const hsProcSP=()=>(10+2*hsBoltLv())*2/3*sgSpMult();
+// Double Bolt (needs Hindsight): (30 + 10 × Lv)% chance the auto-cast bolt fires again; recast every 90 s for 35 + 5 × Lv SP
+const dbLvN=()=>Math.min(5,Math.max(1,num(G().dbLv,5)));
+const dbChance=()=>hsOnNow()&&G().dbOn?(30+10*dbLvN())/100:0;
+// Spell Fist upkeep: 76 SP plus a bolt every 300 s
+const sgUpkeep=()=>(76+30)*sgSpMult()/300+(hsOnNow()&&G().dbOn?(35+5*dbLvN())*sgSpMult()/90:0);
+// Side Winder Card: chance to hit twice; the 2nd hit can proc Spell Fist if ticked
+const daFactor=()=>G().daSF?1+num(G().daPct)/100:1;
+// Hunter Fly Card: each attack has a 5% chance to restore 100 HP/s for 5 s (refreshes, doesn't stack)
+const hfHpPerSec=()=>{if(!G().hfOn)return 0;const p=num(G().hfPct)/100,n=atkPerSec()*5;return (1-Math.pow(1-p,n))*num(G().hfHp)};
+// Energy Coat: damage cut and SP per hit taken (% of Max SP) depend on how full your SP is
+const EC_BANDS=[[30,3,"100–81%"],[24,2.5,"80–61%"],[18,2,"60–41%"],[12,1.5,"40–21%"],[6,1,"20–1%"]];
+const hsFullSP=()=>atkPerSec()*hsChance()*hsProcSP();
+const sgItemsOn=()=>hsOnNow()&&num(C().itemSp)>0; // SP items go with Hindsight
+function sgDefense(m){
+  const raw=mobHitDmg(m);if(raw==null)return null;const dg=dodge(m);
+  const hits=Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5));
+  const g=G(),max=num(C().maxSp),ec=!!g.ecOn,regen=regenPerSec(),up=sgUpkeep(),hs=hsFullSP();
+  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),healSP=g.vitata&&num(g.healHp)>0?hp/num(g.healHp)*num(g.healSp):0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
+  const cost=b=>up+b.ecSP+b.healSP;
+  let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
+  if(!b){const p=num(g.autoSpPct,50);b=sgItemsOn()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}
+  return {...b,extra:b.ecSP+b.healSP};
+}
+let SG_MOB=null; // monster the SP balance is worked out against
+const sgDefSP=()=>{const m=SG_MOB||calcMob();const d=m?sgDefense(m):null;return d?d.extra:0};
+const sgItemsPerSec=()=>sgItemsOn()?Math.max(0,sgUpkeep()+sgDefSP()+hsFullSP()-regenPerSec())/num(C().itemSp):0;
+// without SP items, Hindsight only fires as often as spare regen pays for
+const hsSustain=()=>{const f=hsFullSP();if(f<=0||sgItemsOn())return 1;return Math.max(0,Math.min(1,(regenPerSec()-sgUpkeep()-sgDefSP())/f))};
+const sfPerAttack=m=>{const el=atkEl();return sfChance()*magicDmg(m,sfPct(),el)*daFactor()+hsChance()*hsSustain()*hsBoltLv()*magicDmg(m,100,el)*(1+dbChance())};
+// Hindsight auto: on for the session's map only when the extra EXP costs less than your limit per 1% (after the extra loot)
+function applyHsAuto(){
+  const g=G();if(!isSF()||!g.hsAuto){g._note="";return}
+  const mp=currentMap()||(calcMob()&&(openMaps(calcMob())[0]||[])[0]);if(!mp||!MAPMOBS[mp]){g._note="Auto needs a monster with an open map";return}
+  const L=lvExp(num(C().baseLv))||lvExp(62);const w=walkSec();
+  const top=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)&&x.m.atkMin!=null).sort((a,b)=>b.n-a.n)[0];const mm=top?top.m:null;
+  const run=v=>withHs(v,()=>{const k=SG_MOB;SG_MOB=mm;try{return {r:mapStats(mp,w),items:sgItemsPerSec()}}finally{SG_MOB=k}});
+  const on=run(true),off=run(false);if(!on.r||!off.r){g._note="Auto: no result for "+mp;return}
+  const costHr=(on.items-off.items)*3600*num(C().itemPrice),gain=(on.r.epm-off.r.epm)*60/L*100,net=costHr-(on.r.zph-off.r.zph),per=gain>0?net/gain:Infinity;
+  const want=gain>0&&(net<=0||per<=num(g.hsWorth));g.hsOn=want;
+  g._note=`Hindsight auto: ${want?"on":"off"} on ${mp} · ${gain<=0?"no EXP gain":net<=0?"extra loot pays for the SP items":`~${fmtN(per)} z per 1% EXP vs your ${fmtN(num(g.hsWorth))} z limit`} (+${gain.toFixed(2)}%/hr)`;
+}
+// drop rate bonus % scales every drop chance
+const zenyKill=m=>{let z=m.loot||0;(m.drops||[]).forEach(([id,r])=>{const p=state.prices[id];if(p>0)z+=r/100*p});return z*(1+num(state.dropBonus)/100)};
+
+// ---- maps ----
+const REGIONS=[
+ {id:"ct",name:"Clock Tower",when:"Oct 2026",pre:["c_tower","tow_d","alde_dun"]},
+ {id:"gh",name:"Glast Heim",when:"Dec 2026",pre:["gl_","glast_"]},
+ {id:"lu",name:"Lutie",when:"Jan 2027",pre:["xma_"]},
+ {id:"go",name:"Gonryun",when:"Mar 2027",pre:["gon_"]},
+ {id:"lo",name:"Louyang",when:"Apr 2027",pre:["lou_"]},
+ {id:"ay",name:"Ayothaya",when:"Apr 2027",pre:["ayo_"]},
+ {id:"am",name:"Amatsu",when:"May 2027",pre:["ama_"]},
+ {id:"ju",name:"Juno",when:"Jun 2027",pre:["yun_"]},
+ {id:"tu",name:"Turtle Island",when:"TBA",pre:["tur_"]},
+ {id:"nf",name:"Niflheim",when:"not on roadmap",pre:["nif_","niflheim"]},
+ {id:"um",name:"Umbala",when:"not on roadmap",pre:["um_"]}];
+const regionOf=map=>REGIONS.find(r=>r.pre.some(p=>map.toLowerCase().startsWith(p)));
+const isClosed=map=>{const r=regionOf(map);return (r&&state.regions[r.id]!==false)||state.closed.includes(map.toLowerCase())};
+const openMaps=m=>(SPAWN[m.id]||[]).filter(x=>!isClosed(x[0])).sort((a,b)=>b[1]-a[1]);
+// monsters you skip (e.g. ones that stun you): left out of map averages, you walk past them
+const isSkipped=m=>!!(state.skipMobs&&state.skipMobs.includes(m.id));
+const MAPMOBS={};
+Object.entries(SPAWN).forEach(([id,arr])=>{const m=MOBS.find(x=>x.id===+id);if(!m)return;arr.forEach(([mp,n])=>{(MAPMOBS[mp]=MAPMOBS[mp]||[]).push({m,n})})});
+
+// ---- tracker math ----
+function cumulative(e,base){let total=0;for(let l=base;l<e.lv;l++)total+=lvExp(l)||100;return total+(e.pct/100)*(lvExp(e.lv)||100)}
+function stats(s){
+  const es=[...s.entries].sort((a,b)=>a.t-b.t);if(es.length<2)return null;
+  const base=es[0].lv,last=es[es.length-1],prev=es[es.length-2];const raw=e=>cumulative(e,base);const hrs=(a,b)=>(b.t-a.t)/36e5;
+  if(hrs(es[0],last)<=0)return null;
+  const avgRaw=(raw(last)-raw(es[0]))/hrs(es[0],last);const recRaw=hrs(prev,last)>0?(raw(last)-raw(prev))/hrs(prev,last):0;const L=lvExp(last.lv)||100;
+  return {es,last,prev,avgRaw,recRaw,avgPct:avgRaw/L*100,recPct:recRaw/L*100,L,recentMin:Math.round((last.t-prev.t)/6e4),spanMin:Math.round((last.t-es[0].t)/6e4),
+    fullH:avgRaw>0?L/avgRaw:Infinity,nextH:avgRaw>0?L*(1-last.pct/100)/avgRaw:Infinity};
+}
+// pace and walking only make sense for sessions of the job you have selected (fight time uses its attack)
+function sessionPace(s){
+  const st=stats(s);const mob=MOBS.find(m=>m.id===s.mobId);if(!st||!mob||st.avgRaw<=0)return null;
+  const kph=st.avgRaw/(mob.exp*expMul(s));const obs=3600/kph;const same=(s.job||state.job)===state.job;const fight=same?bestFight(mob):NaN;
+  return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,mob,st};
+}
+const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
+  const ps=state.sessions.filter(s=>(s.job||state.job)===state.job).map(sessionPace).filter(p=>p&&p.walk!=null);
+  const p=sessionPace(cur());if(p&&p.walk!=null)return Math.max(1,p.walk);
+  return ps.length?Math.max(1,ps[0].walk):2};
+// job EXP needed for your current job level (Novice / 1st / 2nd job table)
+const jobTier=()=>state.job==="Novice"?"novice":"second";
+const jobNeed=()=>{const l=num(C().jobLv);const t=JOB_EXP[jobTier()];return l>=1&&l<=t.length?t[l-1]:null};
+function jobRate(s){
+  const es=[...s.entries].filter(e=>e.jpct!=null).sort((a,b)=>a.t-b.t);if(es.length<2)return null;
+  let gain=0;for(let i=1;i<es.length;i++){let d=es[i].jpct-es[i-1].jpct;if(d<0)d+=100;gain+=d}
+  const h=(es[es.length-1].t-es[0].t)/36e5;return h>0?{rate:gain/h,last:es[es.length-1].jpct,h}:null;
+}
+function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally{SG_MOB=kSG}}
+function mobRow00(m,w){
+  const sec=fightSec(m),tot=sec+w,epk=m.exp*expMul();
+  return {sec,tot,epm:isFinite(tot)&&tot>0?epk/tot*60:0,epk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk:zenyKill(m)};
+}
+// map averages, weighted by spawn counts; monsters you can't hurt are skipped (you walk past them)
+function mapStats0(mp,w){
+  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,z=0,hp=0,hpN=0;const skip=[];
+  list.forEach(({m,n:c})=>{N+=c;const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
+    n+=c;exp+=c*r.epk;time+=c*r.tot;z+=c*r.zk;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
+  if(!n)return null;
+  return {mp,N,epm:exp/time*60,secT:time/n,sec:time/n-w,walk:w,epk:exp/n,zph:z/time*3600,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip};
+}
+// best converter per monster (by EXP/min) and one converter per map
+function mobRow(m,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mobRow0(m,w));r.el2=el;if(!best||r.epm>best.epm)best=r});return best}
+function mapStats(mp,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mapStats0(mp,w));if(r){r.el2=el;if(!best||r.epm>best.epm)best=r}});return best}
+const bestFight=m=>{const r=mobRow(m,0);return withEl(r.el2,()=>fightSec(m))};
+const currentMap=()=>{const m=MOBS.find(x=>x.id===cur().mobId);return m?(openMaps(m)[0]||[])[0]||null:null};
+
+// ---- render: character ----
+const syncChar=()=>{
+  const c=C();$("job").value=state.job;
+  $("preset").innerHTML=JOBS[state.job].p.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("")+'<option value="-1">Custom</option>';
+  $("preset").value=String(c.preset??0);
+  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","racePct","sizePct","elPct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
+  $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";
+  $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("raceSel").value=c.raceSel||"";$("sizeSel").value=c.sizeSel||"";$("elSel").value=c.elSel||"";$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potCostHr())} z/hr`:"";$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
+  const a=c.a;$("aType").value=a.type;$("aPct").value=a.pct;$("aHits").value=a.hits;$("aElem").value=a.el;$("aCast").value=a.cast;$("aDelay").value=a.delay;$("aSp").value=a.sp;$("aTargets").value=a.targets;
+  $("bonus").value=state.bonus;
+  $("sagePanel").hidden=state.job!=="Sage";if(state.job==="Sage"){const g=G();ROOTQ("[data-sg]").forEach(i=>{const k=i.dataset.sg;if(i.type==="checkbox")i.checked=!!g[k];else i.value=g[k]??""});ROOTQ("[data-sgbolt]").forEach(i=>i.checked=!!g.bolts[i.dataset.sgbolt]);$("sg_hsOn").disabled=!!g.hsAuto}STATS.forEach(k=>$("st_"+k).value=(c.st&&c.st[k])||"");renderStatNote();
+};
+function renderChar(){
+  if(typeof renderStatNote==="function")renderStatNote();
+  const c=C(),a=c.a,p=JOBS[state.job].p[c.preset];
+  $("jobNote").textContent=`Settings are saved per job · ${Object.keys(state.chars).length} job${Object.keys(state.chars).length===1?"":"s"} set up`;
+  $("atkSummary").textContent=a.type==="spellfist"?`· Spell Fist Lv ${G().sfLv}: ${Math.round(sfChance()*100)}% per attack, ${sfPct()}% MATK with ${sfBolts().map(b=>({Fire:"Fire",Water:"Cold",Wind:"Lightning"})[b]).join(" / ")||"no"} bolts`:`· ${a.type==="magic"?"Magic":a.type==="auto"?"Basic attacks":"Physical"} ${a.pct}% × ${a.hits} ${atkEl()}${a.targets>1?` · ${a.targets} targets`:""}${p&&p.note?` · ${p.note}`:""}`;
+  const us=useSec(),need=spNeedPerSec()*60,reg=regenPerSec()*60,ips=itemsPerSec(),rf=restFactor();
+  $("itemInfo").textContent=c.autoSp?(ips>0?`≈ ${(ips*60).toFixed(1)} items/min · ${fmtN(ips*3600*num(c.itemPrice))} z/hr`:"not needed: regen covers it"):"";
+  const atk=a.type==="magic"||a.type==="spellfist"?`MATK ${fmtN(sumStat(c.matkTxt))}`:`ATK ${fmtN(sumStat(c.atkTxt))}`;
+  if(state.job==="Sage"){const g=G(),m=calcMob(),d=m?((k)=>{SG_MOB=m;try{return sgDefense(m)}finally{SG_MOB=k}})(SG_MOB):null;
+    $("sageInfo").innerHTML=`${g._note?esc(g._note)+" · ":""}Upkeep ${fmtN(sgUpkeep()*60)} SP/min · Hindsight ${fmtN(hsFullSP()*60)} SP/min${hsChance()>0?` (${Math.round(hsChance()*100)}% chance, Lv ${hsBoltLv()} bolt${dbChance()>0?`, +${Math.round(dbChance()*100)}% Double Bolt`:""})`:" (off)"}`+
+      (d?` · vs ${esc(m.name)}: Energy Coat ${g.ecOn?`−${d.red}% at SP ${d.label}`:"off"}, defence ${fmtN(d.extra*60)} SP/min, HP lost ${fmtN(d.hp*60)}/min${hfHpPerSec()>0?` (Hunter Fly heals ~${fmtN(hfHpPerSec()*60)}/min)`:""}`:" · pick a monster to see Energy Coat and damage taken")+
+      ` · SP items ${sgItemsOn()?`${(sgItemsPerSec()*60).toFixed(1)}/min ≈ ${fmtN(sgItemsPerSec()*3600*num(c.itemPrice))} z/hr`:"off (Hindsight off)"}`}
+  $("charTiles").innerHTML=`<div class="tile"><div class="k">Per use</div><div class="v mono">${us.toFixed(2)}s</div><div class="s">${a.type==="auto"||a.type==="spellfist"?`ASPD ${aspdEff()}${c.potOn?" (potion)":""} · ${atkPerSec().toFixed(2)} hits/s${critChance()>0?` · ${Math.round(critChance()*100)}% crits`:""}`:`cast ${castSec().toFixed(2)}s${castSec()<num(a.cast)?` (base ${num(a.cast)}s)`:""} + delay ${delaySec().toFixed(2)}s${delaySec()<1/atkPerSec()?" · motion (ASPD) longer than delay":""}${critChance()>0?` · ${Math.round(critChance()*100)}% crits`:""}`} · ${atk}</div></div>
+   <div class="tile ${need>reg&&!c.autoSp?"":"now"}"><div class="k">SP use vs regen</div><div class="v mono">${fmtN(need)} / ${fmtN(reg)}</div><div class="s">per minute · regen ${spRegen8()} per 8s${a.type==="spellfist"?(ips>0?` · ${(ips*60).toFixed(1)} SP items/min`:hsChance()>0&&hsSustain()<1?` · <span class="bad">Hindsight fires ${Math.round(hsSustain()*100)}% as often</span>`:""):need>reg?(c.autoSp?` · items cover ${fmtN(need-reg)}/min`:` · <span class="bad">you rest ${Math.round((1-1/rf)*100)}% of the time</span>`):""}</div></div>
+   <div class="tile"><div class="k">Walking per kill</div><div class="v mono">${walkSec().toFixed(1)}s</div><div class="s">${num(state.walkOverride)>0?"typed in Goal":`learned from your ${state.job} logs (2s until then)`}</div></div>`;
+}
+
+// ---- render: tracker ----
+function renderSessions(){$("sessionSel").innerHTML=state.sessions.map(s=>`<option value="${s.id}" ${s.id===state.current?"selected":""}>${esc(s.name)}${s.job?` · ${esc(s.job)}`:""}</option>`).join("")}
+function renderTracker(){
+  const s=cur(),st=stats(s);
+  if(document.activeElement!==$("partyN"))$("partyN").value=partyN(s);if(document.activeElement!==$("partyBonus"))$("partyBonus").value=partyBonus(s);
+  $("partyNote").textContent=partyN(s)>1?`Each kill gives you ${Math.round(expMul(s)/(1+num(state.bonus)/100)*100)}% of its EXP (party of ${partyN(s)}). Even Share only works within 15 base levels.`:"";
+  $("title").textContent=`${s.name} · ${s.job||state.job}`;
+  const mob=MOBS.find(m=>m.id===s.mobId);
+  $("subtitle").innerHTML=mob?`Farming ${esc(mob.name)} · Lv ${mob.lv} · ${mob.el?`<span class="el ${mob.el}">${mob.el} ${mob.elv}</span> · `:""}${mob.size||""} ${mob.race||""} · ${fmtN(mob.exp)} base EXP · <a href="${dbUrl(mob)}" target="_blank" rel="noopener">rozerodb ↗</a>`:"Pick a monster below and press \"Farming this now\"";
+  const lastE=[...s.entries].sort((a,b)=>a.t-b.t).pop();
+  if(lastE){$("tCurLv").textContent=`Lv ${lastE.lv}`;$("tCurLvS").textContent=lvExp(lastE.lv)?`${fmtN(lvExp(lastE.lv))} EXP to level`:"Lv outside EXP table";
+    $("tCurPct").textContent=pct(lastE.pct);$("tCurPctS").textContent=`logged ${fmtT(lastE.t)}`}
+  else{$("tCurLv").textContent="–";$("tCurPct").textContent="–";$("tCurLvS").textContent="Log an entry below";$("tCurPctS").textContent=""}
+  if(!st){["tAvg","tRecent","tLevel","tNext"].forEach(id=>$(id).textContent="–");["tAvgS","tRecentS","tLevelS","tNextS"].forEach(id=>$(id).textContent="Log at least two entries");$("tNextK").textContent="To next level";$("tRecentK").textContent="Last interval"}
+  else{
+    $("tAvg").textContent=pct(st.avgPct);$("tAvgS").textContent=`${fmtN(st.avgRaw/60)} EXP/min over ${st.spanMin} min`;
+    $("tRecentK").textContent=`Last ${st.recentMin} min`;$("tRecent").textContent=pct(st.recPct);const diff=st.recPct-st.avgPct;
+    $("tRecentS").innerHTML=`${fmtN(st.recRaw/60)} EXP/min · <span class="pill ${diff>=0?"up":"down"}">${diff>=0?"+":""}${diff.toFixed(2)}% vs avg</span>`;
+    $("tLevel").textContent=fmtDur(st.fullH);$("tLevelS").textContent=lvExp(st.last.lv)?`${fmtN(st.L)} EXP at Lv ${st.last.lv}`:"Lv outside EXP table, using %";
+    $("tNextK").textContent=`To Lv ${st.last.lv+1}`;$("tNext").textContent=fmtDur(st.nextH);$("tNextS").textContent=`${(100-st.last.pct).toFixed(2)}% left`}
+  const p=sessionPace(s);
+  if(p){$("tPace").textContent=`${fmtN(p.kph)}/hr`;$("tPaceS").textContent=`${p.obs.toFixed(1)}s per kill`+(isFinite(p.fight)?(p.obs<p.fight?` · faster than the model's ${p.fight.toFixed(1)}s fight, so check your ATK/MATK`:` · ~${p.fight.toFixed(1)}s fighting + ~${p.walk.toFixed(1)}s walking`):"")}
+  else{$("tPace").textContent="–";$("tPaceS").textContent="Needs a monster and 2+ entries"}
+  if(p){const zk=zenyKill(p.mob),gross=p.kph*zk,cost=itemsPerSec()*3600*num(C().itemPrice)+potCostHr();$("tZeny").textContent=fmtN(gross-cost);$("tZenyS").textContent=`${fmtN(gross)} z loot`+(cost>0?` − ${fmtN(cost)} z items & potions`:"")+` · ${fmtN(zk)} z/kill`}
+  else{$("tZeny").textContent="–";$("tZenyS").textContent="Needs a monster and 2+ entries"}
+  const j=jobRate(s);
+  if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
+  renderChart(s);renderLog(s);renderCompare();renderGoal(s,st);
+}
+function renderChart(s){
+  const svg=$("chart"),es=[...s.entries].sort((a,b)=>a.t-b.t);const W=800,H=340,pl=52,pr=18,pt=16,pb=34;
+  if(!es.length){svg.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle">No entries yet</text>`;return}
+  const base=es[0].lv;const y=es.map(e=>(e.lv-base)*100+e.pct);let lo=Math.min(...y),hi=Math.max(...y);
+  const span=Math.max(hi-lo,2),step=niceStep(span/4);lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;if(hi===lo)hi=lo+step;
+  const n=es.length,t0=es[0].t,t1=es[n-1].t;const X=i=>n===1||t1===t0?(pl+W-pr)/2:pl+(es[i].t-t0)/(t1-t0)*(W-pl-pr);const Y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
+  const multi=es[n-1].lv!==base;let g="";
+  for(let v=lo;v<=hi+1e-9;v+=step){const lvl=base+Math.floor(v/100),q=((v%100)+100)%100;g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-dasharray="4 4"/><text x="${pl-8}" y="${Y(v)+4}" text-anchor="end">${multi?`${lvl}·${fmtP(q)}`:`${fmtP(v)}%`}</text>`}
+  let lastX=-1e9;const labs=[];es.forEach((e,i)=>{const x=X(i);if(x-lastX>=48){labs.push(i);lastX=x}});
+  if(labs[labs.length-1]!==n-1){if(n>1&&X(n-1)-X(labs[labs.length-1])<48)labs.pop();labs.push(n-1)}
+  labs.forEach(i=>{g+=`<text x="${X(i)}" y="${H-10}" text-anchor="middle">${fmtT(es[i].t)}</text>`});
+  const pts=y.map((v,i)=>`${X(i)},${Y(v)}`).join(" ");
+  g+=`<polygon points="${X(0)},${H-pb} ${pts} ${X(n-1)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.25" stroke-linejoin="round"/>`;
+  y.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===n-1?5.5:4}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${fmtT(es[i].t)} · Lv ${es[i].lv} ${es[i].pct}%</title></circle>`});
+  svg.innerHTML=g;
+}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x)));const f=x/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+function fmtP(v){return Number.isInteger(v)?String(v):v.toFixed(1)}
+function renderLog(s){
+  const es=[...s.entries].sort((a,b)=>a.t-b.t);const base=es.length?es[0].lv:0;
+  $("logTable").querySelector("tbody").innerHTML=es.map((e,i)=>{let rate="";if(i>0){const q=es[i-1],h=(e.t-q.t)/36e5;rate=h>0?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):"–"}
+    return `<tr data-t="${e.t}" style="cursor:default"><td>${fmtT(e.t)}</td><td>${e.lv}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td><td><button class="small danger" data-del="${e.t}" aria-label="Delete entry">✕</button></td></tr>`}).reverse().join("")
+    ||`<tr><td colspan="6" class="name muted">No entries yet. Add your current level and EXP %.</td></tr>`;
+  $("setupNote").textContent=s.job&&s.job!==state.job?`This session was logged as ${s.job}. Switch Job to ${s.job} to see its pace and walking time.`:"";
+}
+function renderCompare(){
+  const rows=state.sessions.map(s=>{const st=stats(s);if(!st)return null;const mob=MOBS.find(m=>m.id===s.mobId);const kph=mob&&st.avgRaw>0?st.avgRaw/(mob.exp*expMul(s)):null;
+    return `<tr data-sid="${s.id}" class="${s.id===state.current?"sel":""}"><td class="name">${esc(s.name)}</td><td class="name">${esc(s.job||"–")}</td><td class="name">${mob?esc(mob.name):"–"}</td><td>${new Date(st.es[0].t).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} ${fmtT(st.es[0].t)}</td><td>${st.spanMin} min</td><td><b>${pct(st.avgPct)}</b></td><td>${fmtN(st.avgRaw/60)}</td><td>${kph?fmtN(kph):"–"}</td><td>${kph?(3600/kph).toFixed(1)+"s":"–"}</td></tr>`}).filter(Boolean);
+  $("cmpTable").querySelector("tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="name muted">Sessions with 2+ entries show up here.</td></tr>';
+}
+function renderGoal(s,st){
+  const tiles=$("goalTiles");
+  if(!st||st.avgRaw<=0){tiles.innerHTML='<div class="note">Log 2+ entries with EXP going up to see goal estimates.</div>';$("goalNote").textContent="";return}
+  const curLv=st.last.lv,goal=num(state.goalLv)||curLv+1;
+  if(goal<=curLv){tiles.innerHTML=`<div class="note">You're already Lv ${curLv}. Pick a higher level.</div>`;$("goalNote").textContent="";return}
+  let need=lvExp(curLv)?lvExp(curLv)*(1-st.last.pct/100):null;for(let l=curLv+1;l<goal&&need!=null;l++)need=lvExp(l)?need+lvExp(l):null;
+  if(need==null){tiles.innerHTML='<div class="note">The EXP table covers Lv 60 to 70, so pick a goal up to Lv 71.</div>';$("goalNote").textContent="";return}
+  const hrs=need/st.avgRaw;let perDay="";
+  if(state.goalDate){const end=new Date(state.goalDate+"T23:59:59");const days=Math.max(0,(end-Date.now())/864e5);perDay=days>0?`${(hrs/Math.ceil(days)).toFixed(1)}h a day|for ${Math.ceil(days)} day${Math.ceil(days)===1?"":"s"}`:"–|Deadline has passed"}
+  $("goalNote").textContent=`at your ${pct(st.avgPct)}/hr average`;
+  tiles.innerHTML=`<div class="tile"><div class="k">EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Lv ${curLv} ${st.last.pct.toFixed(2)}% to Lv ${goal}</div></div>
+   <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(st.avgRaw)} EXP/hr</div></div>
+   <div class="tile ${perDay?"now":""}"><div class="k">Per day</div><div class="v mono">${perDay?perDay.split("|")[0]:"–"}</div><div class="s">${perDay?perDay.split("|")[1]:"Pick a date to spread it out"}</div></div>`;
+}
+
+// ---- render: monsters ----
+const calcMob=()=>MOBS.find(m=>m.id===(state.calcMobId||cur().mobId));
+const colText=(m,k)=>k==="name"?m.name:k==="el"?(m.el||"")+" "+(m.elv||""):k==="size"?({S:"small S",M:"medium M",L:"large L"}[m.size]||""):k==="race"?(m.race||""):k==="topN"?m.om.map(x=>x[0]).join(" "):null;
+const colNum=(m,k)=>{if(["name","el","size","race"].includes(k))return null;if(k==="dodge")return m.dodge;if(k==="hpm")return m.hpm;if(k==="zk")return m.loot==null?null:m.zk;const v=m[k];return typeof v==="number"&&!isFinite(v)?null:v};
+function matchF(expr,n,text){
+  expr=String(expr).trim().toLowerCase();if(!expr)return true;
+  const parts=expr.split(/\s+or\s+|\||,/).map(x=>x.trim()).filter(Boolean);if(parts.length>1)return parts.some(p=>matchF(p,n,text));
+  const blank=n==null||(typeof n==="number"&&!isFinite(n));
+  if(/^(-|–|blank|empty|none)$/.test(expr))return blank&&!text;
+  let m;
+  if(m=expr.match(/^(<=|>=|<|>|=)\s*(-?\d+(?:\.\d+)?)%?$/)){const v=+m[2];if(blank)return false;return m[1]==="<"?n<v:m[1]==="<="?n<=v:m[1]===">"?n>v:m[1]===">="?n>=v:n==v}
+  if(m=expr.match(/^(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)$/)){if(blank)return false;return n>=+m[1]&&n<=+m[2]}
+  if(/^-?\d+(?:\.\d+)?$/.test(expr)&&!blank&&!text)return n==+expr;
+  return String(text??n??"").toLowerCase().includes(expr);
+}
+function renderMobs(){
+  const w=walkSec();const lvMin=num(state.minLv),lvMax=num(state.maxLv)||999;
+  let rows=MOBS.filter(m=>!m.boss&&m.lv>=lvMin&&m.lv<=lvMax&&!(state.hideClosed&&SPAWN[m.id]&&!openMaps(m).length)).map(m=>{const om=openMaps(m);return {...m,om,topN:om.length?om[0][1]:0,ratio:m.hp>0?m.exp/m.hp:0,...mobRow(m,w)}});
+  const F=state.filters;rows=rows.filter(m=>Object.entries(F).every(([k,v])=>!v||matchF(v,colNum(m,k),colText(m,k))));
+  const k=state.sort,d=state.dir;const sv=m=>{const v=k==="name"||k==="el"||k==="size"||k==="race"?colText(m,k):colNum(m,k);return v==null||v===""?null:v};
+  rows.sort((a,b)=>{const x=sv(a),y=sv(b);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*d});
+  document.querySelectorAll("#mobTable th").forEach(th=>th.classList.toggle("on",th.dataset.k===k));
+  const sel=(calcMob()||{}).id;
+  $("mobNote").textContent=`${rows.length} monsters · ${state.job} · ${C().a.type==="magic"?"MATK":"ATK"} ${fmtN(sumStat(C().a.type==="magic"?C().matkTxt:C().atkTxt))} · ${convOn()?"best converter per monster":atkEl()}`;
+  $("mobTable").querySelector("tbody").innerHTML=rows.slice(0,400).map(m=>`<tr data-id="${m.id}" class="${m.id===sel?"sel":""}"><td class="name">${esc(m.name)}${isSkipped(m)?' <span class="pill down">skipped</span>':""}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${m.size||"–"}</td><td class="name">${m.race||"–"}</td><td>${fmtN(m.hp)}</td><td>${fmtN(m.exp)}</td><td>${m.ratio.toFixed(2)}</td>
+    <td class="${m.mult>100?"good":m.mult<=0?"bad":""}">${m.mult<=0?"can't hurt":Math.round(m.mult)+"%"}${elTag(m.el2)}</td><td class="${m.hitc>=95?"good":m.hitc>=70?"warnc":"bad"}">${Math.round(m.hitc)}%</td><td>${isFinite(m.uses)?m.uses.toFixed(1):"–"}</td>
+    <td class="${m.sec<=3?"good":m.sec<=8?"warnc":"bad"}">${isFinite(m.sec)?m.sec.toFixed(1)+"s":"–"}</td><td><b>${m.epm?fmtN(m.epm):"–"}</b></td>
+    <td class="${m.dodge==null?"":m.dodge>=70?"good":m.dodge>=40?"warnc":"bad"}">${m.dodge==null?"–":m.dodge+"%"}</td><td>${m.hpm==null?"–":fmtN(m.hpm)}</td><td>${m.loot==null?"–":fmtN(m.zk)}</td>
+    <td class="name">${m.om.length?`<span class="map" title="${m.om.map(x=>x[0]+" ≈"+x[1]).join(", ")}"><b>${m.om[0][0]}</b><span>≈${m.om[0][1]}</span></span>`:'<span class="note">none open</span>'}</td><td><a href="${dbUrl(m)}" target="_blank" rel="noopener" title="rozerodb">↗</a></td></tr>`).join("")
+    ||'<tr><td colspan="18" class="name muted">No monsters match these filters.</td></tr>';
+  renderMobTiles();
+}
+function renderMobTiles(){
+  const m=calcMob();if(!m){$("mobTiles").innerHTML='<div class="note">Click a monster to see it here.</div>';return}
+  const r=mobRow(m,walkSec());const s=cur();const L=lvExp(num(C().baseLv))||null;const om=openMaps(m);
+  $("mobTiles").innerHTML=`<div class="tile now"><div class="k">${esc(m.name)} · Lv ${m.lv}</div><div class="v mono">${r.epm?fmtN(r.epm):"–"}</div><div class="s">EXP/min${r.el2&&convOn()?` with ${r.el2} converter`:""} · ${isFinite(r.sec)?r.sec.toFixed(1)+"s fight + "+walkSec().toFixed(1)+"s walk":"can't hurt it"}${L&&r.epm?` · ~${pct(r.epm*60/L*100)}/hr at Lv ${C().baseLv}`:""}</div></div>
+   <div class="tile"><div class="k">Per kill</div><div class="v mono">${isFinite(r.uses)?r.uses.toFixed(1):"–"} uses</div><div class="s">${fmtN(withEl(r.el2,()=>dmgPerHit(m)))} per hit · ${Math.round(r.hitc)}% land · ${fmtN(num(C().a.sp)*r.uses/targets())} SP</div></div>
+   <div class="tile"><div class="k">Defence</div><div class="v mono">${r.hpm==null?"–":fmtN(r.hpm)}</div><div class="s">HP lost/min · you dodge ${r.dodge??"–"}% · DEF ${m.def??"–"} · MDEF ${m.mdef??"–"}</div></div>
+   <div class="tile"><div class="k">Maps</div><div class="v mono">${om.length?om[0][0]:"–"}</div><div class="s">${om.length?om.slice(0,4).map(x=>`${x[0]} ≈${x[1]}`).join(" · "):"none open"} · <a href="${dbUrl(m)}" target="_blank" rel="noopener">rozerodb ↗</a></div></div>
+   <div class="bar" style="grid-column:1/-1">${s.mobId===m.id?'<span class="pill up">This session\'s monster</span>':`<button type="button" class="primary" id="useMobBtn">Farming ${esc(m.name)} now</button>`}</div>`;
+  const b=$("useMobBtn");if(b)b.addEventListener("click",()=>{s.mobId=m.id;s.job=state.job;if(s.name==="New session")s.name=m.name;state.calcMobId=null;save();renderAll()});
+}
+function renderBest(){
+  const min=num($("bestMin").value),lim=num($("bestN").value,10);const w=walkSec();const s=cur(),st=stats(s);const curMap=currentMap();
+  const curR=curMap?mapStats(curMap,w):null;
+  const rows=Object.keys(MAPMOBS).filter(mp=>!isClosed(mp)).map(mp=>mapStats(mp,w)).filter(r=>r&&r.N>=min);
+  rows.sort((a,b)=>b.epm-a.epm);rows.forEach((r,i)=>r.rank=i+1);rows.splice(lim);
+  const bk=state.bestSort||"epm",bd=state.bestDir||-1;const val=r=>r[bk];
+  rows.sort((a,b)=>{const x=val(a),y=val(b);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*bd});
+  document.querySelectorAll("#bestTable th").forEach(th=>th.classList.toggle("on",th.dataset.bk===bk&&th.textContent!=="Projected"));
+  $("bestBasis").textContent=`${state.job} · ${C().a.name||"attack"} · ${convOn()?"best converter per map":atkEl()} · walking ~${w.toFixed(1)}s/kill`+(curR&&st?` · compared with ${curMap} at ${pct(st.avgPct)}/hr`:"");
+  const sameJob=(s.job||state.job)===state.job;
+  $("bestTable").querySelector("tbody").innerHTML=rows.map(r=>{
+    const main=MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>`<div>${esc(x.m.name)} <span class="note">×${x.n}</span></div>`).join("");
+    const proj=st&&sameJob&&curR&&curR.epm?st.avgPct*r.epm/curR.epm:null;
+    return `<tr data-map="${r.mp}" class="${r.mp===curMap?"sel":""}"><td>${r.rank}</td><td class="name"><b class="mono">${r.mp}</b>${r.mp===curMap?' <span class="pill">current</span>':""}${elTag(r.el2)}</td><td class="name mainmobs">${main}</td><td><b>${fmtN(r.epm)}</b></td><td>${r.sec.toFixed(1)}s + ${r.walk.toFixed(1)}s</td><td>${fmtN(r.epk)}</td><td>${fmtN(r.zph)}</td><td>${r.hpm==null?"–":fmtN(r.hpm)}</td><td>${r.skip?`<span class="pill down" title="${esc(r.skipNames.join(", "))}">${r.skip}</span>`:"–"}</td><td>≈${r.N}</td><td>${proj==null?"–":"~"+proj.toFixed(1)+"%/hr"}</td></tr>`}).join("")
+    ||'<tr><td colspan="11" class="name muted">No open maps match.</td></tr>';
+}
+const syncClosed=()=>{$("closedMaps").value=state.closed.join(", ");
+  $("regions").innerHTML=REGIONS.map(r=>{const c=state.regions[r.id]!==false;return `<button type="button" class="map ${c?"off":""}" data-region="${r.id}" title="${c?"Closed. Click to mark open":"Open. Click to mark closed"}"><b>${c?"✕":"✓"} ${r.name}</b><span>${r.when}</span></button>`}).join("")};
+function renderMap(){
+  let mp=(state.map||"").trim().toLowerCase();const mob=calcMob();
+  if(!mp&&mob){const om=openMaps(mob);if(om.length)mp=om[0][0]}
+  $("mapInput").value=mp;
+  if(!MAPMOBS[mp]){$("mapTiles").innerHTML='<div class="note">Pick a map to see how this job does there.</div>';$("mapTable").querySelector("tbody").innerHTML="";return}
+  const w=walkSec(),r=mapStats(mp,w);const L=lvExp(num(C().baseLv));const st=stats(cur());const L2=st?st.L:L;
+  $("mapTiles").innerHTML=r?`<div class="tile now"><div class="k">Average EXP / min</div><div class="v mono">${fmtN(r.epm)}</div><div class="s">weighted by spawn counts${r.el2&&convOn()?` · bring ${r.el2} converters`:""}${r.skip?` · skips ${r.skip} you can't hurt`:""}</div></div>
+   <div class="tile"><div class="k">Kills / hr</div><div class="v mono">${fmtN(3600/r.secT)}</div><div class="s">${r.sec.toFixed(1)}s fight + ${r.walk.toFixed(1)}s walk</div></div>
+   <div class="tile"><div class="k">EXP / hr</div><div class="v mono">${L2?pct(r.epm*60/L2*100):fmtN(r.epm*60)}</div><div class="s">${L2?`1 level in ${fmtDur(L2/(r.epm*60))}`:"set Base level 60–70 for %"}</div></div>
+   <div class="tile"><div class="k">Zeny / hr</div><div class="v mono">${fmtN(r.zph)}</div><div class="s">${r.hpm==null?"":`HP lost ~${fmtN(r.hpm)}/min`}</div></div>${isClosed(mp)?'<div class="note bad">This map is marked as not open yet.</div>':""}`
+   :'<div class="note bad">Your attack can\'t hurt anything here.</div>';
+  const tot=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).reduce((a,x)=>a+x.n,0)||1;
+  $("mapTable").querySelector("tbody").innerHTML=MAPMOBS[mp].slice().sort((a,b)=>b.n-a.n).map(({m,n})=>{const x=r&&r.el2?withEl(r.el2,()=>mobRow0(m,w)):mobRow(m,w);
+    return `<tr data-id="${m.id}" class="${m.id===cur().mobId?"sel":""}" style="${isSkipped(m)?"opacity:.55":""}"><td class="name">${esc(m.name)}${m.boss?' <span class="pill">boss</span>':` <button type="button" class="small" data-skip="${m.id}">${isSkipped(m)?"Unskip":"Skip"}</button>`}</td><td>≈${n}</td><td>${m.boss?"–":isSkipped(m)?"skipped":Math.round(n/tot*100)+"%"}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${m.size||"–"}</td><td class="${x.mult>100?"good":x.mult<=0?"bad":""}">${x.mult<=0?"can't hurt":Math.round(x.mult)+"%"}</td><td>${isFinite(x.sec)?x.sec.toFixed(1)+"s":"–"}</td><td>${fmtN(m.exp)}</td></tr>`}).join("");
+}
+function renderAll(){applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();renderMap()}
+
+// ---- events ----
+$("job").innerHTML=Object.keys(JOBS).map(j=>`<option>${j}</option>`).join("");
+$("weapon").innerHTML=Object.keys(WEAPONS).map(w=>`<option>${w}</option>`).join("");
+$("wElem").innerHTML=AE.map(e=>`<option>${e}</option>`).join("");
+$("aElem").innerHTML='<option value="W">Weapon / arrow</option>'+AE.map(e=>`<option>${e}</option>`).join("");
+$("raceSel").innerHTML='<option value="">–</option>'+RACES.map(r=>`<option>${r}</option>`).join("");
+$("elSel").innerHTML='<option value="">–</option>'+AE.map(e=>`<option>${e}</option>`).join("");
+$("job").addEventListener("change",e=>{state.job=e.target.value;C();save();syncChar();renderAll()});
+$("preset").addEventListener("change",e=>{const c=C();const i=+e.target.value;c.preset=i;if(i>=0){c.a={...JOBS[state.job].p[i]}}save();syncChar();renderAll()});
+// ---- stats: status ATK/MATK/HIT/FLEE from the renewal formulas (irowiki.org/wiki/Stats) ----
+const STATS=["str","agi","vit","dex","luk"];
+const RANGED=["Bow","Musical instrument","Whip"];
+const statVal=(c,k)=>k==="int"?sumStat(c.intTxt):(c.st&&c.st[k]!=null&&c.st[k]!==""?sumStat(c.st[k]):null);
+function derived(c){const g=k=>statVal(c,k)??0;const lv=num(c.baseLv),str=g("str"),agi=g("agi"),int=g("int"),dex=g("dex"),luk=g("luk"),vit=g("vit");const r=RANGED.includes(c.weapon);
+  return {atk:Math.floor(lv/4+(r?dex+str/5:str+dex/5)+luk/3),matk:Math.floor(lv/4)+Math.floor(int*1.5)+Math.floor(dex/5)+Math.floor(luk/3),
+    hit:175+lv+dex+Math.floor(luk/3),flee:100+lv+agi+Math.floor(luk/5),def:Math.max(0,Math.floor((lv+vit)/2+agi/5)),
+    crit:1+luk*0.3+lv/100,aspdTerm:Math.sqrt(agi*agi/2+dex*dex/(r?7:5))/4,vit,int}}
+// ASPD base + weapon penalty for 2nd jobs on Zero (Landgris ROCalculator "paradise" table); missing = unknown
+const ASPD_T={Knight:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-9,"One-handed sword":-5,"Two-handed sword":-3,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-15,"Two-handed spear":-20},
+ Crusader:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-8,"One-handed sword":-3,"Two-handed sword":-15,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-13,"Two-handed spear":-10},
+ Wizard:{"Bare hands":146,"One-handed staff":-3,"Two-handed staff":-3,"Dagger":-4},Sage:{"Bare hands":151,"One-handed staff":-10,"Two-handed staff":-10,"Dagger":-8,"Book":2},
+ Hunter:{"Bare hands":156,"Dagger":-13,"Bow":-7},Bard:{"Bare hands":156,"Dagger":-13,"Bow":-8,"Musical instrument":-5},Dancer:{"Bare hands":156,"Dagger":-13,"Bow":-8,"Whip":-5},
+ Priest:{"Bare hands":156,"One-handed mace":-3,"Two-handed mace":-3,"One-handed staff":-20,"Two-handed staff":-20,"Book":-4,"Knuckle":-20},Monk:{"Bare hands":156,"One-handed mace":-3,"Two-handed mace":-3,"One-handed staff":-20,"Two-handed staff":-18,"Knuckle":0},
+ Blacksmith:{"Bare hands":156,"One-handed mace":-8,"Two-handed mace":-8,"Dagger":-10,"One-handed sword":-10,"One-handed axe":-6,"Two-handed axe":-10},Alchemist:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-10,"One-handed sword":-5,"One-handed axe":-5,"Two-handed axe":-12},
+ Assassin:{"Bare hands":156,"Dagger":-2,"One-handed sword":-10,"One-handed axe":-11,"Katar":-2},Rogue:{"Bare hands":156,"Dagger":-5,"Bow":-10,"One-handed sword":-10}};
+const aspdBase=(job,w)=>{const t=ASPD_T[job];if(!t||t[w]==null)return null;return t["Bare hands"]+(w==="Bare hands"?0:t[w])};
+const bumpFirst=(txt,d)=>{if(!d)return txt;const p=String(txt??"0").split("+");p[0]=String(Math.round((parseFloat(p[0])||0)+d));return p.join("+")};
+// a stat change moves the status part of ATK/MATK/HIT/FLEE/DEF by the same amount the formula moves, so gear bonuses you typed stay
+function shiftByStats(c,before){const a=derived(c);const ok=k=>STATS.every(x=>statVal(c,x)!=null);if(!ok())return;
+  c.atkTxt=bumpFirst(c.atkTxt,a.atk-before.atk);c.matkTxt=bumpFirst(c.matkTxt,a.matk-before.matk);c.hitTxt=bumpFirst(c.hitTxt,a.hit-before.hit);c.fleeTxt=bumpFirst(c.fleeTxt,a.flee-before.flee);c.defTxt=bumpFirst(c.defTxt,a.def-before.def);
+  const r1=x=>Math.round(x*10)/10;if(num(c.crit)||a.crit!==before.crit)c.crit=r1(Math.max(0,num(c.crit)+a.crit-before.crit));c.aspd=r1(Math.min(190,num(c.aspd,150)+a.aspdTerm-before.aspdTerm));
+  if(a.vit!==before.vit&&num(c.maxHp)>0)c.maxHp=Math.round(num(c.maxHp)*(100+a.vit)/(100+before.vit));if(a.int!==before.int&&num(c.maxSp)>0)c.maxSp=Math.round(num(c.maxSp)*(100+a.int)/(100+before.int))}
+const renderStatNote=()=>{const c=C();const miss=STATS.filter(k=>statVal(c,k)==null);
+  if(miss.length){$("statNote").textContent=`Type all six stats (base+bonus, e.g. 60+8) to let the planner move ATK, MATK, HIT, FLEE, DEF, CRIT, ASPD, Max HP and Max SP when you change a stat. Missing: ${miss.map(x=>x.toUpperCase()).join(", ")}.`;return}
+  const d=derived(c);const ab=aspdBase(state.job,c.weapon);$("statNote").textContent=`From your stats: status ATK ${d.atk} · status MATK ${d.matk} · HIT ${d.hit} · FLEE ${d.flee} · soft DEF ${d.def} · CRIT ${d.crit.toFixed(1)}${ab!=null?` · ASPD ${(ab+d.aspdTerm).toFixed(1)} before potions/skills`:""} (${RANGED.includes(c.weapon)?"ranged: DEX":"melee: STR"} is your main ATK stat). Your typed values are what the planner uses; changing a stat moves ATK, MATK, HIT, FLEE, DEF, CRIT, ASPD, Max HP and Max SP by the difference.`};
+STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c.st={};const wasSet=STATS.every(x=>statVal(c,x)!=null);const before=derived(c);c.st[k]=e.target.value;if(wasSet)shiftByStats(c,before);save();syncChar();renderAll()}));
+// character number/text fields
+const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","racePct","sizePct","elPct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"];
+["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","racePct","sizePct","elPct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>
+  $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?1:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
+["weapon","wElem","raceSel","sizeSel","elSel"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
+  if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
+  c[k]=e.target.value;save();renderAll()}));
+$("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
+const potInfo=()=>{const c=C();$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potCostHr())} z/hr`:""};
+$("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});
+["potAspd","potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
+ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
+  if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
+  if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));
+$("converters").addEventListener("change",e=>{C().converters=e.target.checked;save();renderAll()});
+// attack detail fields: editing makes the attack "Custom"
+const aMap={aType:"type",aPct:"pct",aHits:"hits",aElem:"el",aCast:"cast",aDelay:"delay",aSp:"sp",aTargets:"targets"};
+Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target.value;if(k==="cast"){delete c.a.fct;delete c.a.vct}c.a[k]=(k==="type"||k==="el")?v:Math.max(k==="hits"||k==="targets"?(k==="targets"?1:0.01):0,num(v));
+  if(c.preset>=0){c.a.name=(JOBS[state.job].p[c.preset]||{}).name+" (edited)";c.preset=-1;$("preset").value="-1"}save();renderAll()};
+  $(id).addEventListener(id==="aType"||id==="aElem"?"change":"input",h)});
+$("partyN").addEventListener("input",e=>{cur().partyN=num(e.target.value,1)||1;save();renderAll()});
+$("partyBonus").addEventListener("input",e=>{cur().partyBonus=e.target.value===""?null:num(e.target.value);save();renderAll()});
+$("dropBonus").value=state.dropBonus||0;$("dropBonus").addEventListener("input",e=>{state.dropBonus=num(e.target.value);save();renderAll()});
+$("bonus").addEventListener("input",e=>{state.bonus=num(e.target.value);save();renderAll()});
+// log
+function nowTime(){return new Date().toTimeString().slice(0,5)}
+function resetForm(){const es=[...cur().entries].sort((a,b)=>a.t-b.t),last=es[es.length-1];$("fLevel").value=last?last.lv:num(C().baseLv,60);$("fPct").value="";$("fJob").value="";$("fTime").value=nowTime()}
+function entryTime(h,m){const d=new Date();d.setHours(h,m,0,0);if(d.getTime()-Date.now()>3600e3)d.setDate(d.getDate()-1);return d.getTime()}
+function guessLevel(s,t,lv,p){const prev=[...s.entries].filter(e=>e.t<t).sort((a,b)=>b.t-a.t)[0];return prev&&prev.lv===lv&&prev.pct-p>=50?lv+1:lv}
+$("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m);
+  s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
+  $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
+  const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=num(C().jobLv)+1}s.entries.push(ent);if(!s.job)s.job=state.job;
+  if(C().baseLv!==lvG){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm();$("fPct").focus()});
+$("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
+  const parsed=$("pasteBox").value.split(/\n/).map(line=>{const m=line.match(/(\d{1,2}):?(\d{2})[^\d\n]+?(\d+(?:\.\d+)?)\s*%?(?:[^\d\n]+?(\d+(?:\.\d+)?)\s*%?)?/);if(!m||+m[1]>23||+m[2]>59)return null;return {t:entryTime(+m[1],+m[2]),pct:+m[3],jpct:m[4]!=null?+m[4]:null}}).filter(Boolean).sort((a,b)=>a.t-b.t);
+  parsed.forEach(x=>{const g=guessLevel(s,x.t,lv,x.pct);if(g!==lv){ups++;lv=g}const ent={t:x.t,lv,pct:x.pct};if(x.jpct!=null)ent.jpct=x.jpct;s.entries=s.entries.filter(e=>e.t!==x.t);s.entries.push(ent);n++});
+  $("pasteMsg").textContent=n?`Added ${n} entr${n===1?"y":"ies"}${ups?` with ${ups} level-up${ups>1?"s":""} (now Lv ${lv})`:` at Lv ${lv}`}.`:"No lines matched. Use the format 15:05 17.9% (job % optional)";
+  if(n){if(!s.job)s.job=state.job;$("pasteBox").value="";save();renderAll()}});
+$("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
+const openSession=id=>{state.current=id;state.calcMobId=null;const s=cur();if(s.job&&JOBS[s.job]&&s.job!==state.job){state.job=s.job;syncChar()}save();renderAll();resetForm()};
+$("sessionSel").addEventListener("change",e=>openSession(e.target.value));
+$("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",job:state.job,mobId:null,entries:[]});openSession(id);$("mobInput").focus()});
+let delArmed=false;
+$("delSession").addEventListener("click",()=>{if(!delArmed){delArmed=true;$("delSession").textContent="Confirm delete";setTimeout(()=>{delArmed=false;$("delSession").textContent="Delete"},3000);return}
+  delArmed=false;$("delSession").textContent="Delete";state.sessions=state.sessions.filter(s=>s.id!==state.current);
+  if(!state.sessions.length)state.sessions.push({id:"s"+Date.now(),name:"New session",job:state.job,mobId:null,entries:[]});openSession(state.sessions[0].id)});
+$("cmpTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.target.closest("tr[data-sid]");if(!tr)return;openSession(tr.dataset.sid);window.scrollTo({top:0,behavior:"smooth"})});
+// monsters
+const pickMob=m=>{if(!m)return;state.calcMobId=m.id;const s=cur();if(!s.mobId){s.mobId=m.id;s.job=state.job;if(s.name==="New session")s.name=m.name}save();renderAll()};
+$("mobList").innerHTML=MOBS.map(m=>`<option value="${esc(m.name)}">Lv ${m.lv} · ${fmtN(m.exp)} EXP</option>`).join("");
+$("mobInput").addEventListener("change",e=>{pickMob(MOBS.find(x=>x.name.toLowerCase()===e.target.value.trim().toLowerCase()))});
+$("mobTable").querySelector("tbody").addEventListener("click",e=>{if(e.target.closest("a"))return;const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
+$("mobTable").querySelector("thead").addEventListener("click",e=>{if(e.target.closest(".filters"))return;const th=e.target.closest("th");if(!th||!th.dataset.k)return;
+  if(state.sort===th.dataset.k)state.dir*=-1;else{state.sort=th.dataset.k;state.dir=["name","el","size","race","sec","uses","hpm"].includes(th.dataset.k)?1:-1}save();renderMobs()});
+document.querySelectorAll("[data-f]").forEach(inp=>{inp.value=state.filters[inp.dataset.f]||"";inp.addEventListener("input",()=>{state.filters[inp.dataset.f]=inp.value;save();renderMobs()})});
+$("clearF").addEventListener("click",()=>{state.filters={};document.querySelectorAll("[data-f]").forEach(i=>i.value="");save();renderMobs()});
+$("minLv").value=state.minLv;$("maxLv").value=state.maxLv;
+["minLv","maxLv"].forEach(id=>$(id).addEventListener("input",e=>{state[id]=e.target.value===""?(id==="maxLv"?99:1):num(e.target.value);save();renderMobs()}));
+$("hideClosed").checked=state.hideClosed;$("hideClosed").addEventListener("change",e=>{state.hideClosed=e.target.checked;save();renderMobs()});
+// best maps + closed regions
+$("bestMin").addEventListener("input",renderBest);$("bestN").addEventListener("change",renderBest);
+$("bestTable").querySelector("thead").addEventListener("click",e=>{const th=e.target.closest("th[data-bk]");if(!th)return;const k=th.dataset.bk;
+  if((state.bestSort||"epm")===k)state.bestDir=-(state.bestDir||-1);else state.bestDir=(k==="mp"||k==="secT"||k==="hpm"||k==="skip")?1:-1;state.bestSort=k;save();renderBest()});
+$("bestTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.target.closest("tr[data-map]");if(!tr)return;state.map=tr.dataset.map;save();renderMap();$("mapCard").scrollIntoView({behavior:"smooth",block:"start"})});
+$("regions").addEventListener("click",e=>{const b=e.target.closest("[data-region]");if(!b)return;const id=b.dataset.region;state.regions[id]=state.regions[id]===false;syncClosed();save();renderAll()});
+$("closedMaps").addEventListener("change",e=>{state.closed=[...new Set(e.target.value.split(/[\s,]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];syncClosed();save();renderAll()});
+// map planner
+$("mapList").innerHTML=Object.keys(MAPMOBS).sort().map(m=>`<option value="${m}">${MAPMOBS[m].length} monsters</option>`).join("");
+$("mapInput").addEventListener("change",e=>{state.map=e.target.value.trim().toLowerCase();save();renderMap()});
+$("mapFromMob").addEventListener("click",()=>{state.map="";save();renderMap()});
+$("mapTable").querySelector("tbody").addEventListener("click",e=>{const sk=e.target.closest("[data-skip]");if(sk){const id=+sk.dataset.skip;if(!state.skipMobs)state.skipMobs=[];state.skipMobs=state.skipMobs.includes(id)?state.skipMobs.filter(x=>x!==id):[...state.skipMobs,id];save();renderAll();return}const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
+// goal
+$("goalLv").value=state.goalLv||"";$("goalDate").value=state.goalDate||"";$("walkOverride").value=state.walkOverride||"";
+$("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;save();renderTracker()});
+$("goalDate").addEventListener("change",e=>{state.goalDate=e.target.value;save();renderTracker()});
+$("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
+// backup
+const bkText=()=>JSON.stringify(state);
+$("bkCopy").addEventListener("click",()=>{const t=bkText();const fb=()=>{$("bkText").value=t;$("bkText").select();$("bkMsg").textContent="Couldn't copy automatically, so the backup is selected in the box below."};
+  try{navigator.clipboard.writeText(t).then(()=>{$("bkMsg").textContent="Backup copied. Paste it somewhere safe."},fb)}catch(err){fb()}});
+$("bkShow").addEventListener("click",()=>{$("bkText").value=bkText();$("bkText").select();$("bkMsg").textContent="Backup text is in the box."});
+let bkArmed=false;
+$("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkText").value)}catch(err){$("bkMsg").textContent="That isn't a valid backup. Paste the whole text from Copy backup.";return}
+  if(!data||!Array.isArray(data.sessions)){$("bkMsg").textContent="That backup has no sessions in it.";return}
+  if(!bkArmed){bkArmed=true;$("bkRestore").textContent="Click again to replace everything";setTimeout(()=>{bkArmed=false;$("bkRestore").textContent="Restore from text"},4000);return}
+  bkArmed=false;state=data;save();$("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
+// ---- show / hide table columns (saved per table) ----
+(function setupColPicks(){
+  const IDS=["cmpTable","mobTable","bestTable","mapTable"];
+  if(!state.hideCols)state.hideCols={};
+  const st=document.createElement("style");document.body.appendChild(st);
+  const apply=()=>{st.textContent=IDS.flatMap(id=>(state.hideCols[id]||[]).map(n=>`#${id} tr>:nth-child(${n}){display:none}`)).join("\n")};
+  IDS.forEach(id=>{const t=document.getElementById(id);if(!t||!t.tHead)return;
+    const ths=[...t.tHead.rows[0].cells];const box=document.createElement("details");box.className="note";box.style.cssText="margin:2px 0";
+    box.innerHTML=`<summary style="cursor:pointer">Show / hide columns</summary><div class="bar" style="flex-wrap:wrap;gap:4px 14px;margin-top:6px">${ths.map((th,i)=>{const name=(th.textContent||"").trim();if(!name)return "";
+      return `<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-col="${i+1}" style="width:auto" ${(state.hideCols[id]||[]).includes(i+1)?"":"checked"}> ${name}</label>`}).join("")}
+      <button type="button" class="small" data-allcols>Show all</button></div>`;
+    const anchor=t.closest(".scroll")||t;anchor.parentNode.insertBefore(box,anchor);
+    box.addEventListener("change",e=>{const c=e.target.closest("[data-col]");if(!c)return;const n=+c.dataset.col;const set=new Set(state.hideCols[id]||[]);
+      c.checked?set.delete(n):set.add(n);state.hideCols[id]=[...set];save();apply()});
+    box.addEventListener("click",e=>{if(!e.target.closest("[data-allcols]"))return;state.hideCols[id]=[];box.querySelectorAll("[data-col]").forEach(x=>x.checked=true);save();apply()});
+  });
+  apply();
+})();
+syncClosed();syncChar();renderAll();resetForm();
+
+</script>
+</body>
+</html>
