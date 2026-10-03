@@ -431,6 +431,8 @@ const MERC=[A2("Mammonite Lv10","phys",600,1,"W",5,1,"Also costs 1,000 z per use
 const THIEF=[A("Basic attack (Double Attack Lv10)","auto",100,1.5,"W",0,0,0,1,"Dagger: about half your hits strike twice"),A2("Envenom Lv10","phys",100,1,"Poison",12,1,"Plus a flat +150 damage, not included",Z(0,0,0,0)),A2("Sand Attack","phys",130,1,"Earth",9,1,"",Z(0,0,0,0))];
 const JOBS={
  "Novice":{w:"Dagger",p:[BASIC]},
+ "Swordsman":{w:"One-handed sword",p:[...SWORD,BASIC]},"Mage":{w:"One-handed staff",p:[...MAGE.filter(p=>!p.name.startsWith("Earth Spike")),BASIC]},"Archer":{w:"Bow",p:[...ARCH,BASIC]},
+ "Acolyte":{w:"One-handed mace",p:[...ACO,BASIC]},"Merchant":{w:"One-handed axe",p:[...MERC,BASIC]},"Thief":{w:"Dagger",p:[...THIEF]},
  "Knight":{w:"Two-handed spear",p:[A2("Bowling Bash Lv10","phys",500,3,"W",38,2,"Hits 3–5 times (more with a two-handed sword); +STR% per hit",Z(0.4,1.6,4,0.3,{sadd:[["str",1]]})),
    A2("Brandish Spear Lv10","phys",1400,1,"W",24,3,"Spear, mounted only. +5×STR%",Z(0,0,2,0.3,{sadd:[["str",5]]})),A2("Pierce Lv10","phys",200,3,"W",10,1,"Spear only. Hits 2/3/4 times on small/medium/large; +2×STR%",Z(0,0,0,0,{sizeHits:[2,3,4],sadd:[["str",2]]})),
    A2("Spear Stab Lv10","phys",300,1,"W",9,2,"Spear only. Hits everything in a line",Z(0,0,0,0)),A2("Spear Boomerang Lv5","phys",350,1,"W",10,1,"Spear only. Range 11",Z(0,0,0,0)),
@@ -719,7 +721,8 @@ const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
   const p=sessionPace(cur());if(p&&p.walk!=null)return Math.max(1,p.walk);
   return ps.length?Math.max(1,ps[0].walk):2};
 // job EXP needed for your current job level (Novice / 1st / 2nd job table)
-const jobTier=()=>state.job==="Novice"?"novice":"second";
+const FIRST_JOBS=["Swordsman","Mage","Archer","Acolyte","Merchant","Thief"];
+const jobTier=()=>state.job==="Novice"?"novice":FIRST_JOBS.includes(state.job)?"first":"second";
 const jobNeed=()=>{const l=num(C().jobLv);const t=JOB_EXP[jobTier()];return l>=1&&l<=t.length?t[l-1]:null};
 function jobRate(s){
   const es=[...s.entries].filter(e=>e.jpct!=null).sort((a,b)=>a.t-b.t);if(es.length<2)return null;
@@ -947,8 +950,13 @@ function derived(c){const g=k=>statVal(c,k)??0;const lv=num(c.baseLv),str=g("str
   return {atk:Math.floor(lv/4+(r?dex+str/5:str+dex/5)+luk/3),matk:Math.floor(lv/4)+Math.floor(int*1.5)+Math.floor(dex/5)+Math.floor(luk/3),
     hit:175+lv+dex+Math.floor(luk/3),flee:100+lv+agi+Math.floor(luk/5),def:Math.max(0,Math.floor((lv+vit)/2+agi/5)),
     crit:1+luk*0.3+lv/100,aspdTerm:Math.sqrt(agi*agi/2+dex*dex/(r?7:5))/4,vit,int}}
-// ASPD base + weapon penalty for 2nd jobs on Zero (Landgris ROCalculator "paradise" table); missing = unknown
-const ASPD_T={Knight:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-9,"One-handed sword":-5,"Two-handed sword":-3,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-15,"Two-handed spear":-20},
+// ASPD base + weapon penalty for 1st and 2nd jobs on Zero (Landgris ROCalculator "paradise" table); missing = unknown
+const ASPD_T={Swordsman:{"Bare hands":156,"One-handed mace":-10,"Two-handed mace":-10,"Dagger":-7,"One-handed sword":-7,"Two-handed sword":-14,"One-handed axe":-15,"Two-handed axe":-20,"One-handed spear":-17,"Two-handed spear":-25},
+ Mage:{"Bare hands":146,"One-handed staff":-5,"Two-handed staff":-5,"Dagger":0},Archer:{"Bare hands":156,"Dagger":-15,"Bow":-10},
+ Acolyte:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"One-handed staff":-20,"Two-handed staff":-20},
+ Merchant:{"Bare hands":156,"One-handed mace":-10,"Two-handed mace":-10,"Dagger":-12,"One-handed sword":-12,"One-handed axe":-8,"Two-handed axe":-15},
+ Thief:{"Bare hands":156,"Dagger":-8,"Bow":-13,"One-handed sword":-10,"One-handed axe":-20},
+ Knight:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-9,"One-handed sword":-5,"Two-handed sword":-3,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-15,"Two-handed spear":-20},
  Crusader:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-8,"One-handed sword":-3,"Two-handed sword":-15,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-13,"Two-handed spear":-10},
  Wizard:{"Bare hands":146,"One-handed staff":-3,"Two-handed staff":-3,"Dagger":-4},Sage:{"Bare hands":151,"One-handed staff":-10,"Two-handed staff":-10,"Dagger":-8,"Book":2},
  Hunter:{"Bare hands":156,"Dagger":-13,"Bow":-7},Bard:{"Bare hands":156,"Dagger":-13,"Bow":-8,"Musical instrument":-5},Dancer:{"Bare hands":156,"Dagger":-13,"Bow":-8,"Whip":-5},
