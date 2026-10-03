@@ -32,7 +32,3 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 - Size table and EXP tables: [official game guide](https://roz.mygnjoy.com/en/intro/guide/12)
 
 The numbers are estimates. Skill values and formulas follow the sources above and may differ from the live server after patches, so check against your own logs.
-
-## Hosting
-
-It's a single static file (`index.html`). To host it on GitHub Pages, go to Settings → Pages → Deploy from a branch → `main` / root.
