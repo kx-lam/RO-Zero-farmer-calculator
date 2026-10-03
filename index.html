@@ -27,8 +27,8 @@
     <label>Job<select id="pickJobSel" style="max-width:320px"></select></label>
   </section>
   <nav class="tabs" role="tablist" aria-label="Sections">
-    <button type="button" role="tab" data-tabbtn="track">Session</button>
     <button type="button" role="tab" data-tabbtn="char">Character</button>
+    <button type="button" role="tab" data-tabbtn="track">Session</button>
     <button type="button" role="tab" data-tabbtn="maps">Monsters &amp; maps</button>
     <button type="button" role="tab" data-tabbtn="data">Backup</button>
   </nav>
@@ -104,7 +104,7 @@
         <label>My attack element %<input id="myElPct" type="number" step="1" placeholder="0" title="Gear like +20% Fire magic damage, when your attack is that element"></label>
         <label>Ignore DEF / MDEF %<span class="bar"><input id="ignDef" type="number" step="1" placeholder="DEF" style="flex:1"><input id="ignMdef" type="number" step="1" placeholder="MDEF" style="flex:1"></span></label>
       </div>
-      <div class="note">Presets are the max-level skills from the <a href="https://rozerodb.com/tools/skill-tree" target="_blank" rel="noopener">rozerodb skill tree</a> (Ragnarok Zero), with your 1st-job skills included. Change any number to match your skill level. Mastery ATK is the flat bonus from passives (Sword/Spear/Axe Mastery, Iron Fists, Demon Bane…); melee/ranged % and skill % are gear lines like "+10% melee physical damage". ATK % from gear is already inside the ATK your status window shows. CRIT only counts for basic attacks (×2 with a katar). Cast: rozerodb gives one cast time, so set how much of it is fixed (renewal is usually 20%); the rest shrinks with DEX/INT. After-cast delay −% comes from gear like Kiel-D-01. Each use takes cast time, then the longest of your attack motion (ASPD) and the delay, which run at the same time (<a href="https://m.gamer.com.tw/forum/C.php?bsn=4212&amp;snA=438412" target="_blank" rel="noopener">Bahamut guide</a>). Damage % boxes are separate multipliers, so spreading bonuses across them beats stacking one.</div>
+      <div class="note">Presets are the max-level skills from the <a href="https://rozerodb.com/tools/skill-tree" target="_blank" rel="noopener">rozerodb skill tree</a> (Ragnarok Zero), with your 1st-job skills included. Change any number to match your skill level. Mastery ATK is the flat bonus from passives (Sword/Spear/Axe Mastery, Iron Fists, Demon Bane…); melee/ranged % and skill % are gear lines like "+10% melee physical damage". ATK % from gear is already inside the ATK your status window shows. CRIT only counts for basic attacks (×2 with a katar). Cast: rozerodb gives one cast time, so set how much of it is fixed (renewal is usually 20%); the rest shrinks with DEX/INT. After-cast delay −% comes from gear. Each use takes cast time, then the longest of your attack motion (ASPD) and the delay, which run at the same time. Damage % boxes are separate multipliers, so spreading bonuses across them beats stacking one.</div>
     </details>
     <details class="card" id="sagePanel" style="padding:12px 14px;gap:8px;background:var(--bg)" open>
       <summary><b>Sage options</b> <span class="note">used by the "Spell Fist (full Sage model)" attack</span></summary>
@@ -150,10 +150,16 @@
       <span id="itemInfo"></span>
     </div>
     <div class="bar note"><span>Taking damage:</span>
-      <label class="bar" style="flex-direction:row;gap:4px">monster swing every <input id="mobInterval" type="number" step="0.1" style="width:64px">s</label>
-      <label class="bar" style="flex-direction:row;gap:4px">× <input id="hitScale" type="number" step="0.01" min="0" style="width:70px"> of swings reach you</label>
       <label class="bar" style="flex-direction:row;gap:4px">HP back per minute <input id="hpRegen" type="number" style="width:80px"> <span class="muted">(regen, cards, heals)</span></label>
     </div>
+    <details class="note">
+      <summary>Advanced: monster attack timing</summary>
+      <div class="bar" style="margin-top:6px">
+        <label class="bar" style="flex-direction:row;gap:4px">monster swing every <input id="mobInterval" type="number" step="0.1" placeholder="1.5" style="width:64px">s</label>
+        <label class="bar" style="flex-direction:row;gap:4px">× <input id="hitScale" type="number" step="0.01" min="0" placeholder="0.3" style="width:70px"> of swings reach you</label>
+      </div>
+      <div style="margin-top:4px">Monster attack speed isn't in the database, so HP lost per minute assumes a swing every 1.5s with 0.3 of swings reaching you. Leave these alone unless your own HP loss doesn't match; clear a box to go back to the default.</div>
+    </details>
     <div class="calc" id="charTiles"></div>
   </section>
 

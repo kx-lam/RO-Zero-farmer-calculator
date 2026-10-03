@@ -592,7 +592,7 @@ STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c
 // character number/text fields
 const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","racePct","sizePct","elPct","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"];
 ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","racePct","sizePct","elPct","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>
-  $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?1:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
+  $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
 ["weapon","wElem","raceSel","sizeSel","elSel","nameType","raceType","sizeType","elType"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
   if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
   c[k]=e.target.value;save();renderAll()}));
@@ -704,15 +704,15 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   });
   apply();
 })();
-// ---- tabs: show one group of sections at a time; remembered in state.tab ----
+// ---- tabs: show one group of sections at a time; the last one opened is remembered in state.tab (Character first for new players) ----
 function showTab(t){
-  if(!document.querySelector(`[data-tabbtn="${t}"]`))t="track";
+  if(!document.querySelector(`[data-tabbtn="${t}"]`))t="char";
   document.querySelectorAll("[data-tab]").forEach(el=>el.hidden=el.dataset.tab!==t);
   document.querySelectorAll("[data-tabbtn]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tabbtn===t)));
   if(state.tab!==t){state.tab=t;save()}
 }
 document.querySelectorAll("[data-tabbtn]").forEach(b=>b.addEventListener("click",()=>{showTab(b.dataset.tabbtn);scrollTo({top:0})}));
-showTab(state.tab||"track");
+showTab(state.tab||"char");
 // ---- collapsible cards: click a heading (or Enter/Space on it) to fold the card; saved by heading text ----
 (function setupCollapse(){
   if(!state.collapsed)state.collapsed={};
