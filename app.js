@@ -456,36 +456,54 @@ function renderCompare(){
   $("cmpTable").querySelector("tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="name muted">Sessions with 2+ entries show up here.</td></tr>';
 }
 function renderGoal(s,st){
-  const tiles=$("goalTiles");$("goalChart").toggleAttribute("hidden",true);
+  const tiles=$("goalTiles");$("goalViz").hidden=true;
   if(!st||st.avgRaw<=0){tiles.innerHTML='<div class="note">Log 2+ entries with EXP going up to see goal estimates.</div>';$("goalNote").textContent="";return}
   const curLv=st.last.lv,goal=num(state.goalLv)||(curLv<70?70:curLv+1);
   if(goal<=curLv){tiles.innerHTML=`<div class="note">You're already Lv ${curLv}. Pick a higher level.</div>`;$("goalNote").textContent="";return}
   let need=lvExp(curLv)?lvExp(curLv)*(1-st.last.pct/100):null;for(let l=curLv+1;l<goal&&need!=null;l++)need=lvExp(l)?need+lvExp(l):null;
   if(need==null){tiles.innerHTML='<div class="note">The EXP table covers Lv 60 to 70, so pick a goal up to Lv 71.</div>';$("goalNote").textContent="";return}
-  const hrs=need/st.avgRaw;let perDay="";
-  if(state.goalDate){const end=new Date(state.goalDate+"T23:59:59");const days=Math.max(0,(end-Date.now())/864e5);perDay=days>0?`${(hrs/Math.ceil(days)).toFixed(1)}h a day|for ${Math.ceil(days)} day${Math.ceil(days)===1?"":"s"}`:"–|Deadline has passed"}
+  const hrs=need/st.avgRaw;
   $("goalNote").textContent=`at your ${pct(st.avgPct)}/hr average`;
   tiles.innerHTML=`<div class="tile"><div class="k">EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Lv ${curLv} ${st.last.pct.toFixed(2)}% to Lv ${goal}</div></div>
    <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(st.avgRaw)} EXP/hr</div></div>
-   <div class="tile ${perDay?"now":""}"><div class="k">Per day</div><div class="v mono">${perDay?perDay.split("|")[0]:"–"}</div><div class="s">${perDay?perDay.split("|")[1]:"Pick a date to spread it out"}</div></div>`;
+   <div class="tile now"><div class="k">Reach Lv ${goal}</div><div class="v mono">${new Date(Date.now()+hrs*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div><div class="s">farming non-stop from now</div></div>`;
   renderGoalChart(curLv,st.last.pct,goal,st.avgRaw);
 }
-// projected level over farming hours at the average rate: one straight run per level, flatter as levels need more EXP
+// projected level over farming hours at the average rate: one straight run per level, flatter as levels need more EXP.
+// Each level-up gets the date you would reach it farming non-stop from now.
+let GOAL_PTS=[];
 function renderGoalChart(lv,p,goal,rate){
-  const svg=$("goalChart");svg.toggleAttribute("hidden",false);const W=800,H=260,pl=52,pr=18,pt=24,pb=34;
-  const pts=[[0,lv+p/100]];let h=lvExp(lv)*(1-p/100)/rate;
-  for(let l=lv+1;l<=goal;l++){pts.push([h,l]);if(l<goal)h+=lvExp(l)/rate}
-  const hi=pts[pts.length-1][0]||1,ylo=lv;const X=x=>pl+x/hi*(W-pl-pr),Y=v=>pt+(goal-v)/(goal-ylo)*(H-pt-pb);
-  const dur=x=>fmtDur(x).split("\n")[0];let g="";
-  const ls=Math.max(1,Math.ceil((goal-ylo)/6));
+  $("goalViz").hidden=false;const svg=$("goalChart");const W=800,H=260,pl=52,pr=18,pt=24,pb=34;
+  const now=Date.now();
+  const dur=x=>fmtDur(x).split("\n")[0];
+  const at=x=>new Date(now+x*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  const pts=[{h:0,v:lv+p/100,lv}];let h=lvExp(lv)*(1-p/100)/rate,each=h;
+  for(let l=lv+1;l<=goal;l++){pts.push({h,v:l,lv:l,each});if(l<goal){each=lvExp(l)/rate;h+=each}}
+  const hi=pts[pts.length-1].h||1,ylo=lv;const X=x=>pl+x/hi*(W-pl-pr),Y=v=>pt+(goal-v)/(goal-ylo)*(H-pt-pb);
+  pts.forEach((q,i)=>{q.x=X(q.h);q.y=Y(q.v);q.eta=at(q.h);
+    q.tip=i?`<b>Lv ${q.lv}</b><br>${dur(q.each)} for this level · ${dur(q.h)} total<br>${q.eta} farming non-stop`:`<b>Now</b><br>Lv ${lv} ${p.toFixed(2)}%`});
+  let g="";const ls=Math.max(1,Math.ceil((goal-ylo)/6));
   for(let l=ylo;l<=goal;l+=ls)g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(l)}" y2="${Y(l)}" stroke="var(--grid)" stroke-dasharray="4 4"/><text x="${pl-8}" y="${Y(l)+4}" text-anchor="end">Lv ${l}</text>`;
   const xs=niceStep(hi/5);for(let i=0;i*xs<=hi+1e-9;i++){const x=i*xs;if(X(x)>W-pr-30&&x<hi)continue;g+=`<text x="${X(x)}" y="${H-10}" text-anchor="middle">${fmtP(+x.toFixed(2))}h</text>`}
-  const line=pts.map(([x,v])=>`${X(x)},${Y(v)}`).join(" ");
-  g+=`<polygon points="${X(0)},${H-pb} ${line} ${X(hi)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
-  if(pts.length<=30)pts.forEach(([x,v],i)=>{g+=`<circle cx="${X(x)}" cy="${Y(v)}" r="${i&&i<pts.length-1?4:5.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${i?`Lv ${v} after ${dur(x)} of farming`:`Now: Lv ${lv} ${p.toFixed(2)}%`}</title></circle>`});
+  const line=pts.map(q=>`${q.x},${q.y}`).join(" ");
+  g+=`<polygon points="${X(0)},${H-pb} ${line} ${X(hi)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><line id="goalHair" y1="${pt}" y2="${H-pb}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  if(pts.length<=30)pts.forEach((q,i)=>{g+=`<circle data-gi="${i}" cx="${q.x}" cy="${q.y}" r="${i&&i<pts.length-1?4:5.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`});
   g+=`<text x="${X(hi)-8}" y="${Y(goal)-10}" text-anchor="end" style="fill:var(--fg)">Lv ${goal} · ${dur(hi)}</text>`;
-  svg.innerHTML=g;
+  svg.innerHTML=g;GOAL_PTS=pts;
+  const t=$("goalTable");
+  t.tHead.innerHTML=`<tr><th>Level</th><th>Time for this level</th><th>Total farming</th><th>Reached, farming non-stop</th></tr>`;
+  t.tBodies[0].innerHTML=pts.slice(1).map(q=>`<tr><td class="name">Lv ${q.lv}</td><td>${dur(q.each)}</td><td>${dur(q.h)}</td><td>${q.eta}</td></tr>`).join("");
 }
+// hover the goal chart: snap to the nearest level-up and show its tooltip
+(function goalHover(){
+  const svg=$("goalChart"),tip=$("goalTip");
+  const hide=()=>{tip.hidden=true;const hr=$("goalHair");if(hr)hr.setAttribute("visibility","hidden")};
+  svg.addEventListener("pointermove",e=>{if(!GOAL_PTS.length)return;const r=svg.getBoundingClientRect(),k=r.width/800,px=(e.clientX-r.left)/k;
+    const q=GOAL_PTS.reduce((a,b)=>Math.abs(b.x-px)<Math.abs(a.x-px)?b:a);
+    const hr=$("goalHair");hr.setAttribute("x1",q.x);hr.setAttribute("x2",q.x);hr.setAttribute("visibility","visible");
+    tip.innerHTML=q.tip;tip.hidden=false;const w=tip.offsetWidth/2;tip.style.left=Math.min(Math.max(q.x*k,w),r.width-w)+"px";tip.style.top=q.y*k+"px"});
+  svg.addEventListener("pointerleave",hide);
+})();
 
 // ---- render: monsters ----
 const calcMob=()=>MOBS.find(m=>m.id===(state.calcMobId||cur().mobIds[0]));
@@ -689,9 +707,8 @@ $("mapInput").addEventListener("change",e=>{state.map=e.target.value.trim().toLo
 $("mapFromMob").addEventListener("click",()=>{state.map="";save();renderMap()});
 $("mapTable").querySelector("tbody").addEventListener("click",e=>{const sm=e.target.closest("[data-sessmob]");if(sm){toggleSessMob(+sm.dataset.sessmob);save();renderAll();return}const sk=e.target.closest("[data-skip]");if(sk){const id=+sk.dataset.skip;if(!state.skipMobs)state.skipMobs=[];state.skipMobs=state.skipMobs.includes(id)?state.skipMobs.filter(x=>x!==id):[...state.skipMobs,id];save();renderAll();return}const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
 // goal
-$("goalLv").value=state.goalLv||"";$("goalDate").value=state.goalDate||"";$("walkOverride").value=state.walkOverride||"";
+$("goalLv").value=state.goalLv||"";$("walkOverride").value=state.walkOverride||"";
 $("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;save();renderTracker()});
-$("goalDate").addEventListener("change",e=>{state.goalDate=e.target.value;save();renderTracker()});
 $("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
 // backup
 const bkText=()=>JSON.stringify(state);

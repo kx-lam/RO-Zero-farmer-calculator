@@ -79,6 +79,10 @@ a{color:var(--accent)}
 td .map{cursor:default}
 .calc .v{font-size:1.25rem}
 .note{font-size:12px;color:var(--muted)}
+.chartWrap{position:relative;display:flex;flex-direction:column;gap:12px}
+.tip{position:absolute;z-index:2;pointer-events:none;transform:translate(-50%,calc(-100% - 12px));background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.45;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.14)}
+.tip b{font-family:var(--display);font-weight:600}
+#goalTable tbody tr{cursor:default}
 .example{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
 @media (max-width:680px){.row2{grid-template-columns:1fr}.calc,.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile .v{font-size:1.4rem}}
 /* tabs: one view at a time instead of one very long page */
