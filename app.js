@@ -456,9 +456,9 @@ function renderCompare(){
   $("cmpTable").querySelector("tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="name muted">Sessions with 2+ entries show up here.</td></tr>';
 }
 function renderGoal(s,st){
-  const tiles=$("goalTiles");
+  const tiles=$("goalTiles");$("goalChart").toggleAttribute("hidden",true);
   if(!st||st.avgRaw<=0){tiles.innerHTML='<div class="note">Log 2+ entries with EXP going up to see goal estimates.</div>';$("goalNote").textContent="";return}
-  const curLv=st.last.lv,goal=num(state.goalLv)||curLv+1;
+  const curLv=st.last.lv,goal=num(state.goalLv)||(curLv<70?70:curLv+1);
   if(goal<=curLv){tiles.innerHTML=`<div class="note">You're already Lv ${curLv}. Pick a higher level.</div>`;$("goalNote").textContent="";return}
   let need=lvExp(curLv)?lvExp(curLv)*(1-st.last.pct/100):null;for(let l=curLv+1;l<goal&&need!=null;l++)need=lvExp(l)?need+lvExp(l):null;
   if(need==null){tiles.innerHTML='<div class="note">The EXP table covers Lv 60 to 70, so pick a goal up to Lv 71.</div>';$("goalNote").textContent="";return}
@@ -468,6 +468,23 @@ function renderGoal(s,st){
   tiles.innerHTML=`<div class="tile"><div class="k">EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Lv ${curLv} ${st.last.pct.toFixed(2)}% to Lv ${goal}</div></div>
    <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(st.avgRaw)} EXP/hr</div></div>
    <div class="tile ${perDay?"now":""}"><div class="k">Per day</div><div class="v mono">${perDay?perDay.split("|")[0]:"–"}</div><div class="s">${perDay?perDay.split("|")[1]:"Pick a date to spread it out"}</div></div>`;
+  renderGoalChart(curLv,st.last.pct,goal,st.avgRaw);
+}
+// projected level over farming hours at the average rate: one straight run per level, flatter as levels need more EXP
+function renderGoalChart(lv,p,goal,rate){
+  const svg=$("goalChart");svg.toggleAttribute("hidden",false);const W=800,H=260,pl=52,pr=18,pt=24,pb=34;
+  const pts=[[0,lv+p/100]];let h=lvExp(lv)*(1-p/100)/rate;
+  for(let l=lv+1;l<=goal;l++){pts.push([h,l]);if(l<goal)h+=lvExp(l)/rate}
+  const hi=pts[pts.length-1][0]||1,ylo=lv;const X=x=>pl+x/hi*(W-pl-pr),Y=v=>pt+(goal-v)/(goal-ylo)*(H-pt-pb);
+  const dur=x=>fmtDur(x).split("\n")[0];let g="";
+  const ls=Math.max(1,Math.ceil((goal-ylo)/6));
+  for(let l=ylo;l<=goal;l+=ls)g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(l)}" y2="${Y(l)}" stroke="var(--grid)" stroke-dasharray="4 4"/><text x="${pl-8}" y="${Y(l)+4}" text-anchor="end">Lv ${l}</text>`;
+  const xs=niceStep(hi/5);for(let i=0;i*xs<=hi+1e-9;i++){const x=i*xs;if(X(x)>W-pr-30&&x<hi)continue;g+=`<text x="${X(x)}" y="${H-10}" text-anchor="middle">${fmtP(+x.toFixed(2))}h</text>`}
+  const line=pts.map(([x,v])=>`${X(x)},${Y(v)}`).join(" ");
+  g+=`<polygon points="${X(0)},${H-pb} ${line} ${X(hi)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  if(pts.length<=30)pts.forEach(([x,v],i)=>{g+=`<circle cx="${X(x)}" cy="${Y(v)}" r="${i&&i<pts.length-1?4:5.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${i?`Lv ${v} after ${dur(x)} of farming`:`Now: Lv ${lv} ${p.toFixed(2)}%`}</title></circle>`});
+  g+=`<text x="${X(hi)-8}" y="${Y(goal)-10}" text-anchor="end" style="fill:var(--fg)">Lv ${goal} · ${dur(hi)}</text>`;
+  svg.innerHTML=g;
 }
 
 // ---- render: monsters ----
