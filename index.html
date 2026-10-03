@@ -95,6 +95,8 @@ td .map{cursor:default}
   <header class="bar">
     <div class="grow"><h1 id="title">Rozero farm planner</h1><div class="note" id="subtitle"></div></div>
     <select id="sessionSel" aria-label="Session"></select>
+    <input id="sessName" aria-label="Session name" hidden style="min-width:220px">
+    <button id="renameSession">Rename</button>
     <button id="newSession">New session</button>
     <button id="delSession" class="danger">Delete</button>
   </header>
@@ -954,6 +956,11 @@ $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel")
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
 const openSession=id=>{state.current=id;state.calcMobId=null;const s=cur();if(s.job&&JOBS[s.job]&&s.job!==state.job){state.job=s.job;syncChar()}save();renderAll();resetForm()};
 $("sessionSel").addEventListener("change",e=>openSession(e.target.value));
+// rename: swap the session picker for a text box; Enter or leaving the box saves, Esc cancels
+const endRename=keep=>{const i=$("sessName");if(i.hidden)return;if(keep){const v=i.value.trim();if(v){cur().name=v;save()}}i.hidden=true;$("sessionSel").hidden=false;$("renameSession").textContent="Rename";renderAll()};
+$("renameSession").addEventListener("click",()=>{const i=$("sessName");if(!i.hidden){endRename(true);return}i.value=cur().name;i.hidden=false;$("sessionSel").hidden=true;$("renameSession").textContent="Save";i.focus();i.select()});
+$("sessName").addEventListener("keydown",e=>{if(e.key==="Enter")endRename(true);else if(e.key==="Escape")endRename(false)});
+$("sessName").addEventListener("blur",()=>setTimeout(()=>endRename(true),150));
 $("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",job:state.job,mobId:null,entries:[]});openSession(id);$("mobInput").focus()});
 let delArmed=false;
 $("delSession").addEventListener("click",()=>{if(!delArmed){delArmed=true;$("delSession").textContent="Confirm delete";setTimeout(()=>{delArmed=false;$("delSession").textContent="Delete"},3000);return}
