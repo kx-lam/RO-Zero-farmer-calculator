@@ -453,6 +453,13 @@ const JOBS={
  "Rogue":{w:"Dagger",p:[A2("Back Stab Lv10","phys",700,2,"W",12,1,"Hits twice with a dagger, half damage with a bow",Z(0,0,0.7,0.3)),A2("Triangle Shot Lv10","phys",2300,1,"W",20,1,"Bow, costs 3 arrows. (2300 + 3×AGI)% × base level / 100",Z(0.2,0.8,0,0.2,{blv:true,sadd:[["agi",3]]})),
    A2("Sightless Mind Lv5","phys",850,1,"W",15,3,"From Hiding, 7x7. +3×AGI% +DEX/2%",Z(0,0,0.7,0.3,{sadd:[["agi",3],["dex",0.5]]})),A2("Double Strafe Lv10","phys",190,2,"W",12,1,"Bow",Z(0,0,0,0.1)),...THIEF]}
 };
+// Rogue Plagiarism: one copied skill at Lv10, appended so saved preset indexes stay put. Only skills with no weapon a Rogue can't hold
+// (no katar/spear/instrument/whip/axe/shield); magic copies use your MATK
+(function plagiarism(){const all=Object.values(JOBS).flatMap(j=>j.p);const fix={"Bowling Bash Lv10":"Hits 3–5 times; +STR% per hit"};
+  ["Bowling Bash Lv10","Bash Lv10","Magnum Break Lv10","Holy Cross Lv10","Mammonite Lv10","Arrow Shower Lv10","Holy Light",
+   "Fire Bolt Lv10","Cold Bolt Lv10","Lightning Bolt Lv10","Earth Spike Lv5","Soul Strike Lv10","Fire Ball Lv10","Frost Driver Lv10","Napalm Beat Lv10","Thunder Storm Lv10",
+   "Jupitel Thunder Lv10","Heaven's Drive Lv5","Storm Gust Lv10","Lord of Vermilion Lv10","Meteor Storm Lv10"].forEach(n=>{const s=all.find(x=>x.name===n);
+    if(s)JOBS.Rogue.p.push({...s,name:"Copied: "+s.name,note:"Plagiarism copy"+((fix[n]??s.note)?". "+(fix[n]??s.note):"")})})})();
 const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="magic";
   const c={baseLv:60,atkTxt:mag?"60+50":"120+200",matkTxt:mag?"100+200":"40+30",hitTxt:"300",fleeTxt:"250",aspd:170,defTxt:"40+60",maxHp:6000,maxSp:600,intTxt:mag?"60+10":"10",spRegen:0,weapon:J.w,wElem:"Neutral",
     preset:0,a:{...J.p[0]},dmgBonus:0,raceSel:"",racePct:0,sizeSel:"",sizePct:0,elSel:"",elPct:0,autoSp:false,itemSp:37,itemPrice:200,potOn:false,potAspd:3,potPrice:2200,potMin:30,mobInterval:1.5,hitScale:0.3,hpRegen:0};
