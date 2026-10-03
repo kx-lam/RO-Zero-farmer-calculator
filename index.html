@@ -290,7 +290,7 @@ td .map{cursor:default}
     <div class="scroll"><table id="mobTable"><thead><tr>
       <th data-k="name">Monster</th><th data-k="lv">Lv</th><th data-k="el">Element</th><th data-k="size">Size</th><th data-k="race">Race</th><th data-k="hp">HP</th><th data-k="exp">Base EXP</th><th data-k="ratio" title="Base EXP per HP: how much EXP each point of damage earns">EXP / HP</th><th data-k="mult">Your hit %</th><th data-k="hitc">Hit chance</th><th data-k="uses">Uses / kill</th><th data-k="sec">Sec / kill</th><th data-k="epm">EXP / min</th><th data-k="dodge">Dodge %</th><th data-k="hpm">HP lost / min</th><th data-k="zk">Zeny / kill</th><th data-k="topN">Best map</th><th></th>
     </tr><tr class="filters"><td><input data-f="name" placeholder="name"></td><td><input data-f="lv" placeholder="50-90"></td><td><input data-f="el" placeholder="fire"></td><td><input data-f="size" placeholder="L"></td><td><input data-f="race" placeholder="undead"></td><td><input data-f="hp" placeholder="<20000"></td><td><input data-f="exp" placeholder=">5000"></td><td><input data-f="ratio" placeholder=">1"></td><td><input data-f="mult" placeholder=">100"></td><td><input data-f="hitc" placeholder=">90"></td><td><input data-f="uses" placeholder="<=3"></td><td><input data-f="sec" placeholder="<5"></td><td><input data-f="epm" placeholder=""></td><td><input data-f="dodge" placeholder=">50"></td><td><input data-f="hpm" placeholder="<500"></td><td><input data-f="zk" placeholder=">20"></td><td><input data-f="topN" placeholder="map"></td><td><button type="button" class="small" id="clearF">Clear</button></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Click a row to see it in the tiles; "Farming this now" links it to the session. Filters take &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, and "or" to combine. Your hit % = damage % per hit after element, size, MDEF/DEF and your bonuses. EXP / min counts fight time plus walking (learned from your log). Monster data from rozerodb.com.</div>
+    <div class="note">Click a row to see it in the tiles; "Farming this now" links it to the session, and "Also killing" (or "+ Session" in the map planner) adds more, like aggressive monsters that attack you. A session's monsters are weighted by their spawn counts on its map. Filters take &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, and "or" to combine. Your hit % = damage % per hit after element, size, MDEF/DEF and your bonuses. EXP / min counts fight time plus walking (learned from your log). Monster data from rozerodb.com.</div>
   </section>
 
   <section class="card" id="bestCard">
@@ -300,7 +300,7 @@ td .map{cursor:default}
       <label>Show<select id="bestN"><option>10</option><option>20</option><option>50</option></select></label>
     </div>
     <div class="scroll"><table id="bestTable"><thead><tr><th>#</th><th data-bk="mp">Map</th><th>Main monsters</th><th data-bk="epm">EXP / min</th><th data-bk="secT">Sec / kill (fight + walk)</th><th data-bk="epk">EXP / kill</th><th data-bk="zph">Zeny / hr</th><th data-bk="hpm">HP lost / min</th><th data-bk="skip">Can't hurt</th><th data-bk="N">Monsters</th><th data-bk="epm">Projected</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Ranks open maps by EXP per minute with your current attack, weighted by spawn counts. "Can't hurt" lists monsters your attack element does 0% to (skipped). Projected scales your current session's %/hr by EXP / min against your current map. Click a row to open it in the map planner.</div>
+    <div class="note">Ranks open maps by EXP per minute with your current attack, weighted by spawn counts. "Can't hurt" lists monsters your attack element does 0% to (skipped). Projected scales your current session's %/hr by each map's EXP / min against the EXP / min of just your session's monsters (spawn-weighted) on its map. Click a row to open it in the map planner.</div>
     <div class="maps" id="regions"></div>
     <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_d03, yun_f02"></label>
   </section>
@@ -489,7 +489,9 @@ const ROOTQ=sel=>[...document.querySelectorAll(sel)];
 const KEY="rozero-farm-planner-v1";
 const store={get(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}},set(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}};
 let state=store.get()||{};
-if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",job:"Knight",mobId:null,entries:[]}];
+if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",job:"Knight",mobIds:[],entries:[]}];
+// sessions hold a list of monsters (one map, plus the aggressive ones you end up killing); older saves had a single mobId
+state.sessions.forEach(s=>{if(!Array.isArray(s.mobIds))s.mobIds=s.mobId!=null?[s.mobId]:[];delete s.mobId});
 if(!JOBS[state.job])state.job="Knight";
 if(!state.chars)state.chars={};
 if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
@@ -689,10 +691,17 @@ function stats(s){
     fullH:avgRaw>0?L/avgRaw:Infinity,nextH:avgRaw>0?L*(1-last.pct/100)/avgRaw:Infinity};
 }
 // pace and walking only make sense for sessions of the job you have selected (fight time uses its attack)
+// a session's monsters are weighted by their spawn counts on the session's map: the open map where most of them spawn (ties: more spawns)
+const sessMobs=s=>s.mobIds.map(id=>MOBS.find(m=>m.id===id)).filter(Boolean);
+const sessMap=s=>{const k={},tot={};sessMobs(s).forEach(m=>openMaps(m).forEach(([mp,n])=>{k[mp]=(k[mp]||0)+1;tot[mp]=(tot[mp]||0)+n}));
+  let best=null;for(const mp in k)if(best==null||k[mp]>k[best]||(k[mp]===k[best]&&tot[mp]>tot[best]))best=mp;return best};
+const spawnOn=(m,mp)=>((SPAWN[m.id]||[]).find(x=>x[0]===mp)||[])[1]||1;
+function sessMix(s){const mp=sessMap(s);const list=sessMobs(s).map(m=>({m,w:spawnOn(m,mp)}));const W=list.reduce((a,x)=>a+x.w,0);if(!W)return null;
+  const avg=f=>list.reduce((a,x)=>a+x.w*f(x.m),0)/W;return {list,W,mp,avg}}
 function sessionPace(s){
-  const st=stats(s);const mob=MOBS.find(m=>m.id===s.mobId);if(!st||!mob||st.avgRaw<=0)return null;
-  const kph=st.avgRaw/(mob.exp*expMul(s));const obs=3600/kph;const same=(s.job||state.job)===state.job;const fight=same?bestFight(mob):NaN;
-  return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,mob,st};
+  const st=stats(s);const mix=sessMix(s);if(!st||!mix||st.avgRaw<=0)return null;
+  const kph=st.avgRaw/(mix.avg(m=>m.exp)*expMul(s));const obs=3600/kph;const same=(s.job||state.job)===state.job;const fight=same?mix.avg(bestFight):NaN;
+  return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,zk:mix.avg(zenyKill),mix,st};
 }
 const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
   const ps=state.sessions.filter(s=>(s.job||state.job)===state.job).map(sessionPace).filter(p=>p&&p.walk!=null);
@@ -723,7 +732,11 @@ function mapStats0(mp,w){
 function mobRow(m,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mobRow0(m,w));r.el2=el;if(!best||r.epm>best.epm)best=r});return best}
 function mapStats(mp,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mapStats0(mp,w));if(r){r.el2=el;if(!best||r.epm>best.epm)best=r}});return best}
 const bestFight=m=>{const r=mobRow(m,0);return withEl(r.el2,()=>fightSec(m))};
-const currentMap=()=>{const m=MOBS.find(x=>x.id===cur().mobId);return m?(openMaps(m)[0]||[])[0]||null:null};
+const currentMap=()=>sessMap(cur());
+// EXP/min for just the session's monsters (spawn-weighted, fight + walk), best converter like mapStats; the baseline for "Projected"
+function sessEpm(s,w){const mix=sessMix(s);if(!mix)return null;let best=null;
+  elOptions().forEach(el=>{const v=withEl(el,()=>{let e=0,t=0;mix.list.forEach(({m,w:c})=>{const r=mobRow0(m,w);if(!isFinite(r.sec))return;e+=c*r.epk;t+=c*r.tot});return t>0?e/t*60:0});if(best==null||v>best)best=v});
+  return best||null}
 
 // ---- render: character ----
 const syncChar=()=>{
@@ -761,8 +774,8 @@ function renderTracker(){
   if(document.activeElement!==$("partyN"))$("partyN").value=partyN(s);if(document.activeElement!==$("partyBonus"))$("partyBonus").value=partyBonus(s);
   $("partyNote").textContent=partyN(s)>1?`Each kill gives you ${Math.round(expMul(s)/(1+num(state.bonus)/100)*100)}% of its EXP (party of ${partyN(s)}). Even Share only works within 15 base levels.`:"";
   $("title").textContent=`${s.name} · ${s.job||state.job}`;
-  const mob=MOBS.find(m=>m.id===s.mobId);
-  $("subtitle").innerHTML=mob?`Farming ${esc(mob.name)} · Lv ${mob.lv} · ${mob.el?`<span class="el ${mob.el}">${mob.el} ${mob.elv}</span> · `:""}${mob.size||""} ${mob.race||""} · ${fmtN(mob.exp)} base EXP · <a href="${dbUrl(mob)}" target="_blank" rel="noopener">rozerodb ↗</a>`:"Pick a monster below and press \"Farming this now\"";
+  const ms=sessMobs(s),mob=ms.length===1?ms[0]:null;
+  $("subtitle").innerHTML=ms.length>1?`Farming ${ms.map(m=>esc(m.name)).join(", ")}${sessMap(s)?` on ${sessMap(s)}`:""} · weighted by spawn counts`:mob?`Farming ${esc(mob.name)} · Lv ${mob.lv} · ${mob.el?`<span class="el ${mob.el}">${mob.el} ${mob.elv}</span> · `:""}${mob.size||""} ${mob.race||""} · ${fmtN(mob.exp)} base EXP · <a href="${dbUrl(mob)}" target="_blank" rel="noopener">rozerodb ↗</a>`:"Pick a monster below and press \"Farming this now\"";
   const lastE=[...s.entries].sort((a,b)=>a.t-b.t).pop();
   if(lastE){$("tCurLv").textContent=`Lv ${lastE.lv}`;$("tCurLvS").textContent=lvExp(lastE.lv)?`${fmtN(lvExp(lastE.lv))} EXP to level`:"Lv outside EXP table";
     $("tCurPct").textContent=pct(lastE.pct);$("tCurPctS").textContent=`logged ${fmtT(lastE.t)}`}
@@ -777,7 +790,7 @@ function renderTracker(){
   const p=sessionPace(s);
   if(p){$("tPace").textContent=`${fmtN(p.kph)}/hr`;$("tPaceS").textContent=`${p.obs.toFixed(1)}s per kill`+(isFinite(p.fight)?(p.obs<p.fight?` · faster than the model's ${p.fight.toFixed(1)}s fight, so check your ATK/MATK`:` · ~${p.fight.toFixed(1)}s fighting + ~${p.walk.toFixed(1)}s walking`):"")}
   else{$("tPace").textContent="–";$("tPaceS").textContent="Needs a monster and 2+ entries"}
-  if(p){const zk=zenyKill(p.mob),gross=p.kph*zk,cost=itemsPerSec()*3600*num(C().itemPrice)+potCostHr();$("tZeny").textContent=fmtN(gross-cost);$("tZenyS").textContent=`${fmtN(gross)} z loot`+(cost>0?` − ${fmtN(cost)} z items & potions`:"")+` · ${fmtN(zk)} z/kill`}
+  if(p){const zk=p.zk,gross=p.kph*zk,cost=itemsPerSec()*3600*num(C().itemPrice)+potCostHr();$("tZeny").textContent=fmtN(gross-cost);$("tZenyS").textContent=`${fmtN(gross)} z loot`+(cost>0?` − ${fmtN(cost)} z items & potions`:"")+` · ${fmtN(zk)} z/kill`}
   else{$("tZeny").textContent="–";$("tZenyS").textContent="Needs a monster and 2+ entries"}
   const j=jobRate(s);
   if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
@@ -809,8 +822,8 @@ function renderLog(s){
   $("setupNote").textContent=s.job&&s.job!==state.job?`This session was logged as ${s.job}. Switch Job to ${s.job} to see its pace and walking time.`:"";
 }
 function renderCompare(){
-  const rows=state.sessions.map(s=>{const st=stats(s);if(!st)return null;const mob=MOBS.find(m=>m.id===s.mobId);const kph=mob&&st.avgRaw>0?st.avgRaw/(mob.exp*expMul(s)):null;
-    return `<tr data-sid="${s.id}" class="${s.id===state.current?"sel":""}"><td class="name">${esc(s.name)}</td><td class="name">${esc(s.job||"–")}</td><td class="name">${mob?esc(mob.name):"–"}</td><td>${new Date(st.es[0].t).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} ${fmtT(st.es[0].t)}</td><td>${st.spanMin} min</td><td><b>${pct(st.avgPct)}</b></td><td>${fmtN(st.avgRaw/60)}</td><td>${kph?fmtN(kph):"–"}</td><td>${kph?(3600/kph).toFixed(1)+"s":"–"}</td></tr>`}).filter(Boolean);
+  const rows=state.sessions.map(s=>{const st=stats(s);if(!st)return null;const ms=sessMobs(s),mix=sessMix(s);const kph=mix&&st.avgRaw>0?st.avgRaw/(mix.avg(m=>m.exp)*expMul(s)):null;
+    return `<tr data-sid="${s.id}" class="${s.id===state.current?"sel":""}"><td class="name">${esc(s.name)}</td><td class="name">${esc(s.job||"–")}</td><td class="name">${ms.length?ms.map(m=>esc(m.name)).join(", "):"–"}</td><td>${new Date(st.es[0].t).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} ${fmtT(st.es[0].t)}</td><td>${st.spanMin} min</td><td><b>${pct(st.avgPct)}</b></td><td>${fmtN(st.avgRaw/60)}</td><td>${kph?fmtN(kph):"–"}</td><td>${kph?(3600/kph).toFixed(1)+"s":"–"}</td></tr>`}).filter(Boolean);
   $("cmpTable").querySelector("tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="name muted">Sessions with 2+ entries show up here.</td></tr>';
 }
 function renderGoal(s,st){
@@ -829,7 +842,7 @@ function renderGoal(s,st){
 }
 
 // ---- render: monsters ----
-const calcMob=()=>MOBS.find(m=>m.id===(state.calcMobId||cur().mobId));
+const calcMob=()=>MOBS.find(m=>m.id===(state.calcMobId||cur().mobIds[0]));
 const colText=(m,k)=>k==="name"?m.name:k==="el"?(m.el||"")+" "+(m.elv||""):k==="size"?({S:"small S",M:"medium M",L:"large L"}[m.size]||""):k==="race"?(m.race||""):k==="topN"?m.om.map(x=>x[0]).join(" "):null;
 const colNum=(m,k)=>{if(["name","el","size","race"].includes(k))return null;if(k==="dodge")return m.dodge;if(k==="hpm")return m.hpm;if(k==="zk")return m.loot==null?null:m.zk;const v=m[k];return typeof v==="number"&&!isFinite(v)?null:v};
 function matchF(expr,n,text){
@@ -867,22 +880,23 @@ function renderMobTiles(){
    <div class="tile"><div class="k">Per kill</div><div class="v mono">${isFinite(r.uses)?r.uses.toFixed(1):"–"} uses</div><div class="s">${fmtN(withEl(r.el2,()=>dmgPerHit(m)))} per hit · ${Math.round(r.hitc)}% land · ${fmtN(num(C().a.sp)*r.uses/targets())} SP</div></div>
    <div class="tile"><div class="k">Defence</div><div class="v mono">${r.hpm==null?"–":fmtN(r.hpm)}</div><div class="s">HP lost/min · you dodge ${r.dodge??"–"}% · DEF ${m.def??"–"} · MDEF ${m.mdef??"–"}</div></div>
    <div class="tile"><div class="k">Maps</div><div class="v mono">${om.length?om[0][0]:"–"}</div><div class="s">${om.length?om.slice(0,4).map(x=>`${x[0]} ≈${x[1]}`).join(" · "):"none open"} · <a href="${dbUrl(m)}" target="_blank" rel="noopener">rozerodb ↗</a></div></div>
-   <div class="bar" style="grid-column:1/-1">${s.mobId===m.id?'<span class="pill up">This session\'s monster</span>':`<button type="button" class="primary" id="useMobBtn">Farming ${esc(m.name)} now</button>`}</div>`;
-  const b=$("useMobBtn");if(b)b.addEventListener("click",()=>{s.mobId=m.id;s.job=state.job;if(s.name==="New session")s.name=m.name;state.calcMobId=null;save();renderAll()});
+   <div class="bar" style="grid-column:1/-1">${s.mobIds.includes(m.id)?'<span class="pill up">In this session</span> <button type="button" class="small" id="dropMobBtn">Remove from session</button>':`<button type="button" class="primary" id="useMobBtn">${s.mobIds.length?`Also killing ${esc(m.name)}`:`Farming ${esc(m.name)} now`}</button>`}</div>`;
+  const b=$("useMobBtn");if(b)b.addEventListener("click",()=>{toggleSessMob(m.id);state.calcMobId=null;save();renderAll()});
+  const d=$("dropMobBtn");if(d)d.addEventListener("click",()=>{toggleSessMob(m.id);save();renderAll()});
 }
 function renderBest(){
   const min=num($("bestMin").value),lim=num($("bestN").value,10);const w=walkSec();const s=cur(),st=stats(s);const curMap=currentMap();
-  const curR=curMap?mapStats(curMap,w):null;
+  const curEpm=curMap?sessEpm(s,w):null;
   const rows=Object.keys(MAPMOBS).filter(mp=>!isClosed(mp)).map(mp=>mapStats(mp,w)).filter(r=>r&&r.N>=min);
   rows.sort((a,b)=>b.epm-a.epm);rows.forEach((r,i)=>r.rank=i+1);rows.splice(lim);
   const bk=state.bestSort||"epm",bd=state.bestDir||-1;const val=r=>r[bk];
   rows.sort((a,b)=>{const x=val(a),y=val(b);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*bd});
   document.querySelectorAll("#bestTable th").forEach(th=>th.classList.toggle("on",th.dataset.bk===bk&&th.textContent!=="Projected"));
-  $("bestBasis").textContent=`${state.job} · ${C().a.name||"attack"} · ${convOn()?"best converter per map":atkEl()} · walking ~${w.toFixed(1)}s/kill`+(curR&&st?` · compared with ${curMap} at ${pct(st.avgPct)}/hr`:"");
+  $("bestBasis").textContent=`${state.job} · ${C().a.name||"attack"} · ${convOn()?"best converter per map":atkEl()} · walking ~${w.toFixed(1)}s/kill`+(curEpm&&st?` · compared with your session on ${curMap} at ${pct(st.avgPct)}/hr`:"");
   const sameJob=(s.job||state.job)===state.job;
   $("bestTable").querySelector("tbody").innerHTML=rows.map(r=>{
     const main=MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>`<div>${esc(x.m.name)} <span class="note">×${x.n}</span></div>`).join("");
-    const proj=st&&sameJob&&curR&&curR.epm?st.avgPct*r.epm/curR.epm:null;
+    const proj=st&&sameJob&&curEpm?st.avgPct*r.epm/curEpm:null;
     return `<tr data-map="${r.mp}" class="${r.mp===curMap?"sel":""}"><td>${r.rank}</td><td class="name"><b class="mono">${r.mp}</b>${r.mp===curMap?' <span class="pill">current</span>':""}${elTag(r.el2)}</td><td class="name mainmobs">${main}</td><td><b>${fmtN(r.epm)}</b></td><td>${r.sec.toFixed(1)}s + ${r.walk.toFixed(1)}s</td><td>${fmtN(r.epk)}</td><td>${fmtN(r.zph)}</td><td>${r.hpm==null?"–":fmtN(r.hpm)}</td><td>${r.skip?`<span class="pill down" title="${esc(r.skipNames.join(", "))}">${r.skip}</span>`:"–"}</td><td>≈${r.N}</td><td>${proj==null?"–":"~"+proj.toFixed(1)+"%/hr"}</td></tr>`}).join("")
     ||'<tr><td colspan="11" class="name muted">No open maps match.</td></tr>';
 }
@@ -901,7 +915,7 @@ function renderMap(){
    :'<div class="note bad">Your attack can\'t hurt anything here.</div>';
   const tot=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).reduce((a,x)=>a+x.n,0)||1;
   $("mapTable").querySelector("tbody").innerHTML=MAPMOBS[mp].slice().sort((a,b)=>b.n-a.n).map(({m,n})=>{const x=r&&r.el2?withEl(r.el2,()=>mobRow0(m,w)):mobRow(m,w);
-    return `<tr data-id="${m.id}" class="${m.id===cur().mobId?"sel":""}" style="${isSkipped(m)?"opacity:.55":""}"><td class="name">${esc(m.name)}${m.boss?' <span class="pill">boss</span>':` <button type="button" class="small" data-skip="${m.id}">${isSkipped(m)?"Unskip":"Skip"}</button>`}</td><td>≈${n}</td><td>${m.boss?"–":isSkipped(m)?"skipped":Math.round(n/tot*100)+"%"}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${m.size||"–"}</td><td class="${x.mult>100?"good":x.mult<=0?"bad":""}">${x.mult<=0?"can't hurt":Math.round(x.mult)+"%"}</td><td>${isFinite(x.sec)?x.sec.toFixed(1)+"s":"–"}</td><td>${fmtN(m.exp)}</td></tr>`}).join("");
+    return `<tr data-id="${m.id}" class="${cur().mobIds.includes(m.id)?"sel":""}" style="${isSkipped(m)?"opacity:.55":""}"><td class="name">${esc(m.name)} <button type="button" class="small" data-sessmob="${m.id}">${cur().mobIds.includes(m.id)?"− Session":"+ Session"}</button>${m.boss?' <span class="pill">boss</span>':` <button type="button" class="small" data-skip="${m.id}">${isSkipped(m)?"Unskip":"Skip"}</button>`}</td><td>≈${n}</td><td>${m.boss?"–":isSkipped(m)?"skipped":Math.round(n/tot*100)+"%"}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${m.size||"–"}</td><td class="${x.mult>100?"good":x.mult<=0?"bad":""}">${x.mult<=0?"can't hurt":Math.round(x.mult)+"%"}</td><td>${isFinite(x.sec)?x.sec.toFixed(1)+"s":"–"}</td><td>${fmtN(m.exp)}</td></tr>`}).join("");
 }
 function renderAll(){applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();renderMap()}
 
@@ -990,14 +1004,17 @@ const endRename=keep=>{const i=$("sessName");if(i.hidden)return;if(keep){const v
 $("renameSession").addEventListener("click",()=>{const i=$("sessName");if(!i.hidden){endRename(true);return}renameId=cur().id;i.value=cur().name;i.hidden=false;$("sessionSel").hidden=true;$("renameSession").textContent="Save";i.focus();i.select()});
 $("sessName").addEventListener("keydown",e=>{if(e.key==="Enter")endRename(true);else if(e.key==="Escape")endRename(false)});
 $("sessName").addEventListener("blur",()=>setTimeout(()=>endRename(true),150));
-$("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",job:state.job,mobId:null,entries:[]});openSession(id);$("mobInput").focus()});
+$("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",job:state.job,mobIds:[],entries:[]});openSession(id);$("mobInput").focus()});
 let delArmed=false;
 $("delSession").addEventListener("click",()=>{if(!delArmed){delArmed=true;$("delSession").textContent="Confirm delete";setTimeout(()=>{delArmed=false;$("delSession").textContent="Delete"},3000);return}
   delArmed=false;$("delSession").textContent="Delete";state.sessions=state.sessions.filter(s=>s.id!==state.current);
-  if(!state.sessions.length)state.sessions.push({id:"s"+Date.now(),name:"New session",job:state.job,mobId:null,entries:[]});openSession(state.sessions[0].id)});
+  if(!state.sessions.length)state.sessions.push({id:"s"+Date.now(),name:"New session",job:state.job,mobIds:[],entries:[]});openSession(state.sessions[0].id)});
 $("cmpTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.target.closest("tr[data-sid]");if(!tr)return;openSession(tr.dataset.sid);window.scrollTo({top:0,behavior:"smooth"})});
 // monsters
-const pickMob=m=>{if(!m)return;state.calcMobId=m.id;const s=cur();if(!s.mobId){s.mobId=m.id;s.job=state.job;if(s.name==="New session")s.name=m.name}save();renderAll()};
+// add or remove a monster from the current session; the first one names a fresh session and sets its job
+const toggleSessMob=id=>{const s=cur();const i=s.mobIds.indexOf(id);if(i>=0){s.mobIds.splice(i,1);return}
+  s.mobIds.push(id);s.job=state.job;const m=MOBS.find(x=>x.id===id);if(s.mobIds.length===1&&m&&s.name==="New session")s.name=m.name};
+const pickMob=m=>{if(!m)return;state.calcMobId=m.id;const s=cur();if(!s.mobIds.length)toggleSessMob(m.id);save();renderAll()};
 $("mobList").innerHTML=MOBS.map(m=>`<option value="${esc(m.name)}">Lv ${m.lv} · ${fmtN(m.exp)} EXP</option>`).join("");
 $("mobInput").addEventListener("change",e=>{pickMob(MOBS.find(x=>x.name.toLowerCase()===e.target.value.trim().toLowerCase()))});
 $("mobTable").querySelector("tbody").addEventListener("click",e=>{if(e.target.closest("a"))return;const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
@@ -1019,7 +1036,7 @@ $("closedMaps").addEventListener("change",e=>{state.closed=[...new Set(e.target.
 $("mapList").innerHTML=Object.keys(MAPMOBS).sort().map(m=>`<option value="${m}">${MAPMOBS[m].length} monsters</option>`).join("");
 $("mapInput").addEventListener("change",e=>{state.map=e.target.value.trim().toLowerCase();save();renderMap()});
 $("mapFromMob").addEventListener("click",()=>{state.map="";save();renderMap()});
-$("mapTable").querySelector("tbody").addEventListener("click",e=>{const sk=e.target.closest("[data-skip]");if(sk){const id=+sk.dataset.skip;if(!state.skipMobs)state.skipMobs=[];state.skipMobs=state.skipMobs.includes(id)?state.skipMobs.filter(x=>x!==id):[...state.skipMobs,id];save();renderAll();return}const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
+$("mapTable").querySelector("tbody").addEventListener("click",e=>{const sm=e.target.closest("[data-sessmob]");if(sm){toggleSessMob(+sm.dataset.sessmob);save();renderAll();return}const sk=e.target.closest("[data-skip]");if(sk){const id=+sk.dataset.skip;if(!state.skipMobs)state.skipMobs=[];state.skipMobs=state.skipMobs.includes(id)?state.skipMobs.filter(x=>x!==id):[...state.skipMobs,id];save();renderAll();return}const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
 // goal
 $("goalLv").value=state.goalLv||"";$("goalDate").value=state.goalDate||"";$("walkOverride").value=state.walkOverride||"";
 $("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;save();renderTracker()});
