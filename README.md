@@ -24,6 +24,13 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 3. Log your EXP % every few minutes, for example `15:05 17.9% 63%` (time, base %, job %).
 4. Use **Best maps** and the **Map planner** to find a better spot.
 
+## Files
+
+- `index.html`: page markup. Open it directly or serve the folder; there's no build step.
+- `style.css`: styles.
+- `app.js`: the calculator and tracker code.
+- `data/*.js`: tables exported from the sources below, one per file, so a re-export after a patch only touches that file. `mobs.js` (monsters), `spawn.js` (spawn maps), `loot.js` (drops), `items.js` (item names), `mstat.js` (DEF/MDEF/ATK), `elem.js` (element, HIT/FLEE), `sizes.js` (size and race) and `exp.js` (EXP tables). Each file's first line describes its fields.
+
 ## Data sources
 
 - Monsters, spawns, drops and skills: [rozerodb.com](https://rozerodb.com)

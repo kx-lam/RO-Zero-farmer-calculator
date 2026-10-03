@@ -1,0 +1,95 @@
+/* Layout: single column tool. Session bar, 4 stat tiles, EXP chart, log + add form, then mob calculator + ranking table. */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#14171c; --muted:#69707d; --line:#e2e5ea; --grid:#edf0f3;
+  --accent:#3d7fe0; --accent-soft:rgba(61,127,224,.12); --good:#1f9d63; --warn:#c7811a; --bad:#cf3f3f;
+  --display:"Sora",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111418; --surface:#181c22; --fg:#e8ebf0; --muted:#8f97a4; --line:#2a3039; --grid:#22272f;
+  --accent:#6aa2f5; --accent-soft:rgba(106,162,245,.16); --good:#3fc488; --warn:#e3a13f; --bad:#ec6a6a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111418; --surface:#181c22; --fg:#e8ebf0; --muted:#8f97a4; --line:#2a3039; --grid:#22272f;
+  --accent:#6aa2f5; --accent-soft:rgba(106,162,245,.16); --good:#3fc488; --warn:#e3a13f; --bad:#ec6a6a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:1.45rem;font-weight:700}
+h2{font-size:1.05rem;font-weight:600}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar .grow{flex:1 1 160px;min-width:0}
+input,select,button{font:inherit;color:var(--fg)}
+input,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--bad)}
+button.small{padding:3px 8px;font-size:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tile.now{background:var(--accent-soft);border-color:transparent}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 18px;min-width:0}
+.tile .k{font-size:12.5px;color:var(--muted)}
+.tile .v{font-family:var(--display);font-size:1.75rem;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .s{font-size:12px;color:var(--muted);margin-top:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+/* collapsible cards: click the heading; everything but the heading row hides */
+.card h2[aria-expanded]{cursor:pointer;user-select:none}
+.card h2[aria-expanded]::before{content:"▾";display:inline-block;width:1.1em;color:var(--muted);transition:transform .15s}
+.card h2[aria-expanded="false"]::before{transform:rotate(-90deg)}
+.card.collapsed{align-self:start}
+.card.collapsed>:not(.cardHead){display:none}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-size:12px;cursor:pointer;user-select:none}
+th.on{color:var(--fg)}
+td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.name{font-family:var(--body)}
+tr.sel td{background:var(--accent-soft)}
+tbody tr{cursor:pointer}
+#bestTable td b{font-weight:500}
+#bestTable th[data-bk]{cursor:pointer}
+#bestTable td.mainmobs{white-space:normal;min-width:170px;line-height:1.35}
+#bestTable td{vertical-align:top}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-family:var(--body)}
+.pill.up{color:var(--good);border-color:var(--good)}
+.pill.down{color:var(--warn);border-color:var(--warn)}
+.calc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.el{display:inline-block;font-family:var(--body);font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--grid);color:var(--fg)}
+.el.Fire{background:rgba(226,92,58,.18)}.el.Water{background:rgba(56,132,226,.18)}.el.Wind{background:rgba(70,180,120,.2)}.el.Earth{background:rgba(160,120,60,.22)}.el.Undead,.el.Shadow{background:rgba(120,90,160,.2)}.el.Ghost{background:rgba(150,150,170,.22)}.el.Poison{background:rgba(150,80,170,.2)}.el.Holy{background:rgba(220,190,60,.22)}
+.good{color:var(--good)}.bad{color:var(--bad)}.warnc{color:var(--warn)}
+a{color:var(--accent)}
+.ext{font-size:12px;text-decoration:none;margin-left:4px}
+.map{display:inline-flex;gap:4px;align-items:baseline;font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.map b{font-weight:500;color:var(--fg)}.map span{color:var(--muted)}
+.filters td{padding:4px 3px;border-bottom:1px solid var(--line)}
+.filters input{width:100%;min-width:56px;padding:3px 6px;font-size:12px;font-family:var(--mono);border-radius:6px}
+.filters td:first-child input{min-width:90px}
+.map.off{opacity:.45;text-decoration:line-through}
+.maps{display:flex;flex-wrap:wrap;gap:6px}
+td .map{cursor:default}
+.calc .v{font-size:1.25rem}
+.note{font-size:12px;color:var(--muted)}
+.example{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
+@media (max-width:680px){.row2{grid-template-columns:1fr}.calc,.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile .v{font-size:1.4rem}}
+/* tabs: one view at a time instead of one very long page */
+.tabs{position:sticky;top:0;z-index:5;display:flex;gap:4px;overflow-x:auto;padding:8px 0;margin-block:-8px;background:var(--bg);border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;border-radius:8px;padding:7px 14px;color:var(--muted);white-space:nowrap;flex:none}
+.tabs button:hover{color:var(--fg);background:var(--grid)}
+.tabs button[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
+[hidden]{display:none!important}
+/* long monster list: scroll inside the card with the header and filters pinned */
+.scroll.tall{max-height:70vh;overflow:auto}
+.scroll.tall thead{position:sticky;top:0;z-index:1;background:var(--surface)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.tile .v{white-space:pre-line}
+@media (max-width:600px){.form[style]{grid-template-columns:repeat(2,minmax(0,1fr))!important}#bonusRow{grid-template-columns:1fr!important}}
