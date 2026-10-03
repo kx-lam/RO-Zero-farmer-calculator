@@ -22,7 +22,7 @@
   --accent:#6aa2f5; --accent-soft:rgba(106,162,245,.16); --good:#3fc488; --warn:#e3a13f; --bad:#ec6a6a; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.5}
-.wrap{max-width:920px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:flex;flex-direction:column;gap:20px}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:flex;flex-direction:column;gap:20px}
 h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
 h1{font-size:1.45rem;font-weight:700}
 h2{font-size:1.05rem;font-weight:600}
@@ -91,6 +91,15 @@ td .map{cursor:default}
 .note{font-size:12px;color:var(--muted)}
 .example{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
 @media (max-width:680px){.row2{grid-template-columns:1fr}.calc,.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile .v{font-size:1.4rem}}
+/* tabs: one view at a time instead of one very long page */
+.tabs{position:sticky;top:0;z-index:5;display:flex;gap:4px;overflow-x:auto;padding:8px 0;margin-block:-8px;background:var(--bg);border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;border-radius:8px;padding:7px 14px;color:var(--muted);white-space:nowrap;flex:none}
+.tabs button:hover{color:var(--fg);background:var(--grid)}
+.tabs button[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
+[hidden]{display:none!important}
+/* long monster list: scroll inside the card with the header and filters pinned */
+.scroll.tall{max-height:70vh;overflow:auto}
+.scroll.tall thead{position:sticky;top:0;z-index:1;background:var(--surface)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .tile .v{white-space:pre-line}
 @media (max-width:600px){.form[style]{grid-template-columns:repeat(2,minmax(0,1fr))!important}#bonusRow{grid-template-columns:1fr!important}}
@@ -108,8 +117,14 @@ td .map{cursor:default}
       <button id="delSession" class="danger" style="min-width:9em">Delete</button>
     </div>
   </header>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" data-tabbtn="track">Session</button>
+    <button type="button" role="tab" data-tabbtn="char">Character</button>
+    <button type="button" role="tab" data-tabbtn="maps">Monsters &amp; maps</button>
+    <button type="button" role="tab" data-tabbtn="data">Backup</button>
+  </nav>
 
-  <section class="card">
+  <section class="card" data-tab="char">
     <div class="bar"><h2 class="grow">Your character</h2><span class="note" id="jobNote"></span></div>
     <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
       <label>Job<select id="job"></select></label>
@@ -233,7 +248,7 @@ td .map{cursor:default}
     <div class="calc" id="charTiles"></div>
   </section>
 
-  <section class="tiles" aria-label="Summary">
+  <section class="tiles" aria-label="Summary" data-tab="track">
     <div class="tile now"><div class="k">Current level</div><div class="v" id="tCurLv">–</div><div class="s" id="tCurLvS"></div></div>
     <div class="tile now"><div class="k">Current EXP</div><div class="v" id="tCurPct">–</div><div class="s" id="tCurPctS"></div></div>
     <div class="tile"><div class="k">Average EXP/hr</div><div class="v" id="tAvg">–</div><div class="s" id="tAvgS"></div></div>
@@ -245,12 +260,12 @@ td .map{cursor:default}
     <div class="tile"><div class="k">Job EXP / hr</div><div class="v" id="tJob">–</div><div class="s" id="tJobS"></div></div>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="track">
     <div class="bar"><h2 class="grow">EXP progress</h2></div>
     <svg class="chart" id="chart" viewBox="0 0 800 340" role="img" aria-label="EXP percentage over time"></svg>
   </section>
 
-  <section class="row2">
+  <section class="row2" data-tab="track">
     <div class="card">
       <h2>Log EXP</h2>
       <form class="form" id="addForm">
@@ -274,12 +289,12 @@ td .map{cursor:default}
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="track">
     <div class="bar"><h2 class="grow">Compare sessions</h2><span class="note">Click a row to open it</span></div>
     <div class="scroll"><table id="cmpTable"><thead><tr><th>Session</th><th>Job</th><th>Monster</th><th>When</th><th>Length</th><th>%/hr</th><th>EXP/min</th><th>Kills/hr</th><th>Sec/kill</th></tr></thead><tbody></tbody></table></div>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="maps">
     <div class="bar"><h2 class="grow">Monsters</h2><span class="note" id="mobNote"></span></div>
     <div class="bar">
       <label class="grow">Monster for this session<input id="mobInput" list="mobList" placeholder="Search monster"></label>
@@ -288,13 +303,13 @@ td .map{cursor:default}
     </div>
     <datalist id="mobList"></datalist>
     <div class="calc" id="mobTiles"></div>
-    <div class="scroll"><table id="mobTable"><thead><tr>
+    <div class="scroll tall"><table id="mobTable"><thead><tr>
       <th data-k="name">Monster</th><th data-k="lv">Lv</th><th data-k="el">Element</th><th data-k="size">Size</th><th data-k="race">Race</th><th data-k="hp">HP</th><th data-k="exp">Base EXP</th><th data-k="ratio" title="Base EXP per HP: how much EXP each point of damage earns">EXP / HP</th><th data-k="mult">Your hit %</th><th data-k="hitc">Hit chance</th><th data-k="uses">Uses / kill</th><th data-k="sec">Sec / kill</th><th data-k="epm">EXP / min</th><th data-k="dodge">Dodge %</th><th data-k="hpm">HP lost / min</th><th data-k="zk">Zeny / kill</th><th data-k="topN">Best map</th><th></th>
     </tr><tr class="filters"><td><input data-f="name" placeholder="name"></td><td><input data-f="lv" placeholder="50-90"></td><td><input data-f="el" placeholder="fire"></td><td><input data-f="size" placeholder="L"></td><td><input data-f="race" placeholder="undead"></td><td><input data-f="hp" placeholder="<20000"></td><td><input data-f="exp" placeholder=">5000"></td><td><input data-f="ratio" placeholder=">1"></td><td><input data-f="mult" placeholder=">100"></td><td><input data-f="hitc" placeholder=">90"></td><td><input data-f="uses" placeholder="<=3"></td><td><input data-f="sec" placeholder="<5"></td><td><input data-f="epm" placeholder=""></td><td><input data-f="dodge" placeholder=">50"></td><td><input data-f="hpm" placeholder="<500"></td><td><input data-f="zk" placeholder=">20"></td><td><input data-f="topN" placeholder="map"></td><td><button type="button" class="small" id="clearF">Clear</button></td></tr></thead><tbody></tbody></table></div>
     <div class="note">Click a row to see it in the tiles; "Farming this now" links it to the session, and "Also killing" (or "+ Session" in the map planner) adds more, like aggressive monsters that attack you. A session's monsters are weighted by their spawn counts on its map. Filters take &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, and "or" to combine. Your hit % = damage % per hit after element, size, MDEF/DEF and your bonuses. EXP / min counts fight time plus walking (learned from your log). Monster data from rozerodb.com.</div>
   </section>
 
-  <section class="card" id="bestCard">
+  <section class="card" id="bestCard" data-tab="maps">
     <div class="bar"><h2 class="grow">Best maps for you</h2><span class="note" id="bestBasis"></span></div>
     <div class="bar">
       <label>Min monsters on map<input id="bestMin" type="number" value="40" style="width:90px"></label>
@@ -306,7 +321,7 @@ td .map{cursor:default}
     <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_d03, yun_f02"></label>
   </section>
 
-  <section class="card" id="mapCard">
+  <section class="card" id="mapCard" data-tab="maps">
     <div class="bar"><h2 class="grow">Map planner</h2></div>
     <div class="form" style="grid-template-columns:2fr 1fr">
       <label>Map<input id="mapInput" list="mapList" placeholder="e.g. gef_d01"></label>
@@ -317,7 +332,7 @@ td .map{cursor:default}
     <div class="scroll"><table id="mapTable"><thead><tr><th>Monster</th><th>Count</th><th>Share</th><th>Lv</th><th>Element</th><th>Size</th><th>Your hit %</th><th>Sec / kill</th><th>Base EXP</th></tr></thead><tbody></tbody></table></div>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="track">
     <div class="bar"><h2 class="grow">Goal</h2><span class="note" id="goalNote"></span></div>
     <div class="bar">
       <label>Reach base level<input id="goalLv" type="number" style="width:90px"></label>
@@ -327,7 +342,7 @@ td .map{cursor:default}
     <div class="calc" id="goalTiles"></div>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="data">
     <div class="bar"><h2 class="grow">Backup</h2><span class="note">Your data lives only in this browser</span></div>
     <div class="bar"><button type="button" id="bkCopy">Copy backup</button><button type="button" id="bkShow">Show backup text</button><button type="button" id="bkRestore" class="danger">Restore from text</button><span class="note" id="bkMsg"></span></div>
     <textarea id="bkText" rows="3" placeholder="Paste a backup here, then click Restore from text" style="font:inherit;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical;width:100%"></textarea>
@@ -789,7 +804,7 @@ function renderTracker(){
   $("partyNote").textContent=partyN(s)>1?`Each kill gives you ${Math.round(expMul(s)/(1+num(state.bonus)/100)*100)}% of its EXP (party of ${partyN(s)}). Even Share only works within 15 base levels.`:"";
   $("title").textContent=`${s.name} · ${s.job||state.job}`;
   const ms=sessMobs(s),mob=ms.length===1?ms[0]:null;
-  $("subtitle").innerHTML=ms.length>1?`Farming ${ms.map(m=>esc(m.name)).join(", ")}${sessMap(s)?` on ${sessMap(s)}`:""} · weighted by spawn counts`:mob?`Farming ${esc(mob.name)} · Lv ${mob.lv} · ${mob.el?`<span class="el ${mob.el}">${mob.el} ${mob.elv}</span> · `:""}${mob.size||""} ${mob.race||""} · ${fmtN(mob.exp)} base EXP · <a href="${dbUrl(mob)}" target="_blank" rel="noopener">rozerodb ↗</a>`:"Pick a monster below and press \"Farming this now\"";
+  $("subtitle").innerHTML=ms.length>1?`Farming ${ms.map(m=>esc(m.name)).join(", ")}${sessMap(s)?` on ${sessMap(s)}`:""} · weighted by spawn counts`:mob?`Farming ${esc(mob.name)} · Lv ${mob.lv} · ${mob.el?`<span class="el ${mob.el}">${mob.el} ${mob.elv}</span> · `:""}${mob.size||""} ${mob.race||""} · ${fmtN(mob.exp)} base EXP · <a href="${dbUrl(mob)}" target="_blank" rel="noopener">rozerodb ↗</a>`:"Pick a monster in the Monsters &amp; maps tab and press \"Farming this now\"";
   const lastE=[...s.entries].sort((a,b)=>a.t-b.t).pop();
   if(lastE){$("tCurLv").textContent=`Lv ${lastE.lv}`;$("tCurLvS").textContent=lvExp(lastE.lv)?`${fmtN(lvExp(lastE.lv))} EXP to level`:"Lv outside EXP table";
     $("tCurPct").textContent=pct(lastE.pct);$("tCurPctS").textContent=`logged ${fmtT(lastE.t)}`}
@@ -1023,7 +1038,7 @@ const endRename=keep=>{const i=$("sessName");if(i.hidden)return;if(keep){const v
 $("renameSession").addEventListener("click",()=>{const i=$("sessName");if(!i.hidden){endRename(true);return}renameId=cur().id;i.value=cur().name;i.hidden=false;$("sessionSel").hidden=true;$("renameSession").textContent="Save";i.focus();i.select()});
 $("sessName").addEventListener("keydown",e=>{if(e.key==="Enter")endRename(true);else if(e.key==="Escape")endRename(false)});
 $("sessName").addEventListener("blur",()=>setTimeout(()=>endRename(true),150));
-$("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",job:state.job,mobIds:[],entries:[]});openSession(id);$("mobInput").focus()});
+$("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",job:state.job,mobIds:[],entries:[]});openSession(id);showTab("maps");$("mobInput").focus()});
 let delArmed=false;
 $("delSession").addEventListener("click",()=>{if(!delArmed){delArmed=true;$("delSession").textContent="Confirm delete";setTimeout(()=>{delArmed=false;$("delSession").textContent="Delete"},3000);return}
   delArmed=false;$("delSession").textContent="Delete";state.sessions=state.sessions.filter(s=>s.id!==state.current);
@@ -1089,6 +1104,15 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   });
   apply();
 })();
+// ---- tabs: show one group of sections at a time; remembered in state.tab ----
+function showTab(t){
+  if(!document.querySelector(`[data-tabbtn="${t}"]`))t="track";
+  document.querySelectorAll("[data-tab]").forEach(el=>el.hidden=el.dataset.tab!==t);
+  document.querySelectorAll("[data-tabbtn]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tabbtn===t)));
+  if(state.tab!==t){state.tab=t;save()}
+}
+document.querySelectorAll("[data-tabbtn]").forEach(b=>b.addEventListener("click",()=>{showTab(b.dataset.tabbtn);scrollTo({top:0})}));
+showTab(state.tab||"track");
 // ---- collapsible cards: click a heading (or Enter/Space on it) to fold the card; saved by heading text ----
 (function setupCollapse(){
   if(!state.collapsed)state.collapsed={};
