@@ -46,6 +46,12 @@ label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute
 .tile .v{font-family:var(--display);font-size:1.75rem;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums}
 .tile .s{font-size:12px;color:var(--muted);margin-top:2px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+/* collapsible cards: click the heading; everything but the heading row hides */
+.card h2[aria-expanded]{cursor:pointer;user-select:none}
+.card h2[aria-expanded]::before{content:"▾";display:inline-block;width:1.1em;color:var(--muted);transition:transform .15s}
+.card h2[aria-expanded="false"]::before{transform:rotate(-90deg)}
+.card.collapsed{align-self:start}
+.card.collapsed>:not(.cardHead){display:none}
 .chart{width:100%;height:auto;display:block}
 .chart text{fill:var(--muted);font-family:var(--mono);font-size:11px}
 .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
@@ -1046,6 +1052,16 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
     box.addEventListener("click",e=>{if(!e.target.closest("[data-allcols]"))return;state.hideCols[id]=[];box.querySelectorAll("[data-col]").forEach(x=>x.checked=true);save();apply()});
   });
   apply();
+})();
+// ---- collapsible cards: click a heading (or Enter/Space on it) to fold the card; saved by heading text ----
+(function setupCollapse(){
+  if(!state.collapsed)state.collapsed={};
+  document.querySelectorAll(".card").forEach(card=>{const h=card.querySelector(":scope>h2, :scope>.bar>h2");if(!h)return;
+    const head=h.parentElement===card?h:h.parentElement;head.classList.add("cardHead");const key=h.textContent.trim();
+    h.tabIndex=0;h.setAttribute("role","button");
+    const set=v=>{card.classList.toggle("collapsed",v);h.setAttribute("aria-expanded",String(!v))};set(!!state.collapsed[key]);
+    const flip=()=>{const v=!card.classList.contains("collapsed");state.collapsed[key]=v;if(!v)delete state.collapsed[key];save();set(v)};
+    h.addEventListener("click",flip);h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();flip()}})});
 })();
 syncClosed();syncChar();renderAll();resetForm();
 
