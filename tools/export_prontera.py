@@ -1,7 +1,7 @@
 """Export gear and job data from roz.prontera.info into data/*.js for the build simulator.
 
     python tools/export_prontera.py            # fetch what isn't cached, then write the data files
-    python tools/export_prontera.py --refresh  # refetch list pages (new items after a patch), keep cached item pages
+    python tools/export_prontera.py --refresh  # refetch list, refine, job and skill pages (new items and skill changes after a patch), keep cached item pages
 
 Pages are fetched one per second and cached in tools/cache/ (gitignored). Delete a cached file to refetch it.
 Writes: data/equipment.js (EQUIP, SETS), data/cards.js (CARDS), data/refine.js (REFINE), data/jobs.js (JOBDATA), data/skills.js (SKILLS).
@@ -138,12 +138,13 @@ def main():
     cards = [c["slug"] for c in nuxt(fetch("/cards", refresh))["card-index-en"]["cards"]]
     print(f"{len(slugs)} equipment, {len(cards)} cards", flush=True)
 
-    equip, card_rows, sets = [], [], {}
+    equip, card_rows, sets, skipped = [], [], {}, []
     for i, s in enumerate(slugs + cards, 1):
         try:
             row, ss = item_row(s)
         except Exception as e:
             print(f"  skip {s}: {e}", flush=True)
+            skipped.append(s)
             continue
         (card_rows if i > len(slugs) else equip).append(row)
         for x in ss:
@@ -165,7 +166,7 @@ def main():
 
     jobs = {}
     for j in JOBS:
-        d = nuxt(fetch(f"/stats/planner?class={j.lower()}"))
+        d = nuxt(fetch(f"/stats/planner?class={j.lower()}", refresh))
         p = next(v for k, v in d.items() if k.startswith("stat-planner-"))
         if p["job_class"]["name"].lower() != j.lower():
             print(f"  {j}: planner returned {p['job_class']['name']}, skipped", flush=True)
@@ -177,7 +178,7 @@ def main():
     # skill trees: per job the planner returns Novice, 1st and 2nd job trees
     skills = {}
     for j in JOBS:
-        v = nuxt(fetch(f"/skills/planner?class={j.lower()}"))[f"skill-planner-{j.lower()}"]
+        v = nuxt(fetch(f"/skills/planner?class={j.lower()}", refresh))[f"skill-planner-{j.lower()}"]
         v = v if isinstance(v, list) else list(v.values())[0]
         slug_of = {sk["id"]: sk["slug"] for t in v for sk in t["skills"]}
         trees = []
@@ -198,6 +199,8 @@ def main():
     write("jobs.js", f"// Per job: bonus = job levels that give +1 to each stat; hp / sp = base Max HP / SP at base level 1, 2, ... ({src})",
           f"const JOBDATA={js(jobs)};")
     print(f"wrote {len(equip)} equipment, {len(card_rows)} cards, {len(sets)} sets, {len(refine)} refine schedules, {len(jobs)} jobs", flush=True)
+    if skipped:  # these are missing from the data files; rerun to retry them
+        print(f"WARNING: {len(skipped)} item(s) failed and were left out: {', '.join(skipped)}", flush=True)
 
 
 if __name__ == "__main__":
