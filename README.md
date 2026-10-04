@@ -16,7 +16,7 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 - **Goal:** EXP needed and farming time to a target level, with hours per day if you set a date. The tables cover Base Lv 1–70 and Novice, 1st and 2nd job levels.
 - **Party:** Even Share (100% + 20% per extra member, split evenly), EXP bonus % and drop rate bonus %.
 - **Accounts:** keep separate characters, sessions and settings for each of your accounts, and switch between them from the top of the page.
-- **Backup:** copy or restore the current account's data as text.
+- **Backup:** copy or restore the current account's data, or all accounts at once, as text. Restoring an all-accounts backup replaces every account.
 
 ## How to use
 

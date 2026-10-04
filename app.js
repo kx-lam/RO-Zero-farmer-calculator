@@ -759,14 +759,26 @@ $("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;
 $("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
 // backup
 const bkText=()=>JSON.stringify(state);
-$("bkCopy").addEventListener("click",()=>{const t=bkText();const fb=()=>{$("bkText").value=t;$("bkText").select();$("bkMsg").textContent="Couldn't copy automatically, so the backup is selected in the box below."};
-  try{navigator.clipboard.writeText(t).then(()=>{$("bkMsg").textContent="Backup copied. Paste it somewhere safe."},fb)}catch(err){fb()}});
+// combined backup: every account's save plus the account list
+const bkAllText=()=>{save();return JSON.stringify({allAccounts:1,active:accts.active,accounts:accts.list.map(a=>{let data=null;try{data=JSON.parse(localStorage.getItem(acctKey(a.id)))}catch(e){}return {id:a.id,name:a.name,data}})})};
+const bkCopyText=(t,what)=>{const fb=()=>{$("bkText").value=t;$("bkText").select();$("bkMsg").textContent="Couldn't copy automatically, so the backup is selected in the box below."};
+  try{navigator.clipboard.writeText(t).then(()=>{$("bkMsg").textContent=`${what} copied. Paste it somewhere safe.`},fb)}catch(err){fb()}};
+$("bkCopy").addEventListener("click",()=>bkCopyText(bkText(),"Backup"));
+$("bkCopyAll").addEventListener("click",()=>bkCopyText(bkAllText(),`Backup of all ${accts.list.length} accounts`));
 $("bkShow").addEventListener("click",()=>{$("bkText").value=bkText();$("bkText").select();$("bkMsg").textContent="Backup text is in the box."});
+$("bkShowAll").addEventListener("click",()=>{$("bkText").value=bkAllText();$("bkText").select();$("bkMsg").textContent="Backup text for all accounts is in the box."});
 let bkArmed=false;
+// a single-account backup replaces the current account; an all-accounts backup replaces every account
 $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkText").value)}catch(err){$("bkMsg").textContent="That isn't a valid backup. Paste the whole text from Copy backup.";return}
-  if(!data||!Array.isArray(data.sessions)){$("bkMsg").textContent="That backup has no sessions in it.";return}
-  if(!bkArmed){bkArmed=true;$("bkRestore").textContent="Click again to replace everything";setTimeout(()=>{bkArmed=false;$("bkRestore").textContent="Restore from text"},4000);return}
-  bkArmed=false;state=data;save();$("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
+  const all=data&&data.allAccounts&&Array.isArray(data.accounts);
+  if(all){if(!data.accounts.length||data.accounts.some(a=>!a||typeof a.id!=="string"||!a.id)){$("bkMsg").textContent="That backup has no accounts in it.";return}}
+  else if(!data||!Array.isArray(data.sessions)){$("bkMsg").textContent="That backup has no sessions in it.";return}
+  if(!bkArmed){bkArmed=true;$("bkRestore").textContent=all?`Click again to replace all accounts (${data.accounts.length} in backup)`:"Click again to replace this account";setTimeout(()=>{bkArmed=false;$("bkRestore").textContent="Restore from text"},4000);return}
+  bkArmed=false;
+  if(all){try{accts.list.forEach(a=>localStorage.removeItem(acctKey(a.id)));data.accounts.forEach(a=>{if(a.data)localStorage.setItem(acctKey(a.id),JSON.stringify(a.data))})}catch(err){$("bkMsg").textContent="Couldn't write the backup to this browser's storage.";return}
+    accts.list=data.accounts.map((a,i)=>({id:a.id,name:String(a.name||"Account "+(i+1))}));accts.active=accts.list.some(a=>a.id===data.active)?data.active:accts.list[0].id;saveAccts()}
+  else{state=data;save()}
+  $("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
 // ---- show / hide table columns (saved per table) ----
 (function setupColPicks(){
   const IDS=["cmpTable","mobTable","bestTable","mapTable"];
@@ -1030,5 +1042,6 @@ const startApp=()=>{document.body.classList.remove("nojob");syncClosed();syncCha
 if(state.job)startApp();
 else{document.body.classList.add("nojob");$("pickJob").hidden=false;
   $("pickJobSel").innerHTML='<option value="" selected disabled>Choose a job…</option>'+$("job").innerHTML;
-  $("pickJobSel").addEventListener("change",e=>{state.job=e.target.value;const s=cur();if(!s.job)s.job=state.job;C();save();$("pickJob").hidden=true;startApp()})}
+  $("pickBackup").addEventListener("click",()=>{document.body.classList.add("nojobbk");showTab("data");$("bkText").focus()});
+  $("pickJobSel").addEventListener("change",e=>{state.job=e.target.value;const s=cur();if(!s.job)s.job=state.job;C();save();$("pickJob").hidden=true;document.body.classList.remove("nojobbk");showTab("char");startApp()})}
 
