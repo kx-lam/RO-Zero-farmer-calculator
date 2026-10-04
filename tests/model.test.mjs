@@ -106,6 +106,23 @@ t("tracker: job EXP % wraps at a job level-up", () => {
   assert.equal(j.last, 10);
 });
 
+t("job EXP: the last job level is the max and needs no EXP", () => {
+  run(`state.job="Novice";state.chars={};state.goalJobLv=null`);
+  const t = run("JOB_EXP.novice");
+  assert.equal(run("jobMax()"), 10);                                  // Novice Job Lv 10 is the max (official guide)
+  assert.equal(run("C().jobLv=9;jobNeed()"), t[8]);
+  assert.equal(run("C().jobLv=10;jobNeed()"), null);
+  assert.equal(run("jobMax('first')"), 50);
+  assert.equal(run("jobMax('second')"), 70);
+  // job goal from Job Lv 1 at 0% to the max: every entry but the max level's own
+  const t0 = 1e12;
+  run(`C().jobLv=1;cur().entries=[{t:${t0},lv:10,pct:0,jpct:0},{t:${t0 + 36e5},lv:10,pct:1,jpct:10}];cur().pauses=[]`);
+  const g = run("renderJobGoal(cur())"), rate = 10 / 100 * t[0];   // 10% of Job Lv 1 per hour
+  assert.equal(g.hi, 10);
+  near(g.pts[g.pts.length - 1].h * rate, t.slice(0, 9).reduce((x, y) => x + y, 0) - 0.1 * t[0]); // already 10% into Job Lv 1
+  assert.equal(run("C().jobLv=10;renderJobGoal(cur())"), undefined); // at the max: a note, no goal
+});
+
 t("walking time: the current session first, then another of the same job, then 2s", () => {
   setup("Knight", { atkTxt: "100+300", hitTxt: "400", wAtk: 0, weapon: "Two-handed spear", wElem: "Neutral", st: {}, a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   const t0 = 1e12, sess = (id, pct) => `{id:'${id}',name:'${id}',job:'Knight',mobIds:[1002],entries:[{t:${t0},lv:30,pct:10},{t:${t0 + 36e5},lv:30,pct:${pct}}]}`;
