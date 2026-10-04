@@ -83,7 +83,7 @@ const regenPerSec=()=>spRegen8()/8;
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&num(C().itemSp)>0?Math.max(0,spNeedPerSec()-regenPerSec())/num(C().itemSp):0;
 const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&num(C().itemSp)>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
 const rawFight=m=>{const u=usesPerKill(m);return isFinite(u)?u*useSec()/targets():Infinity};
-const fightSec=m=>rawFight(m)*restFactor();
+const fightSec=m=>{const f=healShare(m);return f>=1?Infinity:rawFight(m)*restFactor()/(1-f)};
 // damage taken: monster ATK through your DEF, its hit chance on you, a swing every interval times "swings reach you"
 const defParts=()=>{const p=String(cf("defTxt")||"0").split("+").map(x=>parseFloat(x)||0);return {soft:p[0]||0,hard:p.slice(1).reduce((a,b)=>a+b,0)}};
 // dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
@@ -125,12 +125,18 @@ function sgDefense(m){
   const raw=mobHitDmg(m);if(raw==null)return null;const dg=dodge(m);
   const hits=Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5));
   const g=G(),max=num(cf("maxSp")),ec=!!g.ecOn,regen=regenPerSec(),up=sgUpkeep(),hs=hsFullSP();
-  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),healSP=g.vitata&&num(g.healHp)>0?hp/num(g.healHp)*num(g.healSp):0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
+  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),healSP=g.vitata&&num(g.healHp)>0?hp/num(g.healHp)*num(g.healSp)*sgSpMult():0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
   const cost=b=>up+b.ecSP+b.healSP;
   let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
   if(!b){const p=num(g.autoSpPct,50);b=sgItemsOn()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}
   return {...b,extra:b.ecSP+b.healSP};
 }
+// Vitata Card gives Heal Lv1, which you cast yourself rather than an automatic heal: each cast (no cast time, 0.3 s after-cast delay,
+// or an attack's worth of time if that's longer) is time you aren't attacking. healShare is that share of your time; at 100% you can't keep up
+const HEAL_DELAY=0.3;
+const healSec=()=>Math.max(HEAL_DELAY,1/atkPerSec());
+const healsPerSec=m=>{const g=G();if(!isSF()||!g.vitata||!(num(g.healHp)>0))return 0;const d=sgDefense(m);return d?d.hp/num(g.healHp):0};
+const healShare=m=>healsPerSec(m)*healSec();
 let SG_MOB=null; // monster the SP balance is worked out against
 const sgDefSP=()=>{const m=SG_MOB||calcMob();const d=m?sgDefense(m):null;return d?d.extra:0};
 const sgItemsPerSec=()=>sgItemsOn()?Math.max(0,sgUpkeep()+sgDefSP()+hsFullSP()-regenPerSec())/num(C().itemSp):0;
