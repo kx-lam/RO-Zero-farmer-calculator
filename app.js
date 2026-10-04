@@ -119,6 +119,10 @@ let state=store.get()||{};
 if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",mobIds:[],entries:[]}];
 // sessions hold a list of monsters (one map, plus the aggressive ones you end up killing); older saves had a single mobId
 state.sessions.forEach(s=>{if(!Array.isArray(s.mobIds))s.mobIds=s.mobId!=null?[s.mobId]:[];delete s.mobId});
+// saves can come from a pasted backup: keep ids and names as text and log entries as numbers, dropping entries that aren't
+state.sessions.forEach(s=>{s.id=String(s.id);s.name=String(s.name??"Session");s.mobIds=s.mobIds.map(Number).filter(Number.isFinite);if(s.job!=null)s.job=String(s.job);
+  s.entries=(Array.isArray(s.entries)?s.entries:[]).map(e=>{const o={t:+(e&&e.t),lv:+(e&&e.lv),pct:+(e&&e.pct)};if(e&&e.jpct!=null&&e.jpct!==""&&isFinite(+e.jpct))o.jpct=+e.jpct;return o})
+    .filter(e=>Number.isFinite(e.t)&&Number.isFinite(e.lv)&&Number.isFinite(e.pct))});
 // new accounts start as Novice; change it on the Character tab
 if(!JOBS[state.job])state.job="Novice";
 if(!state.chars)state.chars={};
@@ -426,7 +430,7 @@ function renderChar(){
 }
 
 // ---- render: tracker ----
-function renderSessions(){$("sessionSel").innerHTML=state.sessions.map(s=>`<option value="${s.id}" ${s.id===state.current?"selected":""}>${esc(s.name)}</option>`).join("")}
+function renderSessions(){$("sessionSel").innerHTML=state.sessions.map(s=>`<option value="${esc(s.id)}" ${s.id===state.current?"selected":""}>${esc(s.name)}</option>`).join("")}
 function renderTracker(){
   const s=cur(),st=stats(s);
   if(document.activeElement!==$("partyN"))$("partyN").value=partyN(s);if(document.activeElement!==$("partyBonus"))$("partyBonus").value=partyBonus(s);
@@ -471,7 +475,7 @@ function renderChart(s){
   (s.pauses||[]).filter(p=>p.from>t0&&p.from<t1).forEach(p=>{const x=XT(p.from),m=Math.round(((p.to??Date.now())-p.from)/6e4);g+=`<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="var(--warn)" stroke-dasharray="3 4"/><text x="${x+4}" y="${pt+10}" style="fill:var(--warn)">paused ${m} min</text>`});
   const pts=y.map((v,i)=>`${X(i)},${Y(v)}`).join(" ");
   g+=`<polygon points="${X(0)},${H-pb} ${pts} ${X(n-1)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.25" stroke-linejoin="round"/>`;
-  y.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===n-1?5.5:4}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${fmtT(es[i].t)} · Lv ${es[i].lv} ${es[i].pct}%</title></circle>`});
+  y.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===n-1?5.5:4}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${fmtT(es[i].t)} · Lv ${esc(es[i].lv)} ${esc(es[i].pct)}%</title></circle>`});
   svg.innerHTML=g;
 }
 function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x)));const f=x/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
@@ -479,13 +483,13 @@ function fmtP(v){return Number.isInteger(v)?String(v):v.toFixed(1)}
 function renderLog(s){
   const es=[...s.entries].sort((a,b)=>a.t-b.t);const base=es.length?es[0].lv:0;
   $("logTable").querySelector("tbody").innerHTML=es.map((e,i)=>{let rate="";if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>0?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):"–"}
-    return `<tr data-t="${e.t}" style="cursor:default"><td>${fmtT(e.t)}</td><td>${e.lv}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td><td><button class="small danger" data-del="${e.t}" aria-label="Delete entry">✕</button></td></tr>`}).reverse().join("")
+    return `<tr data-t="${esc(e.t)}" style="cursor:default"><td>${fmtT(e.t)}</td><td>${esc(e.lv)}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td><td><button class="small danger" data-del="${esc(e.t)}" aria-label="Delete entry">✕</button></td></tr>`}).reverse().join("")
     ||`<tr><td colspan="6" class="name muted">No entries yet. Add your current level and EXP %.</td></tr>`;
   $("setupNote").textContent=s.job&&s.job!==state.job?`This session was logged as ${s.job}. Switch Job to ${s.job} to see its pace and walking time.`:"";
 }
 function renderCompare(){
   const rows=state.sessions.map(s=>{const st=stats(s);if(!st)return null;const ms=sessMobs(s),mix=sessMix(s);const kph=mix&&st.avgRaw>0?st.avgRaw/(mix.avg(m=>m.exp*expRace(m))*expMul(s)):null;
-    return `<tr data-sid="${s.id}" class="${s.id===state.current?"sel":""}"><td class="name">${esc(s.name)}</td><td class="name">${esc(s.job||"–")}</td><td class="name">${ms.length?ms.map(m=>esc(m.name)).join(", "):"–"}</td><td>${new Date(st.es[0].t).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} ${fmtT(st.es[0].t)}</td><td>${st.spanMin} min</td><td><b>${pct(st.avgPct)}</b></td><td>${fmtN(st.avgRaw/60)}</td><td>${kph?fmtN(kph):"–"}</td><td>${kph?(3600/kph).toFixed(1)+"s":"–"}</td></tr>`}).filter(Boolean);
+    return `<tr data-sid="${esc(s.id)}" class="${s.id===state.current?"sel":""}"><td class="name">${esc(s.name)}</td><td class="name">${esc(s.job||"–")}</td><td class="name">${ms.length?ms.map(m=>esc(m.name)).join(", "):"–"}</td><td>${new Date(st.es[0].t).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} ${fmtT(st.es[0].t)}</td><td>${st.spanMin} min</td><td><b>${pct(st.avgPct)}</b></td><td>${fmtN(st.avgRaw/60)}</td><td>${kph?fmtN(kph):"–"}</td><td>${kph?(3600/kph).toFixed(1)+"s":"–"}</td></tr>`}).filter(Boolean);
   $("cmpTable").querySelector("tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="name muted">Sessions with 2+ entries show up here.</td></tr>';
 }
 function renderGoal(s,st){
@@ -586,6 +590,7 @@ function matchF(expr,n,text){
   if(/^-?\d+(?:\.\d+)?$/.test(expr)&&!blank&&!text)return n==+expr;
   return String(text??n??"").toLowerCase().includes(expr);
 }
+const isMagicAtk=()=>C().a.type==="magic"||C().a.type==="spellfist";
 function renderMobs(){
   const w=walkSec();const lvMin=num(state.minLv),lvMax=num(state.maxLv)||999;
   let rows=MOBS.filter(m=>!m.boss&&m.lv>=lvMin&&m.lv<=lvMax&&!(state.hideClosed&&SPAWN[m.id]&&!openMaps(m).length)).map(m=>{const om=openMaps(m);return {...m,om,topN:om.length?om[0][1]:0,ratio:m.hp>0?m.exp/m.hp:0,...mobRow(m,w)}});
@@ -594,7 +599,7 @@ function renderMobs(){
   rows.sort((a,b)=>{const x=sv(a),y=sv(b);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*d});
   document.querySelectorAll("#mobTable th").forEach(th=>th.classList.toggle("on",th.dataset.k===k));
   const sel=(calcMob()||{}).id;
-  $("mobNote").textContent=`${rows.length} monsters · ${state.job} · ${C().a.type==="magic"?"MATK":"ATK"} ${fmtN(sumStat(C().a.type==="magic"?C().matkTxt:C().atkTxt))} · ${convOn()?"best converter per monster":atkEl()}`;
+  $("mobNote").textContent=`${rows.length} monsters · ${state.job} · ${isMagicAtk()?"MATK":"ATK"} ${fmtN(sumStat(isMagicAtk()?C().matkTxt:C().atkTxt))} · ${convOn()?"best converter per monster":atkEl()}`;
   $("mobTable").querySelector("tbody").innerHTML=rows.slice(0,400).map(m=>`<tr data-id="${m.id}" class="${m.id===sel?"sel":""}"><td class="name">${esc(m.name)}${isSkipped(m)?' <span class="pill down">skipped</span>':""}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${m.size||"–"}</td><td class="name">${m.race||"–"}</td><td>${fmtN(m.hp)}</td><td>${fmtN(m.exp)}</td><td>${m.ratio.toFixed(2)}</td>
     <td class="${m.mult>100?"good":m.mult<=0?"bad":""}">${m.mult<=0?"can't hurt":Math.round(m.mult)+"%"}${elTag(m.el2)}</td><td class="${m.hitc>=95?"good":m.hitc>=70?"warnc":"bad"}">${Math.round(m.hitc)}%</td><td>${isFinite(m.uses)?m.uses.toFixed(1):"–"}</td>
     <td class="${m.sec<=3?"good":m.sec<=8?"warnc":"bad"}">${isFinite(m.sec)?m.sec.toFixed(1)+"s":"–"}</td><td><b>${m.epm?fmtN(m.epm):"–"}</b></td>
@@ -607,7 +612,7 @@ function renderMobTiles(){
   const m=calcMob();if(!m){$("mobTiles").innerHTML='<div class="note">Click a monster to see it here.</div>';return}
   const r=mobRow(m,walkSec());const s=cur();const L=lvExp(num(C().baseLv))||null;const om=openMaps(m);
   $("mobTiles").innerHTML=`<div class="tile now"><div class="k">${esc(m.name)} · Lv ${m.lv}</div><div class="v mono">${r.epm?fmtN(r.epm):"–"}</div><div class="s">EXP/min${r.el2&&convOn()?` with ${r.el2} converter`:""} · ${isFinite(r.sec)?r.sec.toFixed(1)+"s fight + "+walkSec().toFixed(1)+"s walk":"can't hurt it"}${L&&r.epm?` · ~${pct(r.epm*60/L*100)}/hr at Lv ${C().baseLv}`:""}</div></div>
-   <div class="tile"><div class="k">Per kill</div><div class="v mono">${isFinite(r.uses)?r.uses.toFixed(1):"–"} uses</div><div class="s">${fmtN(withEl(r.el2,()=>dmgPerHit(m)))} per hit · ${Math.round(r.hitc)}% land · ${fmtN(num(C().a.sp)*r.uses/targets())} SP</div></div>
+   <div class="tile"><div class="k">Per kill</div><div class="v mono">${isFinite(r.uses)?r.uses.toFixed(1):"–"} uses</div><div class="s">${fmtN(withEl(r.el2,()=>dmgPerHit(m)))} per hit · ${Math.round(r.hitc)}% land · ${fmtN(num(C().a.sp)*spCostMul()*r.uses/targets())} SP</div></div>
    <div class="tile"><div class="k">Defence</div><div class="v mono">${r.hpm==null?"–":fmtN(r.hpm)}</div><div class="s">HP lost/min · you dodge ${r.dodge??"–"}% · DEF ${m.def??"–"} · MDEF ${m.mdef??"–"}</div></div>
    <div class="tile"><div class="k">Maps</div><div class="v mono">${om.length?om[0][0]:"–"}</div><div class="s">${om.length?om.slice(0,4).map(x=>`${x[0]} ≈${x[1]}`).join(" · "):"none open"} · <a href="${dbUrl(m)}" target="_blank" rel="noopener">rozerodb ↗</a></div></div>
    <div class="bar" style="grid-column:1/-1">${s.mobIds.includes(m.id)?'<span class="pill up">In this session</span> <button type="button" class="small" id="dropMobBtn">Remove from session</button>':`<button type="button" class="primary" id="useMobBtn">${s.mobIds.length?`Also killing ${esc(m.name)}`:`Farming ${esc(m.name)} now`}</button>`}</div>`;
@@ -733,7 +738,7 @@ $("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.p
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
 const openSession=id=>{state.current=id;state.calcMobId=null;save();renderAll();resetForm()};
 // accounts: switching saves this one and reloads the page with the other one's data
-function renderAccts(){$("acctSel").innerHTML=accts.list.map(a=>`<option value="${a.id}" ${a.id===accts.active?"selected":""}>${esc(a.name)}</option>`).join("");$("delAcct").disabled=accts.list.length<2}
+function renderAccts(){$("acctSel").innerHTML=accts.list.map(a=>`<option value="${esc(a.id)}" ${a.id===accts.active?"selected":""}>${esc(a.name)}</option>`).join("");$("delAcct").disabled=accts.list.length<2}
 const switchAcct=id=>{save();accts.active=id;saveAccts();location.reload()};
 $("acctSel").addEventListener("change",e=>switchAcct(e.target.value));
 $("newAcct").addEventListener("click",()=>{const id="a"+Date.now();let n=accts.list.length+1;while(accts.list.some(a=>a.name==="Account "+n))n++;accts.list.push({id,name:"Account "+n});switchAcct(id)});
