@@ -161,12 +161,24 @@ function applyHsAuto(){
 const skillZeny=m=>{const z=num(C().a.zeny);if(!z)return 0;const u=usesPerKill(m);return isFinite(u)?z*u/targets():0};
 // zeny per kill: the exported loot value (rozerodb, NPC prices) scaled by your drop rate bonus. A drop you sell to players
 // counts at the market price you typed instead: the loot value already holds its NPC price, so the market price adds only what
-// it beats the NPC price by (type the NPC price to take it off; blank counts it as 0). Its chance is scaled by the drop bonus, capped at 100%
+// it beats the NPC price by. Its chance is scaled by the drop bonus and the level penalty, capped at 100%
 const dropMul=()=>1+num(state.dropBonus)/100;
-const marketGain=id=>{const p=state.prices[id];return p>0?Math.max(0,p-num(state.npcPrices[id])):0};
-const marketVal=m=>(m.drops||[]).reduce((a,[id,ch])=>{const g=marketGain(id);return g>0?a+g*Math.min(100,ch*dropMul())/100:a},0);
+// NPC sell price: the one you typed, else rozerodb's (data/prices.js), else 0
+const npcSell=id=>{const v=state.npcPrices[id];return v!=null&&v!==""?num(v):num(NPCSELL[id])};
+// drop rate cut by level gap = monster Lv − your base Lv (official guide, roz.mygnjoy.com/en/intro/guide/11): "~ -19" no penalty,
+// "-40 ~" 50% reduction. The guide gives nothing for −20 to −39 (pct null), so that band counts as no cut and is flagged as unknown
+const DROP_PEN=[{min:-19,pct:0},{min:-39,pct:null},{min:-Infinity,pct:50}];
+const dropGap=m=>m.lv>0&&num(C().baseLv)>0?m.lv-num(C().baseLv):null;
+const dropBand=m=>{const g=dropGap(m);return g==null?DROP_PEN[0]:DROP_PEN.find(b=>g>=b.min)};
+const dropPenalty=m=>dropBand(m).pct||0;
+const penMul=m=>1-dropPenalty(m)/100;
+// "drops −50% (Lv gap −45)" for the UI, or "" with no penalty
+const penNote=m=>{const b=dropBand(m),g=String(dropGap(m)).replace("-","−");return b.pct?`drops −${b.pct}% (Lv gap ${g})`:b.pct===null?`drop penalty unknown (Lv gap ${g}), counted as none`:""};
+const marketGain=id=>{const p=state.prices[id];return p>0?Math.max(0,p-npcSell(id)):0};
+// the guide doesn't give an order: chance × drop bonus × level penalty, then the 100% cap
+const marketVal=m=>(m.drops||[]).reduce((a,[id,ch])=>{const g=marketGain(id);return g>0?a+g*Math.min(100,ch*dropMul()*penMul(m))/100:a},0);
 const hasLoot=m=>m.loot!=null||marketVal(m)>0;
-const zenyKill=m=>(m.loot||0)*dropMul()+marketVal(m);
+const zenyKill=m=>(m.loot||0)*dropMul()*penMul(m)+marketVal(m);
 
 // ---- maps ----
 const REGIONS=[
