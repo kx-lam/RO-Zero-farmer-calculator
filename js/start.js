@@ -6,7 +6,8 @@ function showTab(t){
   document.querySelectorAll("[data-tabbtn]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tabbtn===t)));
   if(state.tab!==t){state.tab=t;save()}
   if(t==="ref")refScroll();
-  if(t==="maps")renderHunt();// renderAll only draws the Zeny Hunter while this tab is showing
+  // renderAll only draws these while their tab is showing
+  if(t==="maps")renderHunt();if(t==="market")renderPrices();if(t==="mobinfo")renderMobInfo();if(t==="items")renderItems();
 }
 document.querySelectorAll("[data-tabbtn]").forEach(b=>b.addEventListener("click",()=>{showTab(b.dataset.tabbtn);scrollTo({top:0})}));
 showTab(state.tab||"char");

@@ -135,7 +135,7 @@ $("clearF").addEventListener("click",()=>{state.filters={};document.querySelecto
 $("minLv").value=state.minLv;$("maxLv").value=state.maxLv;
 ["minLv","maxLv"].forEach(id=>$(id).addEventListener("input",e=>{state[id]=e.target.value===""?(id==="maxLv"?99:1):num(e.target.value);save();renderMobs()}));
 $("hideClosed").checked=state.hideClosed;$("hideClosed").addEventListener("change",e=>{state.hideClosed=e.target.checked;save();renderMobs()});
-// best maps + closed regions
+// EXP Hunter + closed regions
 $("bestMin").addEventListener("input",renderBest);$("bestN").addEventListener("change",renderBest);
 $("bestTable").querySelector("thead").addEventListener("click",e=>{const th=e.target.closest("th[data-bk]");if(!th)return;const k=th.dataset.bk;
   if((state.bestSort||"epm")===k)state.bestDir=-(state.bestDir||-1);else state.bestDir=(k==="mp"||k==="secT"||k==="hpm"||k==="skip")?1:-1;state.bestSort=k;save();renderBest()});
@@ -145,13 +145,23 @@ $("closedMaps").addEventListener("change",e=>{state.closed=[...new Set(e.target.
 // Zeny Hunter
 ROOTQ("[data-hunt]").forEach(b=>b.addEventListener("click",()=>{state.huntMode=b.dataset.hunt;save();renderHunt()}));
 $("huntMin").addEventListener("input",renderHunt);$("huntN").addEventListener("change",renderHunt);
+$("huntAuto").addEventListener("change",e=>{state.huntAuto=e.target.checked;save();renderHunt()});
+$("flyPrice").value=state.flyPrice??250;$("teleSec").value=state.teleSec??1;
+["flyPrice","teleSec"].forEach(id=>$(id).addEventListener("input",e=>{if(e.target.value==="")delete state[id];else state[id]=Math.max(0,num(e.target.value));save();renderHunt()}));
+// auto loot: one tick box per group; it changes zeny everywhere
+$("autoLoot").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-loot="${g}" style="width:auto"> ${n}</label>`).join(""));
+$("autoLoot").addEventListener("change",e=>{const i=e.target.closest("[data-loot]");if(!i)return;state.autoLoot[i.dataset.loot]=i.checked;save();renderAll()});
+// pick the monsters to hunt on a map: the first click copies the current picks (all, or the best-paying ones) and toggles that monster;
+// you always hunt at least one. "reset" goes back to all / best-paying
+const huntPick=(mp,id)=>{const r=huntMap(mp,walkSec(),num($("huntMin").value));if(!r)return;const off=new Set(r.mobs.filter(x=>!x.on).map(x=>x.m.id));
+  off.has(id)?off.delete(id):off.add(id);if(r.mobs.every(x=>off.has(x.m.id)))return;state.huntOff[mp]=[...off];save();renderAll()};
 $("huntTable").querySelector("thead").addEventListener("click",e=>{const th=e.target.closest("th[data-hk]");if(!th)return;const k=th.dataset.hk;
   if((state.huntSort||"net")===k)state.huntDir=-(state.huntDir||-1);else state.huntDir=(k==="name"||k==="cost"||k==="hpm")?1:-1;state.huntSort=k;save();renderHunt()});
 // market prices: add by name ("Name #id" from the list, or a unique name), edit, remove, or click a drop in the table
 const DROP_IDS=[...new Set(MOBS.flatMap(m=>(m.drops||[]).map(d=>String(d[0]))))].filter(id=>ITEMN[id]);
 $("priceList").innerHTML=DROP_IDS.map(id=>`<option value="${esc(ITEMN[id])} #${id}"></option>`).join("");
 const findItem=s=>{s=String(s).trim();const h=s.match(/#(\d+)$/);if(h&&ITEMN[h[1]])return h[1];const l=s.toLowerCase();const hit=DROP_IDS.filter(id=>ITEMN[id].toLowerCase()===l);return hit.length?hit[0]:null};
-const addPrice=(id,focus)=>{if(!(id in state.prices))state.prices[id]=0;save();renderPrices();if(focus){const i=document.querySelector(`[data-price="${id}"]`);if(i){i.focus();i.scrollIntoView({behavior:"smooth",block:"center"})}}};
+const addPrice=(id,focus)=>{if(!(id in state.prices))state.prices[id]=0;save();renderPrices();if(focus){showTab("market");const i=document.querySelector(`[data-price="${id}"]`);if(i){i.focus();i.scrollIntoView({behavior:"smooth",block:"center"})}}};
 // the NPC box shows rozerodb's NPC price for the picked item; typing one overrides it
 $("priceItem").addEventListener("input",()=>{const id=findItem($("priceItem").value);$("priceNpc").placeholder=id&&NPCSELL[id]!=null?fmtN(NPCSELL[id])+" (rozerodb)":"0"});
 $("priceAdd").addEventListener("click",()=>{const id=findItem($("priceItem").value),p=$("priceVal").value;if(!id){$("priceMsg").textContent="Pick an item from the list.";return}
@@ -159,10 +169,23 @@ $("priceAdd").addEventListener("click",()=>{const id=findItem($("priceItem").val
 $("priceTable").addEventListener("input",e=>{const i=e.target.closest("[data-price],[data-npc]");if(!i)return;
   if(i.dataset.price)state.prices[i.dataset.price]=Math.max(0,num(i.value));else if(i.value==="")delete state.npcPrices[i.dataset.npc];else state.npcPrices[i.dataset.npc]=Math.max(0,num(i.value));save();renderAll()});
 $("priceTable").addEventListener("click",e=>{const b=e.target.closest("[data-unprice]");if(!b)return;delete state.prices[b.dataset.unprice];delete state.npcPrices[b.dataset.unprice];save();renderAll()});
-$("huntTable").querySelector("tbody").addEventListener("click",e=>{const a=e.target.closest("[data-pitem]");if(a){e.preventDefault();e.stopPropagation();addPrice(a.dataset.pitem,true)}},true);
+$("huntTable").querySelector("tbody").addEventListener("click",e=>{const a=e.target.closest("[data-pitem]");if(a){e.preventDefault();e.stopPropagation();addPrice(a.dataset.pitem,true);return}
+  const h=e.target.closest("[data-hpick]");if(h){e.preventDefault();e.stopPropagation();huntPick(h.dataset.hpick,+h.dataset.hmob);return}
+  const x=e.target.closest("[data-hreset]");if(x){e.preventDefault();e.stopPropagation();delete state.huntOff[x.dataset.hreset];save();renderAll();return}
+  const t=e.target.closest("[data-notele]");if(t){e.preventDefault();e.stopPropagation();const mp=t.dataset.notele;state.noTele=noTele(mp)?state.noTele.filter(x=>x!==mp):[...state.noTele,mp];save();renderHunt()}},true);
 $("huntTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.target.closest("tr[data-map],tr[data-id]");if(!tr)return;
   if(tr.dataset.map){state.map=tr.dataset.map;save();renderMap();$("mapCard").scrollIntoView({behavior:"smooth",block:"start"})}
   else{state.calcMobId=+tr.dataset.id;save();renderAll();$("mobTiles").scrollIntoView({behavior:"smooth",block:"center"})}});
+// Monster info: pick a monster; click a drop to price it, a map to open it in the map planner
+$("mobInfoInput").addEventListener("change",e=>{const m=MOBS.find(x=>x.name.toLowerCase()===e.target.value.trim().toLowerCase());if(!m)return;state.infoMobId=m.id;save();renderMobInfo()});
+$("mobInfoDrops").addEventListener("click",e=>{const a=e.target.closest("[data-pitem]");if(a){e.preventDefault();addPrice(a.dataset.pitem,true)}});
+$("mobInfoMaps").addEventListener("click",e=>{const tr=e.target.closest("tr[data-map]");if(!tr)return;state.map=tr.dataset.map;save();showTab("maps");renderMap();$("mapCard").scrollIntoView({behavior:"smooth",block:"start"})});
+// Item info: search and filter; click an item for its droppers, a dropper for its Monster info
+$("itemGroup").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<option value="${g}">${n}</option>`).join(""));
+$("itemSearch").addEventListener("input",renderItems);$("itemGroup").addEventListener("change",renderItems);$("itemSort").addEventListener("change",renderItems);
+$("itemCard").addEventListener("click",e=>{const a=e.target.closest("[data-pitem]");if(a){e.preventDefault();addPrice(a.dataset.pitem,true);return}
+  const it=e.target.closest("tr[data-item]");if(it){state.infoItem=it.dataset.item;save();renderItems();$("itemTiles").scrollIntoView({behavior:"smooth",block:"nearest"});return}
+  const mo=e.target.closest("#itemDroppers tr[data-id]");if(mo){state.infoMobId=+mo.dataset.id;save();showTab("mobinfo");scrollTo({top:0})}});
 // map planner
 $("mapList").innerHTML=Object.keys(MAPMOBS).sort((a,b)=>mapCode(a).localeCompare(mapCode(b))).map(m=>`<option value="${mapCode(m)}">${esc(mapName(m))} · ${MAPMOBS[m].length} monsters</option>`).join("");
 $("mapInput").addEventListener("change",e=>{state.map=mapKey(e.target.value);save();renderMap()});

@@ -1,12 +1,13 @@
-"""Export NPC sell prices for every item monsters drop (data/loot.js) into data/prices.js.
+"""Export NPC sell prices and item types for every item monsters drop (data/loot.js) into data/prices.js and data/itemtypes.js.
 
-    python tools/export_prices.py            # fetch what isn't cached, then write data/prices.js
+    python tools/export_prices.py            # fetch what isn't cached, then write data/prices.js and data/itemtypes.js
     python tools/export_prices.py --refresh  # refetch every item (prices changed after a patch)
 
 Prices come from rozerodb.com's item API (/api/items/<id>: buy_price, sell_price), the site data/loot.js came from, so
 they should add up to its loot value per kill. Not from rAthena: its prices don't match RO Zero.
 Items are fetched one per second and cached in tools/cache/ (gitignored). Delete a cached file to refetch it.
 Items rozerodb has no sell price for are written as null (roz.prontera.info and ragnarokzero.net had none for the ones checked either).
+Item types follow the in-game auto-loot (Looting tab) groups; see loot_type().
 Then it checks every monster: sum(sell x chance / 100) over its drops should round to LOOT[id][0]. It prints how many
 match, the worst mismatches, and the items it couldn't price.
 """
@@ -55,14 +56,32 @@ def item(item_id, refresh=False):
     return rec
 
 
+# rozerodb category -> in-game auto-loot group: w weapon, a armor, u consumable, c card, e miscellaneous, o costume.
+# Taming items (category Pet) are usable, so they loot as consumables; ETC and Other are both miscellaneous.
+# A few records have no category: the ones with a weapon slot (in Chinese, e.g. 短劍 dagger) are weapons, the rest are ETC drops
+LOOT_TYPE = {"Weapon": "w", "Armor": "a", "Consumable": "u", "Pet": "u", "Card": "c", "ETC": "e", "Other": "e"}
+
+
+def loot_type(rec):
+    if not rec:
+        return "e"
+    if rec.get("costume"):
+        return "o"
+    cat = rec.get("category")
+    if cat is None and rec.get("slot") not in (None, "", "-"):
+        return "w"
+    return LOOT_TYPE.get(cat, "e")
+
+
 def main():
     refresh = "--refresh" in sys.argv
     loot = js_object("loot", "LOOT")
     ids = sorted({str(i) for v in loot.values() for i, _ in v[3]}, key=int)
-    sell, missing = {}, []
+    sell, kind, missing = {}, {}, []
     for n, i in enumerate(ids):
         rec = item(i, refresh)
         sell[i] = rec.get("sell_price") if rec else None
+        kind[i] = loot_type(rec)
         if sell[i] is None:
             missing.append(i)
         if n % 100 == 99:
@@ -70,7 +89,11 @@ def main():
     with open(os.path.join(DATA, "prices.js"), "w", encoding="utf-8", newline="\n") as f:
         f.write("// NPC sell price (zeny) by item id, for every item in data/loot.js (rozerodb.com /api/items: sell_price; null = rozerodb has none, and its loot value counts it as 0); written by tools/export_prices.py\n")
         f.write("const NPCSELL=" + json.dumps(sell, separators=(",", ":")) + ";\n")
+    with open(os.path.join(DATA, "itemtypes.js"), "w", encoding="utf-8", newline="\n") as f:
+        f.write("// Auto-loot group by item id, for every item in data/loot.js (rozerodb.com /api/items: category): w weapon, a armor, u consumable, c card, e miscellaneous, o costume; written by tools/export_prices.py\n")
+        f.write("const ITEMTYPE=" + json.dumps(kind, separators=(",", ":")) + ";\n")
     print(f"{len(ids) - len(missing)} of {len(ids)} items priced")
+    print("auto-loot groups:", {k: list(kind.values()).count(k) for k in "wauceo"})
     if missing:
         print("no price:", " ".join(missing))
 

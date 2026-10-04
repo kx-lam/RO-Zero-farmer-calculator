@@ -40,7 +40,9 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("EXP / hour","EXP per kill × 3600 / (fight seconds + walking seconds)",()=>null)+
    grp("Loot")+
    R("Drop level penalty","level gap = monster Lv − your base Lv: −19 or more, no penalty; −40 or less, drops −50%; −20 to −39 isn't in the official guide, so no penalty is counted",()=>need(x=>dropGap(x)==null?null:`gap ${String(dropGap(x)).replace("-","−")}: ${penNote(x)||"no penalty"}${mn}`))+
-   R("Zeny per kill","loot value × (1 + drop bonus %) × (1 − level penalty %) + Σ (player price − NPC price) × min(100%, chance × (1 + drop bonus %) × (1 − level penalty %)) over drops you price",()=>need(x=>`${fmtN(zenyKill(x))} z${mn}`));
+   R("Zeny per kill","loot value × (1 + drop bonus %) × (1 − level penalty %) + Σ (player price − NPC price) × min(100%, chance × (1 + drop bonus %) × (1 − level penalty %)) over drops you price; with an auto-loot group unticked, the loot value is Σ NPC price × chance over the drops you loot, and drops you don't loot add nothing",()=>need(x=>`${fmtN(zenyKill(x))} z${mn}`))+
+   R("Zeny Hunter walking","walking per kill × √(spawns of monsters you can hurt on the map / spawns of the ones you hunt): the nearest target is about 1 / √density away",()=>`${walkSec().toFixed(1)}s with every monster hunted`)+
+   R("Zeny Hunter teleporting","extra teleports per kill = spawns you can hurt / spawns you hunt − 1; each adds the Fly Wing price and seconds per teleport. Maps marked \"no teleport\" only walk",()=>`${fmtN(flyPrice())} z and ${teleSec()}s per teleport`);
 }
 function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?m.exp*expRace(m)*expMul():0;
   const kills=e=>per>0?fmtN(Math.ceil(e/per)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";

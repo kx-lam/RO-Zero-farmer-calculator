@@ -69,6 +69,13 @@ tbody tr{cursor:pointer}
 #bestTable th[data-bk]{cursor:pointer}
 #bestTable td.mainmobs{white-space:normal;min-width:170px;line-height:1.35}
 #bestTable td{vertical-align:top}
+#huntTable td{vertical-align:top}
+#huntTable td.mainmobs{white-space:normal;min-width:200px;line-height:1.35;text-align:left}
+#mobInfoDrops td.name,#mobInfoMaps td.name,#itemTable td.name,#itemDroppers td.name{text-align:left}
+#mobInfoMaps td:last-child{white-space:normal}
+#huntTable a.hpick{text-decoration:none;color:var(--fg)}
+#huntTable a.hpick.off{color:var(--muted);text-decoration:line-through}
+#huntTable .drop.off a{color:var(--muted)}
 .pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-family:var(--body)}
 .pill.up{color:var(--good);border-color:var(--good)}
 .pill.down{color:var(--warn);border-color:var(--warn)}
