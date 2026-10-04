@@ -34,6 +34,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Dodge","95 + FLEE − monster's 95%-flee value, 0–95%",()=>need(x=>dodge(x)==null?null:`${Math.round(dodge(x))}%${mn}`))+
    R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + damage taken % from its race) × (1 + from its element) × (1 + from boss/normal), at least 1",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`))+
    R("SP regen","1 + ⌊Max SP/100⌋ + ⌊INT/6⌋ every 8 s; none at 70% weight or more",()=>`${fmtN(spRegen8())} / 8 s`)+
+   R("Overcharge / Discount","NPC sell price × (1 + Overcharge %), rounded down; NPC buy price × (1 − Discount %). Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%",()=>{const o=skRate("overcharge"),d=skRate("discount");return o||d?`+${o}% / −${d}%`:null})+
    R("Weight","at 70% of Max Weight HP and SP stop regenerating; at 90% you can't attack or use skills. Kills per trip = (Max Weight × sell point − weight now) / weight per kill; seconds per kill + town trip / kills per trip",()=>{if(!wOn())return "type your Max Weight";const t=m&&tripInfo(m,walkSec());return t&&t.wk>0?(isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills a trip${mn}`:"sell first"):`${fmtN(num(c.curW))} / ${fmtN(num(c.maxW))}`})+
    grp("EXP")+
    R("Your EXP per kill","monster EXP × (1 + gear EXP % + gear EXP % vs its race) × (1 + EXP bonus %) × (1 + party bonus % × (members − 1)) / members",()=>need(x=>`${fmtN(x.exp*expRace(x)*expMul())}${mn}`))+

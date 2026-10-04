@@ -10,9 +10,16 @@ const elTag=el=>el&&(convOn()||C().a.type==="spellfist")?` <span class="el ${el}
 // damage maths read cf(k): the typed (or built) stat plus consumables, see applyConsumables
 let EFF=null;const cf=k=>EFF&&EFF[k]!==undefined?EFF[k]:C()[k];
 const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)+(C().potOn?num(C().potAspd):0)));
-const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice):0;
+// Merchant line: Overcharge raises what NPCs pay you, Discount cuts what NPCs charge you; Lv 1–10 give 7, 9, … 23, 24% in Zero,
+// read from the learned level's description in data/skills.js ("Markup rate: 24%", "Discount rate: 24%")
+const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILLS[state.job]||[])for(const s of t.skills)if(s.slug===slug){const r=String((s.lv[lv-1]||[])[7]||"").match(/(\d+)%/);return r?+r[1]:0}return 0};
+const ocMul=()=>1+skRate("overcharge")/100;
+// Discount only helps with what you buy from an NPC: untick "from NPCs" when you buy SP items and potions from players
+const discMul=()=>C().npcBuy===false?1:1-skRate("discount")/100;
+const spItemPrice=()=>num(C().itemPrice)*discMul();
+const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
 // zeny per hour spent on the ASPD potion plus the consumables that are switched on
-const potCostHr=()=>potOnlyHr()+(C().cons||[]).filter(r=>r.on&&num(r.min)>0).reduce((a,r)=>a+60/num(r.min)*num(r.price),0);
+const potCostHr=()=>potOnlyHr()+(C().cons||[]).filter(r=>r.on&&num(r.min)>0).reduce((a,r)=>a+60/num(r.min)*num(r.price)*discMul(),0);
 const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 // seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
 // variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)
@@ -152,7 +159,7 @@ function applyHsAuto(){
   const top=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)&&!x.m.expUnknown&&x.m.atkMin!=null).sort((a,b)=>b.n-a.n)[0];const mm=top?top.m:null;
   const run=v=>withHs(v,()=>{const k=SG_MOB;SG_MOB=mm;try{return {r:mapStats(mp,w),items:sgItemsPerSec()}}finally{SG_MOB=k}});
   const on=run(true),off=run(false);if(!on.r||!off.r){g._note="Auto: no result for "+mp;return}
-  const costHr=(on.items-off.items)*3600*num(C().itemPrice),gain=(on.r.epm-off.r.epm)*60/L*100,net=costHr-(on.r.zph-off.r.zph),per=gain>0?net/gain:Infinity;
+  const costHr=(on.items-off.items)*3600*spItemPrice(),gain=(on.r.epm-off.r.epm)*60/L*100,net=costHr-(on.r.zph-off.r.zph),per=gain>0?net/gain:Infinity;
   const want=gain>0&&(net<=0||per<=num(g.hsWorth));g.hsOn=want;
   g._note=`Hindsight auto: ${want?"on":"off"} on ${mapCode(mp)} · ${gain<=0?"no EXP gain":net<=0?"extra loot pays for the SP items":`~${fmtN(per)} z per 1% EXP vs your ${fmtN(num(g.hsWorth))} z limit`} (+${gain.toFixed(2)}%/hr)`;
 }
@@ -174,11 +181,13 @@ const dropPenalty=m=>dropBand(m).pct||0;
 const penMul=m=>1-dropPenalty(m)/100;
 // "drops −50% (Lv gap −45)" for the UI, or "" with no penalty
 const penNote=m=>{const b=dropBand(m),g=String(dropGap(m)).replace("-","−");return b.pct?`drops −${b.pct}% (Lv gap ${g})`:b.pct===null?`drop penalty unknown (Lv gap ${g}), counted as none`:""};
-const marketGain=id=>{const p=state.prices[id];return p>0?Math.max(0,p-npcSell(id)):0};
+// what an NPC actually pays you, with Overcharge (the game rounds down per item)
+const npcPays=id=>Math.floor(npcSell(id)*ocMul());
+const marketGain=id=>{const p=state.prices[id];return p>0?Math.max(0,p-npcPays(id)):0};
 // the guide doesn't give an order: chance × drop bonus × level penalty, then the 100% cap
 const marketVal=m=>(m.drops||[]).reduce((a,[id,ch])=>{const g=marketGain(id);return g>0?a+g*Math.min(100,ch*dropMul()*penMul(m))/100:a},0);
 const hasLoot=m=>m.loot!=null||marketVal(m)>0;
-const zenyKill=m=>(m.loot||0)*dropMul()*penMul(m)+marketVal(m);
+const zenyKill=m=>(m.loot||0)*ocMul()*dropMul()*penMul(m)+marketVal(m);
 
 // ---- maps ----
 const REGIONS=[
@@ -306,7 +315,7 @@ function sessEpm(s,w){const mix=sessMix(s);if(!mix)return null;let best=null;
 // ---- Zeny Hunter: maps and monsters ranked by net zeny per hour ----
 // loot per hour (with your drop bonus, less skill costs such as Mammonite) minus SP items and the consumables that are switched on.
 // Unlike the EXP rankings, monsters with no EXP in rozerodb still count here: they drop loot all the same
-const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*num(C().itemPrice)+potCostHr()}finally{SG_MOB=k}};
+const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*spItemPrice()+potCostHr()}finally{SG_MOB=k}};
 function huntMap0(mp,w){
   const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,time=0,z=0,exp=0,expT=0,hp=0,hpN=0;const skip=[],earn=[];
   list.forEach(({m,n:c})=>{N+=c;const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
