@@ -1,7 +1,7 @@
 // ---- tabs: show one group of sections at a time; the last one opened is remembered in state.tab (Character first for new players) ----
 function showTab(t){
   if(t==="data")t="acct";// Backup now lives on the Account tab
-  if(!document.querySelector(`[data-tabbtn="${t}"]`))t="char";
+  if(![...document.querySelectorAll("[data-tabbtn]")].some(b=>b.dataset.tabbtn===t))t="char";
   document.querySelectorAll("[data-tab]").forEach(el=>el.hidden=el.dataset.tab!==t);
   document.querySelectorAll("[data-tabbtn]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tabbtn===t)));
   if(state.tab!==t){state.tab=t;save()}
