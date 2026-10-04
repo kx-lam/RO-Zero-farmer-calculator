@@ -180,6 +180,30 @@ t("Vitata: you cast Heal Lv1, so healing takes time away from attacking", () => 
   assert.equal(run(`fightSec(${MOB})`), Infinity);
 });
 
+t("skill buffs: element and crit damage bonuses don't become damage on every hit", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  // hit with the buff off and on; the skill is learned at max and the buff ticked, as on the Skills card
+  const hit = (job, slug, fields) => [false, true].map(on => run(`(()=>{state.job=${JSON.stringify(job)};state.chars={};const c=C();Object.assign(c,${JSON.stringify(fields)});
+    c.skills={${JSON.stringify(slug)}:skOf(state.job)[${JSON.stringify(slug)}].max};c.buffs={${JSON.stringify(slug)}:${on}};
+    SKFX=skillEffects(c);applyBuild();applyConsumables();return {d:dmgPerHit(${MOB}),k:bonusMul(${MOB},c.a.type==="magic"),crit:SKFX.buffStat.filter(b=>b[0]==="crit_damage_percent").reduce((x,b)=>x+b[3],0)}})()`));
+  const phys = el => ({ atkTxt: "100+300", wAtk: 0, wElem: el, st: {}, a: AUTO });
+  // Lady Luck: "CRIT +10, Critical Damage +20%" only adds crit damage
+  let [off, on] = hit("Dancer", "lady-luck", phys("Neutral"));
+  assert.equal(on.d, off.d);
+  assert.equal(on.crit, 20);
+  // Volcano: "Fire Damage +20%" counts for a Fire weapon, not a Water one (its ATK +30 counts for both)
+  const vol = hit("Sage", "volcano", phys("Water")), volFire = hit("Sage", "volcano", phys("Fire"));
+  near(vol[1].k, vol[0].k, "Water weapon bonus");                       // its ATK +30 still raises the hit
+  near(volFire[1].k / volFire[0].k, 1.2, "Fire weapon bonus");
+  // Endow Blaze: "Fire Magical Damage +5%" leaves physical hits alone and adds 5% to Fire spells
+  [off, on] = hit("Sage", "endow-blaze", phys("Fire"));
+  assert.equal(on.d, off.d);
+  const bolt = { name: "x", type: "magic", pct: 100, hits: 1, el: "Fire", cast: 0, delay: 0, sp: 0, targets: 1 };
+  [off, on] = hit("Sage", "endow-blaze", { matkTxt: "300+200", st: {}, intTxt: "", a: bolt });
+  near(on.k / off.k, 1.05, "Fire spell bonus");
+  assert.ok(on.d > off.d);
+});
+
 t("monster table filters", () => {
   const m = (e, v, txt) => run(`matchF(${JSON.stringify(e)},${JSON.stringify(v)},${JSON.stringify(txt ?? null)})`);
   assert.ok(m("<350", 300) && !m("<350", 350));
