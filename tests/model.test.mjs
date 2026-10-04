@@ -267,8 +267,8 @@ t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts 
 t("market prices: a drop sold to players counts at its player price instead of its NPC price", () => {
   const mob = "({id:-2,name:'Seller',loot:50,drops:[[909,10],[4001,0.5]]})";
   near(run(`zenyKill(${mob})`), 50);                                     // no prices typed: rozerodb loot value only
-  run(`state.prices={909:200}`);                                          // players pay 200, NPC price unknown (counts as 0)
-  near(run(`zenyKill(${mob})`), 50 + 200 * 0.10);
+  run(`state.prices={909:200}`);                                          // players pay 200, NPC price from rozerodb (data/prices.js)
+  near(run(`zenyKill(${mob})`), 50 + (200 - run(`NPCSELL[909]`)) * 0.10);
   run(`state.npcPrices={909:10}`);                                        // NPC pays 10: that part is already in the loot value
   near(run(`zenyKill(${mob})`), 50 + (200 - 10) * 0.10);
   run(`state.dropBonus=100`);                                             // drop bonus doubles the chance (capped at 100%)
@@ -279,6 +279,54 @@ t("market prices: a drop sold to players counts at its player price instead of i
   run(`state.prices={909:200};state.npcPrices={}`);
   assert.ok(run(`hasLoot({drops:[[909,10]]})`));                         // a priced drop gives a monster with no loot value a zeny figure
   run(`state.prices={}`);
+});
+
+t("NPC prices: rozerodb's NPC price is the default, a typed one overrides it", () => {
+  assert.ok(run(`NPCSELL[909]`) > 0);                                     // Jellopy has an NPC price in data/prices.js
+  assert.equal(run(`npcSell(909)`), run(`NPCSELL[909]`));
+  run(`state.npcPrices={909:1}`); assert.equal(run(`npcSell(909)`), 1);    // typed value wins
+  run(`state.npcPrices={909:0}`); assert.equal(run(`npcSell(909)`), 0);    // even 0
+  run(`state.npcPrices={}`);
+  assert.equal(run(`npcSell(-99)`), 0);                                   // unknown item: 0
+  // every drop in loot.js is listed; null where rozerodb has no price, which counts as 0
+  assert.deepEqual(run(`Object.values(LOOT).flatMap(v=>v[3].map(d=>String(d[0]))).filter(id=>!(id in NPCSELL)).length`), 0);
+  assert.equal(run(`NPCSELL[7001]`), null); assert.equal(run(`npcSell(7001)`), 0);
+  // players pay 200, an NPC 10, at 10%: the loot value plus what the player price beats the NPC price by
+  run(`NPCSELL[-5]=10;state.prices={"-5":200}`);
+  near(run(`zenyKill({loot:50,drops:[[-5,10]]})`), 50 + (200 - 10) * 0.10);
+  run(`delete NPCSELL[-5];state.prices={}`);
+});
+
+t("drop level penalty: monster Lv − base Lv, none down to −19, 50% from −40", () => {
+  run(`C().baseLv=60`);
+  for (const lv of [99, 60, 41]) assert.equal(run(`dropPenalty({lv:${lv}})`), 0);  // gap +39, 0, −19: free band
+  assert.equal(run(`penNote({lv:41})`), "");
+  for (const lv of [20, 1]) assert.equal(run(`dropPenalty({lv:${lv}})`), 50);    // gap −40, −59
+  assert.equal(run(`penNote({lv:20})`), "drops −50% (Lv gap −40)");
+  assert.equal(run(`dropPenalty({lv:30})`), 0);                                   // −30: not in the guide, counted as none
+  assert.match(run(`penNote({lv:30})`), /unknown/);
+  assert.equal(run(`dropPenalty({})`), 0);                                        // no monster level: no penalty
+});
+
+t("drop level penalty scales zeny per kill and the Zeny Hunter", () => {
+  run(`C().baseLv=60`);
+  const mob = "({id:-3,name:'Low',lv:20,loot:100,drops:[[909,10]]})";
+  near(run(`zenyKill(${mob})`), 50);                                     // loot value halved
+  run(`state.prices={909:200};state.npcPrices={909:10}`);
+  near(run(`zenyKill(${mob})`), 50 + 190 * 0.05);                         // the market part too: 10% chance becomes 5%
+  run(`state.dropBonus=100`);                                             // bonus and penalty both apply: 10% × 2 × 0.5
+  near(run(`zenyKill(${mob})`), 100 + 190 * 0.10);
+  run(`state.dropBonus=0;state.prices={};state.npcPrices={}`);
+  // a monster far below the character earns less in the rankings
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  const low = MOB.replace("drops:[]", "drops:[],loot:500").replace("lv:50", "lv:20");
+  run(`C().baseLv=50`); const near0 = run(`huntMob0(${low},2)`);
+  run(`C().baseLv=60`); const far = run(`huntMob0(${low},2)`);
+  near(near0.zk, 500); near(far.zk, 250); assert.ok(far.net < near0.net);
+  const real = run(`MOBS.find(m=>m.id===1002)`).lv;                       // Poring: ranks lower once you outlevel it by 40
+  run(`C().baseLv=${real}`); const a = run(`huntMob0(MOBS.find(m=>m.id===1002),2)`);
+  run(`C().baseLv=${real + 40}`); const b = run(`huntMob0(MOBS.find(m=>m.id===1002),2)`);
+  near(b.zk, a.zk / 2);
 });
 
 console.log(`${n} tests passed`);
