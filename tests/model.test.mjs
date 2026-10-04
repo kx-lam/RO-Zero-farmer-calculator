@@ -145,6 +145,22 @@ t("zeny per kill: the loot value scaled by the drop rate bonus", () => {
   assert.equal(run(`zenyKill({})`), 0);
 });
 
+t("Vitata: you cast Heal Lv1, so healing takes time away from attacking", () => {
+  setup("Sage", { matkTxt: "300+200", aspd: 170, defTxt: "10+10", maxSp: 800, maxHp: 4000, hitScale: 1, mobInterval: 1.5, st: {}, intTxt: "",
+    sage: { vitata: false, healSp: 13, healHp: 357, spBonus: 25, ecOn: false, hsOn: false, hsAuto: false } });
+  const off = run(`fightSec(${MOB})`);
+  assert.equal(run(`healShare(${MOB})`), 0);                         // no Vitata: no healing
+  run("G().vitata=true");
+  const d = run(`sgDefense(${MOB})`), heals = d.hp / 357, f = heals * Math.max(0.3, 1 / run("atkPerSec()"));
+  near(run(`healsPerSec(${MOB})`), heals);
+  near(run(`healShare(${MOB})`), f);
+  assert.ok(f > 0 && f < 1);
+  near(run(`fightSec(${MOB})`), off / (1 - f));                       // the fight takes longer by the time spent healing
+  near(d.healSP, heals * 13 * 1.25);                                  // Heal's SP carries Vitata's +25%
+  run("G().healHp=1");                                                // a heal too small to keep up
+  assert.equal(run(`fightSec(${MOB})`), Infinity);
+});
+
 t("monster table filters", () => {
   const m = (e, v, txt) => run(`matchF(${JSON.stringify(e)},${JSON.stringify(v)},${JSON.stringify(txt ?? null)})`);
   assert.ok(m("<350", 300) && !m("<350", 350));
