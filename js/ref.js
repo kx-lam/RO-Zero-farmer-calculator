@@ -38,7 +38,10 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    grp("EXP")+
    R("Your EXP per kill","monster EXP × (1 + gear EXP % + gear EXP % vs its race) × (1 + EXP bonus %) × (1 + party bonus % × (members − 1)) / members",()=>need(x=>`${fmtN(x.exp*expRace(x)*expMul())}${mn}`))+
    R("Even Share party","100% + 20% per member beyond the first, split evenly",()=>`× ${expMul().toFixed(2)} of a solo kill`)+
-   R("EXP / hour","EXP per kill × 3600 / (fight seconds + walking seconds)",()=>null);
+   R("EXP / hour","EXP per kill × 3600 / (fight seconds + walking seconds)",()=>null)+
+   grp("Loot")+
+   R("Drop level penalty","level gap = monster Lv − your base Lv: −19 or more, no penalty; −40 or less, drops −50%; −20 to −39 isn't in the official guide, so no penalty is counted",()=>need(x=>dropGap(x)==null?null:`gap ${String(dropGap(x)).replace("-","−")}: ${penNote(x)||"no penalty"}${mn}`))+
+   R("Zeny per kill","loot value × (1 + drop bonus %) × (1 − level penalty %) + Σ (player price − NPC price) × min(100%, chance × (1 + drop bonus %) × (1 − level penalty %)) over drops you price",()=>need(x=>`${fmtN(zenyKill(x))} z${mn}`));
 }
 function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?m.exp*expRace(m)*expMul():0;
   const kills=e=>per>0?fmtN(Math.ceil(e/per)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";
