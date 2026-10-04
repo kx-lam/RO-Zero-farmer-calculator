@@ -36,8 +36,9 @@ const bonusMul=(m,magic=false)=>{const c=C();let k=1+num(c.dmgBonus)/100;
   if(B)k*=(1+(B.race[m.race]||0)/100)*(1+(B.size[m.size]||0)/100)*(1+(B.ele[el]||0)/100)*(1+(B.all||0)/100)*(1+(B.kind[m.boss?"boss":"normal"]||0)/100);
   if(!m.boss)k*=1+num(c.normalPct)/100;
   k*=1+num(c.myElPct)/100;if(magic&&c.bx)k*=1+((c.bx.myEle||{})[atkEl()]||0)/100;
-  // learned passives and buffs: physical damage % (Advanced Katar Mastery, Power Thrust), own spell element % (Endow, Volcano...)
-  if(SKFX){if(!magic)k*=1+SKFX.pct/100;else k*=1+(SKFX.myEle[atkEl()]||0)/100}return k};
+  // learned passives and buffs: physical damage % (Advanced Katar Mastery, Power Thrust), element % for spells (Endow, Volcano...)
+  // and, for an element's plain "Damage" bonus (Volcano, Deluge, Whirlwind), for physical attacks of that element too
+  if(SKFX){if(!magic)k*=(1+SKFX.pct/100)*(1+(SKFX.physEle[atkEl()]||0)/100);else k*=1+(SKFX.myEle[atkEl()]||0)/100}return k};
 // build mode: gear EXP bonus vs a monster's race, and damage taken from its race / element / boss-normal kind
 const expRace=m=>{const c=C();return c.bx?1+((c.bx.exp.all||0)+((c.bx.exp.race||{})[m.race]||0))/100:1};
 const takenMul=m=>{const c=C();if(!c.bx)return 1;const t=c.bx.taken;return (1+(t.race[m.race]||0)/100)*(1+(t.ele[m.el||"Neutral"]||0)/100)*(1+(t.kind[m.boss?"boss":"normal"]||0)/100)};

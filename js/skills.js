@@ -37,10 +37,13 @@ const SK_BUFF={"two-hand-quicken":{w:["Two-handed sword"]},"spear-quicken":{w:["
   "power-thrust":{},"improve-concentration":{},"increase-agility":{},"blessing":{},"falcon-eyes":{},"fury":{},"impositio-manus":{},"endow-quake":{},"endow-tsunami":{},
   "endow-tornado":{},"endow-blaze":{},"volcano":{},"deluge":{},"whirlwind":{},"battle-theme":{},"lady-luck":{},"focus-ballet":{},"perfect-tablature":{}};
 const SECOND=job=>!["Novice",...FIRST_JOBS].includes(job);
-// description -> effects: {mastery, pct (physical damage %), spCost, myEle {el: %}, stat: bonus lines (shown in the status window)}
-function skillFx(desc,c){const d=String(desc||""),o={mastery:0,pct:0,spCost:0,myEle:{},stat:[]},stat=(k,v)=>o.stat.push([k,null,null,v]);let m;
-  if((m=d.match(/Damage(?: Increase)?:?\s*\+(\d+(?:\.\d+)?)%/i))||(m=d.match(/^Self:\s*\+(\d+)%/i)))o.pct+=+m[1];
-  else if((m=d.match(/(?:Damage|ATK):?\s*\+(\d+)(?![\d.%])/i))&&!/ATK\/MATK/i.test(d)&&!/Bonus vs/i.test(d))o.mastery+=+m[1];
+// description -> effects: {mastery, pct (physical damage %), spCost, myEle {el: %} (your spells of that element), physEle {el: %} (your physical
+// attacks of that element), stat: bonus lines (shown in the status window)}
+function skillFx(desc,c){const d=String(desc||""),o={mastery:0,pct:0,spCost:0,myEle:{},physEle:{},stat:[]},stat=(k,v)=>o.stat.push([k,null,null,v]);let m;
+  // "Fire Damage +20%", "Fire Magical Damage +5%" and "Critical Damage +20%" are read further down; they aren't a damage bonus on every hit
+  const gen=d.replace(/(?:Fire|Water|Wind|Earth)(?: Magical)? Damage\s*\+\d+(?:\.\d+)?%|Critical Damage\s*\+\d+(?:\.\d+)?%/gi,"");
+  if((m=gen.match(/Damage(?: Increase)?:?\s*\+(\d+(?:\.\d+)?)%/i))||(m=gen.match(/^Self:\s*\+(\d+)%/i)))o.pct+=+m[1];
+  else if((m=gen.match(/(?:Damage|ATK):?\s*\+(\d+)(?![\d.%])/i))&&!/ATK\/MATK/i.test(gen)&&!/Bonus vs/i.test(gen))o.mastery+=+m[1];
   if((m=d.match(/ATK\/MATK\s*\+(\d+)/i))){stat("atk",+m[1]);stat("matk",+m[1])}
   d.replace(/((?:STR|AGI|VIT|INT|DEX|LUK)(?:,\s*(?:STR|AGI|VIT|INT|DEX|LUK))*)\s*\+(\d+)(%?)/g,(_,ks,v,pc)=>{ks.split(/,\s*/).forEach(k=>{k=k.toLowerCase();
     const add=pc?Math.floor((statVal(c,k)||0)*v/100):+v;if(add)stat(k,add)})});
@@ -52,12 +55,13 @@ function skillFx(desc,c){const d=String(desc||""),o={mastery:0,pct:0,spCost:0,my
   if((m=d.match(/ASPD:?\s*\+(\d+(?:\.\d+)?)%/i)))stat("aspd_percent",+m[1]);if((m=d.match(/After Attack Delay\s*-(\d+)%/i)))stat("aspd_percent",+m[1]);
   if((m=d.match(/Critical Damage\s*\+(\d+)%/i)))stat("crit_damage_percent",+m[1]);
   if((m=d.match(/SP Consumption\s*-(\d+)%/i)))o.spCost-=+m[1];
-  d.replace(/(Fire|Water|Wind|Earth)(?: Magical)? Damage\s*\+(\d+)%/g,(_,el,v)=>{o.myEle[el]=(o.myEle[el]||0)+ +v});
+  // an element's "Damage" bonus counts for spells and physical attacks of that element; a "Magical Damage" one only for spells
+  d.replace(/(Fire|Water|Wind|Earth)( Magical)? Damage\s*\+(\d+)%/g,(_,el,mag,v)=>{o.myEle[el]=(o.myEle[el]||0)+ +v;if(!mag)o.physEle[el]=(o.physEle[el]||0)+ +v});
   return o}
 // all effects from learned passives and switched-on buffs, for the current weapon
-function skillEffects(c){const out={mastery:[],pct:0,spCost:0,myEle:{},stat:[],buffStat:[]};if(!hasTree(c))return out;const S=skOf(state.job),w=c.weapon;
+function skillEffects(c){const out={mastery:[],pct:0,spCost:0,myEle:{},physEle:{},stat:[],buffStat:[]};if(!hasTree(c))return out;const S=skOf(state.job),w=c.weapon;
   const take=(slug,cond,isBuff)=>{const s=S[slug],lv=skLv(c,slug);if(!s||lv<=0)return;if(cond.w&&!cond.w.includes(w))return;const fx=skillFx(skRow(s,lv)[7],c);
-    if(fx.mastery)out.mastery.push({v:fx.mastery,races:cond.races||null});out.pct+=fx.pct;out.spCost+=fx.spCost;for(const k in fx.myEle)out.myEle[k]=(out.myEle[k]||0)+fx.myEle[k];
+    if(fx.mastery)out.mastery.push({v:fx.mastery,races:cond.races||null});out.pct+=fx.pct;out.spCost+=fx.spCost;for(const k in fx.myEle)out.myEle[k]=(out.myEle[k]||0)+fx.myEle[k];for(const k in fx.physEle)out.physEle[k]=(out.physEle[k]||0)+fx.physEle[k];
     (isBuff?out.buffStat:out.stat).push(...fx.stat);(s.g||[]).forEach(g=>(g.b||[]).forEach(b=>(isBuff?out.buffStat:out.stat).push(b)))};
   for(const k in SK_PASSIVE)take(k,SK_PASSIVE[k],false);for(const k in SK_BUFF)if((c.buffs||{})[k])take(k,SK_BUFF[k],true);return out}
 // Sage options follow the skill tree when one is set: Spell Fist, Hindsight, Double Bolt and bolt levels are the learned ones
