@@ -107,7 +107,14 @@ const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="
 const $=id=>document.getElementById(id);
 const ROOTQ=sel=>[...document.querySelectorAll(sel)];
 const KEY="rozero-farm-planner-v1";
-const store={get(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}},set(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}};
+// accounts: each one keeps its own full save; the first uses the original key so older saves carry over
+const ACCT_KEY="rozero-farm-planner-accounts";
+const accts=(()=>{let a=null;try{a=JSON.parse(localStorage.getItem(ACCT_KEY))}catch(e){}
+  if(!a||!Array.isArray(a.list)||!a.list.length)a={list:[{id:"a0",name:"Account 1"}],active:"a0"};
+  if(!a.list.some(x=>x.id===a.active))a.active=a.list[0].id;return a})();
+const saveAccts=()=>{try{localStorage.setItem(ACCT_KEY,JSON.stringify(accts))}catch(e){}};
+const acctKey=id=>id==="a0"?KEY:KEY+":"+id;
+const store={get(){try{return JSON.parse(localStorage.getItem(acctKey(accts.active)))}catch(e){return null}},set(v){try{localStorage.setItem(acctKey(accts.active),JSON.stringify(v))}catch(e){}}};
 let state=store.get()||{};
 if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",job:"",mobIds:[],entries:[]}];
 // sessions hold a list of monsters (one map, plus the aggressive ones you end up killing); older saves had a single mobId
@@ -692,6 +699,19 @@ $("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.p
   if(p){p.to=Date.now();save();renderAll();showTab("track");$("fPct").focus()}else{s.pauses.push({from:Date.now()});save();renderAll()}});
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
 const openSession=id=>{state.current=id;state.calcMobId=null;const s=cur();if(s.job&&JOBS[s.job]&&s.job!==state.job){state.job=s.job;syncChar()}save();renderAll();resetForm()};
+// accounts: switching saves this one and reloads the page with the other one's data
+function renderAccts(){$("acctSel").innerHTML=accts.list.map(a=>`<option value="${a.id}" ${a.id===accts.active?"selected":""}>${esc(a.name)}</option>`).join("");$("delAcct").disabled=accts.list.length<2}
+const switchAcct=id=>{save();accts.active=id;saveAccts();location.reload()};
+$("acctSel").addEventListener("change",e=>switchAcct(e.target.value));
+$("newAcct").addEventListener("click",()=>{const id="a"+Date.now();let n=accts.list.length+1;while(accts.list.some(a=>a.name==="Account "+n))n++;accts.list.push({id,name:"Account "+n});switchAcct(id)});
+const endAcctRename=keep=>{const i=$("acctName");if(i.hidden)return;if(keep){const v=i.value.trim(),a=accts.list.find(x=>x.id===accts.active);if(v&&a){a.name=v;saveAccts()}}i.hidden=true;$("acctSel").hidden=false;$("renameAcct").textContent="Rename";renderAccts()};
+$("renameAcct").addEventListener("click",()=>{const i=$("acctName");if(!i.hidden){endAcctRename(true);return}i.value=accts.list.find(x=>x.id===accts.active).name;i.hidden=false;$("acctSel").hidden=true;$("renameAcct").textContent="Save";i.focus();i.select()});
+$("acctName").addEventListener("keydown",e=>{if(e.key==="Enter")endAcctRename(true);else if(e.key==="Escape")endAcctRename(false)});
+$("acctName").addEventListener("blur",()=>setTimeout(()=>endAcctRename(true),150));
+let acctDelArmed=false;
+$("delAcct").addEventListener("click",()=>{if(accts.list.length<2)return;if(!acctDelArmed){acctDelArmed=true;$("delAcct").textContent="Confirm delete";setTimeout(()=>{acctDelArmed=false;$("delAcct").textContent="Delete"},3000);return}
+  try{localStorage.removeItem(acctKey(accts.active))}catch(e){}accts.list=accts.list.filter(a=>a.id!==accts.active);accts.active=accts.list[0].id;saveAccts();location.reload()});
+renderAccts();
 $("sessionSel").addEventListener("change",e=>openSession(e.target.value));
 // rename: swap the session picker for a text box; Enter or leaving the box saves, Esc cancels
 // renameId pins the session being renamed, so a save that lands after a session switch still renames the right one
