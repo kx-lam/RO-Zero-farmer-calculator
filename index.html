@@ -388,6 +388,15 @@
 <script src="data/jobs.js"></script>
 <script src="data/skills.js"></script>
 <script src="build.js"></script>
-<script src="app.js"></script>
+<!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
+<script src="js/game.js"></script>
+<script src="js/state.js"></script>
+<script src="js/model.js"></script>
+<script src="js/render.js"></script>
+<script src="js/events.js"></script>
+<script src="js/skills.js"></script>
+<script src="js/build-ui.js"></script>
+<script src="js/ref.js"></script>
+<script src="js/start.js"></script>
 </body>
 </html>

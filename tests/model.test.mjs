@@ -1,4 +1,4 @@
-// Damage and tracker maths in app.js, run against the real data files with a stand-in page. Run: node tests/model.test.mjs
+// Damage and tracker maths in js/*.js, run against the real data files with a stand-in page. Run: node tests/model.test.mjs
 import { readFileSync, readdirSync } from "fs";
 import vm from "vm";
 import assert from "assert/strict";
