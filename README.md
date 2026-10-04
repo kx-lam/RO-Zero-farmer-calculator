@@ -2,7 +2,7 @@
 
 A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Everything runs in your browser: there's no server and no login, and your data stays in your browser's local storage.
 
-**Live page:** https://kx-lam.github.io/RO-Zero-farmer-calculator/ (once GitHub Pages is enabled)
+**Live page:** https://kx-lam.github.io/RO-Zero-farmer-calculator/
 
 ## What it does
 
