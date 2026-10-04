@@ -116,11 +116,11 @@ const saveAccts=()=>{try{localStorage.setItem(ACCT_KEY,JSON.stringify(accts))}ca
 const acctKey=id=>id==="a0"?KEY:KEY+":"+id;
 const store={get(){try{return JSON.parse(localStorage.getItem(acctKey(accts.active)))}catch(e){return null}},set(v){try{localStorage.setItem(acctKey(accts.active),JSON.stringify(v))}catch(e){}}};
 let state=store.get()||{};
-if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",job:"",mobIds:[],entries:[]}];
+if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",mobIds:[],entries:[]}];
 // sessions hold a list of monsters (one map, plus the aggressive ones you end up killing); older saves had a single mobId
 state.sessions.forEach(s=>{if(!Array.isArray(s.mobIds))s.mobIds=s.mobId!=null?[s.mobId]:[];delete s.mobId});
-// no job until the player picks one on the start screen
-if(!JOBS[state.job])state.job="";
+// new accounts start as Novice; change it on the Character tab
+if(!JOBS[state.job])state.job="Novice";
 if(!state.chars)state.chars={};
 if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
 const D={bonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[],prices:{}};
@@ -1077,18 +1077,13 @@ showTab(state.tab||"char");
 // ---- collapsible cards: click a heading (or Enter/Space on it) to fold the card; saved by heading text ----
 (function setupCollapse(){
   if(!state.collapsed)state.collapsed={};
-  document.querySelectorAll(".card:not(#pickJob):not(#acctCard)").forEach(card=>{const h=card.querySelector(":scope>h2, :scope>.bar>h2");if(!h)return;
+  document.querySelectorAll(".card:not(#acctCard)").forEach(card=>{const h=card.querySelector(":scope>h2, :scope>.bar>h2");if(!h)return;
     const head=h.parentElement===card?h:h.parentElement;head.classList.add("cardHead");const key=h.textContent.trim();
     h.tabIndex=0;h.setAttribute("role","button");
     const set=v=>{card.classList.toggle("collapsed",v);h.setAttribute("aria-expanded",String(!v))};set(!!state.collapsed[key]);
     const flip=()=>{const v=!card.classList.contains("collapsed");state.collapsed[key]=v;if(!v)delete state.collapsed[key];save();set(v)};
     h.addEventListener("click",flip);h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();flip()}})});
 })();
-// ---- start: first visit shows only a job picker; everything else needs a job ----
-const startApp=()=>{document.body.classList.remove("nojob");syncClosed();syncChar();renderAll();resetForm()};
-if(state.job)startApp();
-else{document.body.classList.add("nojob");$("pickJob").hidden=false;
-  $("pickJobSel").innerHTML='<option value="" selected disabled>Choose a job…</option>'+$("job").innerHTML;
-  $("pickBackup").addEventListener("click",()=>{document.body.classList.add("nojobbk");showTab("data");$("bkText").focus()});
-  $("pickJobSel").addEventListener("change",e=>{state.job=e.target.value;C();save();$("pickJob").hidden=true;document.body.classList.remove("nojobbk");showTab("char");startApp()})}
+// ---- start ----
+syncClosed();syncChar();renderAll();resetForm();
 
