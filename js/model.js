@@ -264,3 +264,24 @@ function sessEpm(s,w){const mix=sessMix(s);if(!mix)return null;let best=null;
   elOptions().forEach(el=>{const v=withEl(el,()=>{let e=0,t=0;mix.list.forEach(({m,w:c})=>{const r=mobRow0(m,w);if(!isFinite(r.sec))return;e+=c*r.epk;t+=c*r.tot});return t>0?e/t*60:0});if(best==null||v>best)best=v});
   return best||null}
 
+
+// ---- Zeny Hunter: maps and monsters ranked by net zeny per hour ----
+// loot per hour (with your drop bonus, less skill costs such as Mammonite) minus SP items and the consumables that are switched on.
+// Unlike the EXP rankings, monsters with no EXP in rozerodb still count here: they drop loot all the same
+const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*num(C().itemPrice)+potCostHr()}finally{SG_MOB=k}};
+function huntMap0(mp,w){
+  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,time=0,z=0,exp=0,expT=0,hp=0,hpN=0;const skip=[],earn=[];
+  list.forEach(({m,n:c})=>{N+=c;const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
+    n+=c;time+=c*r.tot;z+=c*r.zk;earn.push({m,n:c,zk:r.zk});if(!m.expUnknown){exp+=c*r.epk;expT+=c*r.tot}if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
+  if(!n)return null;
+  const top=earn.reduce((a,x)=>!a||x.n>a.n?x:a,null),loot=z/time*3600,cost=huntCostHr(top.m);
+  return {mp,N,kph:n/time*3600,secT:time/n,loot,cost,net:loot-cost,zk:z/n,epm:expT?exp/expT*60:null,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,
+    earn:earn.sort((a,b)=>b.n*b.zk-a.n*a.zk)};
+}
+// one monster farmed on its own: its zeny per kill over fight + walk time
+function huntMob0(m,w){const r=mobRow0(m,w);if(!isFinite(r.sec)||!(r.tot>0))return null;const loot=r.zk/r.tot*3600,cost=huntCostHr(m);
+  return {m,kph:3600/r.tot,secT:r.tot,loot,cost,net:loot-cost,zk:r.zk,epm:m.expUnknown?null:r.epm,hpm:r.hpm}}
+// best converter (or Spell Fist bolt) by net zeny rather than EXP
+const bestBy=(fn,k)=>{let best=null;elOptions().forEach(el=>{const r=withEl(el,fn);if(r){r.el2=el;if(!best||r[k]>best[k])best=r}});return best};
+const huntMap=(mp,w)=>bestBy(()=>huntMap0(mp,w),"net");
+const huntMob=(m,w)=>bestBy(()=>huntMob0(m,w),"net");

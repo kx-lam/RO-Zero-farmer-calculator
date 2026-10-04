@@ -239,4 +239,27 @@ t("monsters with no EXP in rozerodb are listed but left out of EXP averages", ()
   assert.ok(r.epk > 0 && isFinite(r.epm));
 });
 
+t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts monsters with no EXP", () => {
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  const mob = MOB.replace("drops:[]", "drops:[],loot:500");
+  const r = run(`huntMob0(${mob},2)`), sec = run(`fightSec(${mob})`) + 2;
+  near(r.zk, 500); near(r.loot, 500 * 3600 / sec); near(r.net, r.loot); assert.equal(r.cost, 0);
+  run(`state.dropBonus=50`);                                            // drop rate bonus scales loot
+  near(run(`huntMob0(${mob},2)`).loot, 750 * 3600 / sec);
+  run(`state.dropBonus=0;C().a.zeny=100`);                              // Mammonite-style zeny per use comes off each kill
+  near(run(`huntMob0(${mob},2)`).zk, 500 - 100 * run(`usesPerKill(${mob})`));
+  run(`C().a.zeny=0;C().potOn=true;C().potMin=30;C().potPrice=1000`);   // an ASPD potion every 30 min: 2,000 z/hr
+  const p = run(`huntMob0(${mob},2)`);
+  near(p.cost, 2000); near(p.net, p.loot - 2000);
+  run(`C().potOn=false`);
+  // Myst has no EXP in rozerodb but still drops loot, so it counts towards zeny on its map
+  const map = run(`huntMap0("mjo_d03",2)`);
+  assert.ok(map.earn.some(x => x.m.name === "Myst") && map.epm > 0 && map.net > 0);
+  // monsters you skip are left out
+  const id = run(`MOBS.find(m=>m.name==="Myst").id`);
+  run(`state.skipMobs=[${id}]`);
+  assert.ok(!run(`huntMap0("mjo_d03",2)`).earn.some(x => x.m.name === "Myst"));
+  run(`state.skipMobs=[]`);
+});
+
 console.log(`${n} tests passed`);
