@@ -744,7 +744,7 @@ $("acctName").addEventListener("blur",()=>setTimeout(()=>endAcctRename(true),150
 let acctDelArmed=false;
 $("delAcct").addEventListener("click",()=>{if(accts.list.length<2)return;if(!acctDelArmed){acctDelArmed=true;$("delAcct").textContent="Confirm delete";setTimeout(()=>{acctDelArmed=false;$("delAcct").textContent="Delete"},3000);return}
   try{localStorage.removeItem(acctKey(accts.active))}catch(e){}accts.list=accts.list.filter(a=>a.id!==accts.active);accts.active=accts.list[0].id;saveAccts();location.reload()});
-// header ⋯ menus: click toggles, an outside click or Esc closes, picking an item closes (Delete stays open for its confirm click)
+// account and session ⋯ menus: click toggles, an outside click or Esc closes, picking an item closes (Delete stays open for its confirm click)
 const menus=[...document.querySelectorAll(".menu")];
 const closeMenu=(m,refocus)=>{const b=m.querySelector(".menuBtn");if(b.getAttribute("aria-expanded")!=="true")return;b.setAttribute("aria-expanded","false");m.querySelector(".menuList").hidden=true;if(refocus)b.focus()};
 menus.forEach(m=>{const b=m.querySelector(".menuBtn"),list=m.querySelector(".menuList"),items=()=>[...list.querySelectorAll("button:not(:disabled)")];
@@ -1077,7 +1077,7 @@ showTab(state.tab||"char");
 // ---- collapsible cards: click a heading (or Enter/Space on it) to fold the card; saved by heading text ----
 (function setupCollapse(){
   if(!state.collapsed)state.collapsed={};
-  document.querySelectorAll(".card:not(#pickJob)").forEach(card=>{const h=card.querySelector(":scope>h2, :scope>.bar>h2");if(!h)return;
+  document.querySelectorAll(".card:not(#pickJob):not(#acctCard)").forEach(card=>{const h=card.querySelector(":scope>h2, :scope>.bar>h2");if(!h)return;
     const head=h.parentElement===card?h:h.parentElement;head.classList.add("cardHead");const key=h.textContent.trim();
     h.tabIndex=0;h.setAttribute("role","button");
     const set=v=>{card.classList.toggle("collapsed",v);h.setAttribute("aria-expanded",String(!v))};set(!!state.collapsed[key]);

@@ -13,8 +13,24 @@
 <div class="wrap">
   <header>
     <h1 id="title">Rozero farm planner</h1><div class="note" id="subtitle"></div><div class="note" id="pauseNote" hidden></div>
-    <div class="bar acct" style="margin-top:8px">
-      <span class="note">Account</span>
+  </header>
+  <section class="card" id="pickJob" hidden>
+    <h2>Pick your job to start</h2>
+    <div class="note">The calculator, monster list and map rankings all depend on your job. You can switch any time on the Character tab.</div>
+    <label>Job<select id="pickJobSel" style="max-width:320px"></select></label>
+    <div class="note" style="margin-top:8px">Moving from another browser? <button type="button" class="small" id="pickBackup">Restore a backup</button></div>
+  </section>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" data-tabbtn="acct">Account</button>
+    <button type="button" role="tab" data-tabbtn="char">Character</button>
+    <button type="button" role="tab" data-tabbtn="track">Session</button>
+    <button type="button" role="tab" data-tabbtn="maps">Monsters &amp; maps</button>
+    <button type="button" role="tab" data-tabbtn="data">Backup</button>
+  </nav>
+  <section class="card" id="acctCard" data-tab="acct">
+    <h2>Account &amp; session</h2>
+    <div class="bar acct">
+      <span class="note pickLbl">Account</span>
       <select id="acctSel" class="grow" aria-label="Account"></select>
       <input id="acctName" class="grow" aria-label="Account name" hidden>
       <div class="menu">
@@ -26,7 +42,8 @@
         </div>
       </div>
     </div>
-    <div class="bar" style="margin-top:6px">
+    <div class="bar">
+      <span class="note pickLbl">Session</span>
       <select id="sessionSel" class="grow" aria-label="Session"></select>
       <input id="sessName" class="grow" aria-label="Session name" hidden>
       <div class="menu">
@@ -38,19 +55,8 @@
         </div>
       </div>
     </div>
-  </header>
-  <section class="card" id="pickJob" hidden>
-    <h2>Pick your job to start</h2>
-    <div class="note">The calculator, monster list and map rankings all depend on your job. You can switch any time on the Character tab.</div>
-    <label>Job<select id="pickJobSel" style="max-width:320px"></select></label>
-    <div class="note" style="margin-top:8px">Moving from another browser? <button type="button" class="small" id="pickBackup">Restore a backup</button></div>
+    <div class="note">Each account keeps its own job, character and sessions. Sessions are your farming runs; the Session tab shows the one picked here.</div>
   </section>
-  <nav class="tabs" role="tablist" aria-label="Sections">
-    <button type="button" role="tab" data-tabbtn="char">Character</button>
-    <button type="button" role="tab" data-tabbtn="track">Session</button>
-    <button type="button" role="tab" data-tabbtn="maps">Monsters &amp; maps</button>
-    <button type="button" role="tab" data-tabbtn="data">Backup</button>
-  </nav>
 
   <section class="card" data-tab="char">
     <div class="bar"><h2 class="grow">Your character</h2><span class="note" id="jobNote"></span></div>
