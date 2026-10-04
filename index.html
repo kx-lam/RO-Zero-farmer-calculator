@@ -44,6 +44,32 @@
       <label>EXP bonus %<input id="bonus" type="number" step="1"></label>
       <label>Drop rate bonus %<input id="dropBonus" type="number" step="1"></label>
     </div>
+    <div class="bar">
+      <div class="seg" role="radiogroup" aria-label="Where your stats come from">
+        <button type="button" role="radio" data-cmode="status">Status window</button>
+        <button type="button" role="radio" data-cmode="build">Build from gear</button>
+      </div>
+      <span class="note" id="modeNote"></span>
+    </div>
+    <div id="buildPanel" class="build" hidden>
+      <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+        <label>Base STR<input data-bs="str" type="number" min="1" max="99"></label>
+        <label>Base AGI<input data-bs="agi" type="number" min="1" max="99"></label>
+        <label>Base VIT<input data-bs="vit" type="number" min="1" max="99"></label>
+        <label>Base INT<input data-bs="int" type="number" min="1" max="99"></label>
+        <label>Base DEX<input data-bs="dex" type="number" min="1" max="99"></label>
+        <label>Base LUK<input data-bs="luk" type="number" min="1" max="99"></label>
+      </div>
+      <div class="note" id="jobBonusNote"></div>
+      <div class="scroll"><table id="gearTable"><thead><tr><th>Slot</th><th>Item</th><th>Refine</th><th>Cards</th><th>Random options</th></tr></thead><tbody></tbody></table></div>
+      <div id="gearLists"></div>
+      <details class="note">
+        <summary>Check against the game</summary>
+        <div style="margin:6px 0">Type the totals from your in-game status window: ATK and DEF as the two parts added up, HIT as shown, FLEE as the left number only (the "+N" after FLEE is Perfect Dodge). A ✓ means the build matches; a number is how far off it is, which usually points at gear the data doesn't cover yet. Max HP and Max SP you type here are used instead of the computed ones, since the base HP/SP tables don't match Zero yet.</div>
+        <div class="form" id="checkGrid" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
+      </details>
+      <div class="note" id="buildNote"></div>
+    </div>
     <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
       <label>ATK<input id="atkTxt" inputmode="numeric" placeholder="120+300"></label>
       <label>MATK<input id="matkTxt" inputmode="numeric" placeholder="100+227"></label>
@@ -69,6 +95,11 @@
       <label>LUK<input id="st_luk" inputmode="numeric"></label>
     </div>
     <div class="note" id="statNote"></div>
+    <details class="card sub" id="eqPanel" open>
+      <summary><b>Equipment stats</b> <span class="note">the % lines from the game's Equipment Stats window that the status window doesn't show</span></summary>
+      <div id="eqList" class="eqlist"></div>
+      <div class="bar"><button type="button" class="small" id="eqAdd">+ Add a line</button><span class="note">Flat lines (STR +2, ATK +145, FLEE +91…) are already in your status window, so skip them.</span></div>
+    </details>
     <details class="card" style="padding:12px 14px;gap:8px;background:var(--bg)" open>
       <summary><b>Attack details</b> <span class="note" id="atkSummary"></span></summary>
       <div class="form" style="grid-template-columns:repeat(4,minmax(0,1fr))">
@@ -80,12 +111,11 @@
         <label>Delay after (s)<input id="aDelay" type="number" step="0.1" min="0"></label>
         <label>SP per use<input id="aSp" type="number" step="1" min="0"></label>
         <label>Monsters hit per use<input id="aTargets" type="number" step="0.5" min="1"></label>
+        <label>Zeny per use<input id="aZeny" type="number" step="100" min="0" placeholder="0"></label>
+        <label id="cartWrap" hidden>Cart weight<input id="cartW" type="number" step="100" min="0" max="8000" placeholder="0 – 8000"></label>
       </div>
       <div class="form" id="bonusRow" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
         <label>Extra damage %<input id="dmgBonus" type="number" step="1"></label>
-        <label>+% vs race<span class="bar"><select id="raceSel" style="flex:1;min-width:0"></select><select id="raceType" aria-label="Damage type" style="width:auto"><option value="phys">Phys</option><option value="magic">Magic</option><option value="both" selected>Both</option></select><input id="racePct" type="number" step="1" style="width:60px"></span></label>
-        <label>+% vs size<span class="bar"><select id="sizeSel" style="flex:1;min-width:0"><option value="">–</option><option value="S">Small</option><option value="M">Medium</option><option value="L">Large</option></select><select id="sizeType" aria-label="Damage type" style="width:auto"><option value="phys">Phys</option><option value="magic">Magic</option><option value="both" selected>Both</option></select><input id="sizePct" type="number" step="1" style="width:60px"></span></label>
-        <label>+% vs element<span class="bar"><select id="elSel" style="flex:1;min-width:0"></select><select id="elType" aria-label="Damage type" style="width:auto"><option value="phys">Phys</option><option value="magic">Magic</option><option value="both" selected>Both</option></select><input id="elPct" type="number" step="1" style="width:60px"></span></label>
         <label title="Cards like Boulder Dwarf Captain: +% damage to monsters whose name contains this text">+% vs monster name<span class="bar"><input id="nameSel" list="mobList" placeholder="e.g. Boulder Dwarf" style="flex:1;min-width:0"><select id="nameType" aria-label="Damage type" style="width:auto"><option value="phys">Phys</option><option value="magic">Magic</option><option value="both">Both</option></select><input id="namePct" type="number" step="1" style="width:60px"></span></label>
       </div>
       <div class="form" style="grid-template-columns:repeat(5,minmax(0,1fr))">
@@ -144,6 +174,11 @@
       <label class="bar" style="flex-direction:row;gap:4px">lasts <input id="potMin" type="number" step="1" style="width:56px"> min</label>
       <span id="potInfo"></span>
     </div>
+    <details class="card sub" id="consPanel" open>
+      <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they're added on top, and their cost counts against zeny/hr</span></summary>
+      <div id="consList" class="eqlist"></div>
+      <div class="bar"><button type="button" class="small" id="consAdd">+ Add</button><span class="note" id="consNote"></span></div>
+    </details>
     <div class="bar note"><span>SP items:</span>
       <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
       <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
@@ -278,6 +313,11 @@
 <script src="data/mstat.js"></script>
 <script src="data/elem.js"></script>
 <script src="data/sizes.js"></script>
+<script src="data/equipment.js"></script>
+<script src="data/cards.js"></script>
+<script src="data/refine.js"></script>
+<script src="data/jobs.js"></script>
+<script src="build.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

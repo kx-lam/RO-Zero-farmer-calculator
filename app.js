@@ -41,7 +41,7 @@ const MAGE=[...BOLT3,A2("Earth Spike Lv5","magic",200,5,"Earth",30,1,"",Z(0.28,1
  A2("Napalm Beat Lv10","magic",170,1,"Ghost",18,1,"Damage is split when it hits several monsters",Z(0.1,0.4,0,0)),A2("Thunder Storm Lv10","magic",100,10,"Wind",74,3,"5x5 area",Z(0.8,3.2,1,0.3,{sadd:[["int",1]]}))];
 const ARCH=[A2("Double Strafe Lv10","phys",190,2,"W",12,1,"",Z(0,0,0,0.1)),A2("Arrow Shower Lv10","phys",250,1,"W",15,3,"3x3 area",Z(0,0,0,0))];
 const ACO=[A2("Holy Light","magic",125,1,"Holy",15,1,"",Z(0.2,0.8,0,0))];
-const MERC=[A2("Mammonite Lv10","phys",600,1,"W",5,1,"Also costs 1,000 z per use",Z(0,0,0,0)),A2("Cart Revolution","phys",150,1,"W",12,3,"Quest skill; +100% per 8,000 cart weight",Z(0,0,0,0))];
+const MERC=[A2("Mammonite Lv10","phys",600,1,"W",5,1,"Costs 1,000 z per use (taken off zeny/hr)",Z(0,0,0,0,{zeny:1000})),A2("Cart Revolution","phys",150,1,"W",12,3,"Quest skill; +100% per 8,000 cart weight (set Cart weight)",Z(0,0,0,0,{cart:100}))];
 const THIEF=[A("Basic attack (Double Attack Lv10)","auto",100,1.5,"W",0,0,0,1,"Dagger: about half your hits strike twice"),A2("Envenom Lv10","phys",100,1,"Poison",12,1,"Plus a flat +150 damage, not included",Z(0,0,0,0)),A2("Sand Attack","phys",130,1,"Earth",9,1,"",Z(0,0,0,0))];
 const JOBS={
  "Novice":{w:"Dagger",p:[BASIC]},
@@ -97,7 +97,7 @@ const ssDmg=m=>{const s=C().a.ss;if(!s)return 0;let p=num(s.pct);s.sadd.forEach(
 const MAGIC_JOBS=["Mage","Wizard","Sage"];
 const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="magic";
   const c={baseLv:60,atkTxt:mag?"60+50":"120+200",matkTxt:mag?"100+200":"40+30",hitTxt:"300",fleeTxt:"250",aspd:170,defTxt:"40+60",maxHp:6000,maxSp:600,intTxt:mag?"60+10":"10",spRegen:0,weapon:J.w,wElem:"Neutral",
-    preset:0,a:{...J.p[0]},dmgBonus:0,raceSel:"",racePct:0,sizeSel:"",sizePct:0,elSel:"",elPct:0,
+    preset:0,a:{...J.p[0]},dmgBonus:0,eq:[],
     nameType:MAGIC_JOBS.includes(job)?"magic":"phys", // name bonus defaults to the job's damage type
     autoSp:false,itemSp:37,itemPrice:200,potOn:false,potAspd:3,potPrice:2200,potMin:30,mobInterval:1.5,hitScale:0.3,hpRegen:0};
   if(job==="Sage")Object.assign(c,{matkTxt:"100+200",intTxt:"40+10",maxSp:800,maxHp:4000,sage:{hsAuto:true,hsWorth:50000,hsLv:10}});
@@ -119,7 +119,8 @@ if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=s
 const D={bonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[],prices:{}};
 for(const k in D)if(state[k]==null)state[k]=JSON.parse(JSON.stringify(D[k]));
 const save=()=>store.set(state);
-const C=()=>{if(!state.chars[state.job])state.chars[state.job]=charDefault(state.job);const c=state.chars[state.job];const d=charDefault(state.job);for(const k in d)if(c[k]==null)c[k]=d[k];if(!c.a)c.a={...d.a};return c};
+const C=()=>{if(!state.chars[state.job])state.chars[state.job]=charDefault(state.job);const c=state.chars[state.job];
+  {const p=c.preset>=0&&JOBS[state.job]&&JOBS[state.job].p[c.preset];if(p&&c.a){if(p.zeny!=null&&c.a.zeny==null)c.a.zeny=p.zeny;if(p.cart!=null&&c.a.cart==null)c.a.cart=p.cart}}const d=charDefault(state.job);for(const k in d)if(c[k]==null)c[k]=d[k];if(!c.a)c.a={...d.a};return c};
 const cur=()=>state.sessions.find(s=>s.id===state.current)||state.sessions[0];
 
 // skills v2: presets now come from rozerodb; reset each saved job to its first preset
@@ -152,35 +153,44 @@ const elOptions=()=>C().a.type==="spellfist"?(sfBolts().length?sfBolts():[null])
 const withEl=(el,fn)=>{const k=EL_OVR;EL_OVR=el;try{return fn()}finally{EL_OVR=k}};
 const elTag=el=>el&&(convOn()||C().a.type==="spellfist")?` <span class="el ${el}">${el}</span>`:"";
 // ASPD potion adds a flat bonus to your status window ASPD (Zero cap 190); its cost counts against zeny/hr
-const aspdEff=()=>Math.min(190,Math.max(100,num(C().aspd,170)+(C().potOn?num(C().potAspd):0)));
-const potCostHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice):0;
+// damage maths read cf(k): the typed (or built) stat plus consumables, see applyConsumables
+let EFF=null;const cf=k=>EFF&&EFF[k]!==undefined?EFF[k]:C()[k];
+const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)+(C().potOn?num(C().potAspd):0)));
+const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice):0;
+// zeny per hour spent on the ASPD potion plus the consumables that are switched on
+const potCostHr=()=>potOnlyHr()+(C().cons||[]).filter(r=>r.on&&num(r.min)>0).reduce((a,r)=>a+60/num(r.min)*num(r.price),0);
 const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 // seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
 // variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)
-const vctFactor=()=>{const c=C();const dex=c.st&&c.st.dex!=null&&c.st.dex!==""?sumStat(c.st.dex):null;if(dex==null)return 1;return Math.max(0,1-Math.sqrt((2*dex+sumStat(c.intTxt))/530))};
+const vctFactor=()=>{const c=C();const dex=statVal(c,"dex");if(dex==null)return 1;return Math.max(0,1-Math.sqrt((2*dex+statVal(c,"int"))/530))};
 const castSec=()=>{const c=C(),a=c.a;
   if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-num(c.vctPct)/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-num(c.fctPct)/100));
   const base=num(a.cast),f=Math.min(100,Math.max(0,num(c.fixedShare)))/100;
   return Math.max(0,base*(1-f)*vctFactor()*(1-num(c.vctPct)/100))+Math.max(0,(base*f-num(c.fctSec))*(1-num(c.fctPct)/100))};
 const delaySec=()=>Math.max(0,num(C().a.delay)*(1-num(C().acdPct)/100));
 const useSec=()=>{const a=C().a;if(a.type==="auto"||a.type==="spellfist")return 1/atkPerSec();return Math.max(castSec()+Math.max(delaySec(),1/atkPerSec()),0.1)};
-const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});return a.blv?p*num(c.baseLv,99)/100:p};
+// cart skills (Cart Revolution): +a.cart % per 8,000 cart weight, capped at a full 8,000 cart
+const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});if(num(a.cart))p+=num(a.cart)*Math.min(8000,Math.max(0,num(c.cartW)))/8000;return a.blv?p*num(c.baseLv,99)/100:p};
 const targets=()=>Math.max(1,num(C().a.targets,1));
 // magic: true for magic damage (spells, Spell Fist, Shadow Spell auto-casts). Each race / size / element / name bonus is
 // physical-only, magic-only or both (race / size / element default to both, as before the setting existed)
+// In build mode gear adds per-race / size / element / boss-normal maps (build.js); the manual boxes add into the same category
 const bonusMul=(m,magic=false)=>{const c=C();let k=1+num(c.dmgBonus)/100;
   const on=t=>t==="both"||(t==="magic")===magic;
   const nm=String(c.nameSel||"").trim().toLowerCase();if(nm&&on(c.nameType||"phys")&&String(m.name).toLowerCase().includes(nm))k*=1+num(c.namePct)/100;
-  if(c.raceSel&&on(c.raceType||"both")&&m.race===c.raceSel)k*=1+num(c.racePct)/100;
-  if(c.sizeSel&&on(c.sizeType||"both")&&m.size===c.sizeSel)k*=1+num(c.sizePct)/100;
-  if(c.elSel&&on(c.elType||"both")&&(m.el||"Neutral")===c.elSel)k*=1+num(c.elPct)/100;
-  if(!m.boss)k*=1+num(c.normalPct)/100;k*=1+num(c.myElPct)/100;return k};
+  const B=c.bx?(magic?c.bx.magic:c.bx.phys):null,el=m.el||"Neutral";
+  if(B)k*=(1+(B.race[m.race]||0)/100)*(1+(B.size[m.size]||0)/100)*(1+(B.ele[el]||0)/100)*(1+(B.all||0)/100)*(1+(B.kind[m.boss?"boss":"normal"]||0)/100);
+  if(!m.boss)k*=1+num(c.normalPct)/100;
+  k*=1+num(c.myElPct)/100;if(magic&&c.bx)k*=1+((c.bx.myEle||{})[atkEl()]||0)/100;return k};
+// build mode: gear EXP bonus vs a monster's race, and damage taken from its race / element / boss-normal kind
+const expRace=m=>{const c=C();return c.bx?1+((c.bx.exp.all||0)+((c.bx.exp.race||{})[m.race]||0))/100:1};
+const takenMul=m=>{const c=C();if(!c.bx)return 1;const t=c.bx.taken;return (1+(t.race[m.race]||0)/100)*(1+(t.ele[m.el||"Neutral"]||0)/100)*(1+(t.kind[m.boss?"boss":"normal"]||0)/100)};
 // ignore DEF / MDEF %: lowers the monster's hard defence before the (4000+DEF)/(4000+10·DEF) or (1000+MDEF)/(1000+10·MDEF) factor
 const effDef=m=>(m.def||0)*(1-Math.min(100,Math.max(0,num(C().ignDef)))/100);
 const effMdef=m=>(m.mdef||0)*(1-Math.min(100,Math.max(0,num(C().ignMdef)))/100);
 // Formulas from roz.prontera.info/mechanics (Ragnarok Zero, renewal core)
 // ATK is "status + gear". The weapon share takes size and element; status ATK counts twice and, with other gear, stays Neutral.
-const atkParts=()=>{const p=String(C().atkTxt||"0").split("+").map(x=>parseFloat(x)||0);const st=p[0]||0,gear=p.slice(1).reduce((x,y)=>x+y,0);
+const atkParts=()=>{const p=String(cf("atkTxt")||"0").split("+").map(x=>parseFloat(x)||0);const st=p[0]||0,gear=p.slice(1).reduce((x,y)=>x+y,0);
   const w=num(C().wAtk)>0?Math.min(num(C().wAtk),gear):gear;
   // weapon ATK +0.5% per STR (melee) or DEX (bow, instrument, whip); checked against Landgris ROCalculator
   const c=C(),main=statVal(c,RANGED.includes(c.weapon)?"dex":"str");const wb=main!=null?1+main/200:1;
@@ -192,24 +202,26 @@ const hitPctOf=m=>{const a=C().a;if(a.type==="spellfist")return sfPct()*elemMult
   const P=atkParts(),tot=P.weapon+P.neutral;if(tot<=0)return 0;
   const k=(P.weapon*sizeMod(m,C().weapon)/100*elemMult(m,atkEl())/100+P.neutral*elemMult(m,"Neutral")/100)/tot;return pctEff()*k*bonusMul(m)};
 // hit chance = 100 + your HIT − the monster's "100% hit" value, 5–100%; magic always lands
-const hitChance=m=>{if(C().a.type==="magic"||C().a.type==="spellfist")return 100;if(m.hit100==null)return 95;return Math.max(5,Math.min(100,100+sumStat(C().hitTxt)-m.hit100))};
+const hitChance=m=>{if(C().a.type==="magic"||C().a.type==="spellfist")return 100;if(m.hit100==null)return 95;return Math.max(5,Math.min(100,100+sumStat(cf("hitTxt"))-m.hit100))};
 function dmgPerHit(m){
   const a=C().a;if(a.type==="spellfist")return magicDmg(m,sfPct(),atkEl());
-  if(a.type==="magic"){const el=elemMult(m,atkEl())/100;if(el<=0)return 0;const md=effMdef(m);return Math.max(1,Math.floor((sumStat(C().matkTxt)*pctEff()/100*bonusMul(m,true)*(1+num(C().skillPct)/100)*(1000+md)/(1000+10*md)-mobSoftMdef(m))*el))}
+  if(a.type==="magic"){const el=elemMult(m,atkEl())/100;if(el<=0)return 0;const md=effMdef(m);return Math.max(1,Math.floor((sumStat(cf("matkTxt"))*pctEff()/100*bonusMul(m,true)*(1+num(C().skillPct)/100)*(1000+md)/(1000+10*md)-mobSoftMdef(m))*el))}
   const P=atkParts();const pool=P.weapon*sizeMod(m,C().weapon)/100*elemMult(m,atkEl())/100+P.neutral*elemMult(m,"Neutral")/100;if(pool<=0)return 0;
   const c=C(),skill=a.type!=="auto";const rng=(1+num(c.rangePct)/100)*(skill?1+num(c.skillPct)/100:1);
   // mastery ATK (flat, from passive skills) is added after the skill ratio, before cards and DEF
   const df=effDef(m);return Math.max(1,Math.floor((pool*pctEff()/100+num(c.mastery)*elemMult(m,"Neutral")/100)*bonusMul(m)*rng*(4000+df)/(4000+10*df)-mobSoftDef(m)))}
 // crits (basic attacks only): chance = CRIT (doubled with a katar), always hit, × 1.4 × (1 + crit damage %). Monster crit shield (its LUK) isn't in the data.
-const critChance=()=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,num(c.crit)*(c.weapon==="Katar"?2:1)))/100};
+const critChance=()=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,num(cf("crit"))*(c.weapon==="Katar"?2:1)))/100};
 // uses needed per kill: whole hits that land, spread over misses
 function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m),a=C().a,ss=ssDmg(m)*SS_CHANCE;if(d<=0&&ss<=0)return Infinity;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);const cr=critChance();
   // Shadow Spell: the auto-cast is averaged into each attack and only procs on swings that connect (crits always do)
   if(cr>0||ss>0){const land=cr+(1-cr)*hitChance(m)/100;const exp=per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hitChance(m)/100)+ss*land;return Math.max(1,m.hp/exp)}
   return Math.ceil(m.hp/per)/(hitChance(m)/100)}
 // SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s unless typed
-const spRegen8=()=>num(C().spRegen)>0?num(C().spRegen):1+Math.floor(num(C().maxSp)/100)+Math.floor(sumStat(C().intTxt)/6);
-const spNeedPerSec=()=>isSF()?sgUpkeep()+sgDefSP()+hsFullSP()*hsSustain():num(C().a.sp)/useSec();
+const spRegen8=()=>num(C().spRegen)>0?num(C().spRegen):1+Math.floor(num(cf("maxSp"))/100)+Math.floor(statVal(C(),"int")/6);
+// gear "SP consumption +x%" (build mode) scales the SP each use costs
+const spCostMul=()=>{const c=C();return c.bx?Math.max(0,1+num(c.bx.spCost)/100):1};
+const spNeedPerSec=()=>isSF()?sgUpkeep()+sgDefSP()+hsFullSP()*hsSustain():num(C().a.sp)*spCostMul()/useSec();
 const regenPerSec=()=>spRegen8()/8;
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&num(C().itemSp)>0?Math.max(0,spNeedPerSec()-regenPerSec())/num(C().itemSp):0;
@@ -217,10 +229,10 @@ const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&num(C().itemSp)>0)return
 const rawFight=m=>{const u=usesPerKill(m);return isFinite(u)?u*useSec()/targets():Infinity};
 const fightSec=m=>rawFight(m)*restFactor();
 // damage taken: monster ATK through your DEF, its hit chance on you, a swing every interval times "swings reach you"
-const defParts=()=>{const p=String(C().defTxt||"0").split("+").map(x=>parseFloat(x)||0);return {soft:p[0]||0,hard:p.slice(1).reduce((a,b)=>a+b,0)}};
+const defParts=()=>{const p=String(cf("defTxt")||"0").split("+").map(x=>parseFloat(x)||0);return {soft:p[0]||0,hard:p.slice(1).reduce((a,b)=>a+b,0)}};
 // dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
-const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(C().fleeTxt)-m.flee95));
-const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,(m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)};
+const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(cf("fleeTxt"))-m.flee95));
+const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,((m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)*takenMul(m))};
 const hpLossPerMin=m=>{if(isSF()){const d=sgDefense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)):null}const raw=mobHitDmg(m);if(raw==null)return null;const dg=dodge(m);const hits=Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5));return Math.max(0,raw*hits*60-num(C().hpRegen))};
 // ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, Vitata, Energy Coat, Hunter Fly, Side Winder, SP items) ----
 const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5,vitata:true,spBonus:25,healSp:13,healHp:357,ecOn:true,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7,autoSpPct:50};
@@ -233,7 +245,7 @@ const sfBolts=()=>["Fire","Water","Wind"].filter(b=>G().bolts[b]);
 // Spell Fist: Lv × 5% proc chance on each basic attack; damage (1000 + 100 × bolt Lv)% MATK of the bolt's element (Landgris Zero data, checked in game)
 const sfChance=()=>Math.min(10,Math.max(0,num(G().sfLv)))*5/100;
 const sfPct=()=>1000+100*Math.min(10,Math.max(1,num(G().boltLv,10)));
-const magicDmg=(m,pct,el,addMatk=0)=>{const e=elemMult(m,el)/100;if(e<=0||pct<=0)return 0;const md=effMdef(m);return Math.max(1,Math.floor(((sumStat(C().matkTxt)+addMatk)*pct/100*bonusMul(m,true)*(1+num(C().skillPct)/100)*(1000+md)/(1000+10*md)-mobSoftMdef(m))*e))};
+const magicDmg=(m,pct,el,addMatk=0)=>{const e=elemMult(m,el)/100;if(e<=0||pct<=0)return 0;const md=effMdef(m);return Math.max(1,Math.floor(((sumStat(cf("matkTxt"))+addMatk)*pct/100*bonusMul(m,true)*(1+num(C().skillPct)/100)*(1000+md)/(1000+10*md)-mobSoftMdef(m))*e))};
 // Hindsight: Lv × 2% chance per attack to auto-cast a bolt at half its level (100% MATK per hit); costs 2/3 of the bolt's SP
 const hsLvN=()=>Math.min(10,Math.max(0,num(G().hsLv)));
 const hsChance=()=>hsOnNow()?hsLvN()*2/100:0;
@@ -256,7 +268,7 @@ const sgItemsOn=()=>hsOnNow()&&num(C().itemSp)>0; // SP items go with Hindsight
 function sgDefense(m){
   const raw=mobHitDmg(m);if(raw==null)return null;const dg=dodge(m);
   const hits=Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5));
-  const g=G(),max=num(C().maxSp),ec=!!g.ecOn,regen=regenPerSec(),up=sgUpkeep(),hs=hsFullSP();
+  const g=G(),max=num(cf("maxSp")),ec=!!g.ecOn,regen=regenPerSec(),up=sgUpkeep(),hs=hsFullSP();
   const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),healSP=g.vitata&&num(g.healHp)>0?hp/num(g.healHp)*num(g.healSp):0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
   const cost=b=>up+b.ecSP+b.healSP;
   let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
@@ -282,6 +294,8 @@ function applyHsAuto(){
   g._note=`Hindsight auto: ${want?"on":"off"} on ${mp} · ${gain<=0?"no EXP gain":net<=0?"extra loot pays for the SP items":`~${fmtN(per)} z per 1% EXP vs your ${fmtN(num(g.hsWorth))} z limit`} (+${gain.toFixed(2)}%/hr)`;
 }
 // drop rate bonus % scales every drop chance
+// zeny a skill costs per kill (Mammonite): zeny per use × uses per kill, shared across monsters hit
+const skillZeny=m=>{const z=num(C().a.zeny);if(!z)return 0;const u=usesPerKill(m);return isFinite(u)?z*u/targets():0};
 const zenyKill=m=>{let z=m.loot||0;(m.drops||[]).forEach(([id,r])=>{const p=state.prices[id];if(p>0)z+=r/100*p});return z*(1+num(state.dropBonus)/100)};
 
 // ---- maps ----
@@ -334,7 +348,7 @@ function sessMix(s,keep){const mp=sessMap(s);let list=sessMobs(s).map(m=>({m,w:s
 function sessionPace(s){
   // with this job's attack, monsters you can't hurt aren't being killed, so they're left out of the mix
   const same=(s.job||state.job)===state.job;const st=stats(s);const mix=sessMix(s,same?m=>isFinite(bestFight(m)):null);if(!st||!mix||st.avgRaw<=0)return null;
-  const kph=st.avgRaw/(mix.avg(m=>m.exp)*expMul(s));const obs=3600/kph;const fight=same?mix.avg(bestFight):NaN;
+  const kph=st.avgRaw/(mix.avg(m=>m.exp*expRace(m))*expMul(s));const obs=3600/kph;const fight=same?mix.avg(bestFight):NaN;
   return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,zk:mix.avg(zenyKill),mix,st};
 }
 const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
@@ -352,8 +366,8 @@ function jobRate(s){
 }
 function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally{SG_MOB=kSG}}
 function mobRow00(m,w){
-  const sec=fightSec(m),tot=sec+w,epk=m.exp*expMul();
-  return {sec,tot,epm:isFinite(tot)&&tot>0?epk/tot*60:0,epk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk:zenyKill(m)};
+  const sec=fightSec(m),tot=sec+w,epk=m.exp*expRace(m)*expMul();
+  return {sec,tot,epm:isFinite(tot)&&tot>0?epk/tot*60:0,epk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk:zenyKill(m)-skillZeny(m)};
 }
 // map averages, weighted by spawn counts; monsters you can't hurt are skipped (you walk past them)
 function mapStats0(mp,w){
@@ -375,13 +389,13 @@ function sessEpm(s,w){const mix=sessMix(s);if(!mix)return null;let best=null;
 
 // ---- render: character ----
 const syncChar=()=>{
-  const c=C();$("job").value=state.job;
+  const c=C();$("job").value=state.job;renderEq();renderCons();
   $("preset").innerHTML=JOBS[state.job].p.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("")+'<option value="-1">Custom</option>';
   $("preset").value=String(c.preset??0);
-  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","racePct","sizePct","elPct","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
+  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
   $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";
-  $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("raceSel").value=c.raceSel||"";$("sizeSel").value=c.sizeSel||"";$("elSel").value=c.elSel||"";$("nameType").value=c.nameType||"phys";["raceType","sizeType","elType"].forEach(k=>$(k).value=c[k]||"both");$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potCostHr())} z/hr`:"";$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
-  const a=c.a;$("aType").value=a.type;$("aPct").value=a.pct;$("aHits").value=a.hits;$("aElem").value=a.el;$("aCast").value=a.cast;$("aDelay").value=a.delay;$("aSp").value=a.sp;$("aTargets").value=a.targets;
+  $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("nameType").value=c.nameType||"phys";$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potCostHr())} z/hr`:"";$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
+  const a=c.a;$("aType").value=a.type;$("aPct").value=a.pct;$("aHits").value=a.hits;$("aElem").value=a.el;$("aCast").value=a.cast;$("aDelay").value=a.delay;$("aSp").value=a.sp;$("aTargets").value=a.targets;$("aZeny").value=a.zeny||"";$("cartW").value=c.cartW||"";$("cartWrap").hidden=!num(a.cart);
   $("bonus").value=state.bonus;
   $("sagePanel").hidden=state.job!=="Sage";if(state.job==="Sage"){const g=G();ROOTQ("[data-sg]").forEach(i=>{const k=i.dataset.sg;if(i.type==="checkbox")i.checked=!!g[k];else i.value=g[k]??""});ROOTQ("[data-sgbolt]").forEach(i=>i.checked=!!g.bolts[i.dataset.sgbolt]);$("sg_hsOn").disabled=!!g.hsAuto}STATS.forEach(k=>$("st_"+k).value=(c.st&&c.st[k])||"");renderStatNote();
 };
@@ -427,7 +441,7 @@ function renderTracker(){
   const p=sessionPace(s);
   if(p){$("tPace").textContent=`${fmtN(p.kph)}/hr`;$("tPaceS").textContent=`${p.obs.toFixed(1)}s per kill`+(isFinite(p.fight)?(p.obs<p.fight?` · faster than the model's ${p.fight.toFixed(1)}s fight, so check your ATK/MATK`:` · ~${p.fight.toFixed(1)}s fighting + ~${p.walk.toFixed(1)}s walking`):"")}
   else{$("tPace").textContent="–";$("tPaceS").textContent="Needs a monster and 2+ entries"}
-  if(p){const zk=p.zk,gross=p.kph*zk,cost=itemsPerSec()*3600*num(C().itemPrice)+potCostHr();$("tZeny").textContent=fmtN(gross-cost);$("tZenyS").textContent=`${fmtN(gross)} z loot`+(cost>0?` − ${fmtN(cost)} z items & potions`:"")+` · ${fmtN(zk)} z/kill`}
+  if(p){const zk=p.zk,gross=p.kph*zk,cost=itemsPerSec()*3600*num(C().itemPrice)+potCostHr()+p.kph*p.mix.avg(skillZeny);$("tZeny").textContent=fmtN(gross-cost);$("tZenyS").textContent=`${fmtN(gross)} z loot`+(cost>0?` − ${fmtN(cost)} z items, potions & skill costs`:"")+` · ${fmtN(zk)} z/kill`}
   else{$("tZeny").textContent="–";$("tZenyS").textContent="Needs a monster and 2+ entries"}
   const j=jobRate(s);
   if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
@@ -461,7 +475,7 @@ function renderLog(s){
   $("setupNote").textContent=s.job&&s.job!==state.job?`This session was logged as ${s.job}. Switch Job to ${s.job} to see its pace and walking time.`:"";
 }
 function renderCompare(){
-  const rows=state.sessions.map(s=>{const st=stats(s);if(!st)return null;const ms=sessMobs(s),mix=sessMix(s);const kph=mix&&st.avgRaw>0?st.avgRaw/(mix.avg(m=>m.exp)*expMul(s)):null;
+  const rows=state.sessions.map(s=>{const st=stats(s);if(!st)return null;const ms=sessMobs(s),mix=sessMix(s);const kph=mix&&st.avgRaw>0?st.avgRaw/(mix.avg(m=>m.exp*expRace(m))*expMul(s)):null;
     return `<tr data-sid="${s.id}" class="${s.id===state.current?"sel":""}"><td class="name">${esc(s.name)}</td><td class="name">${esc(s.job||"–")}</td><td class="name">${ms.length?ms.map(m=>esc(m.name)).join(", "):"–"}</td><td>${new Date(st.es[0].t).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} ${fmtT(st.es[0].t)}</td><td>${st.spanMin} min</td><td><b>${pct(st.avgPct)}</b></td><td>${fmtN(st.avgRaw/60)}</td><td>${kph?fmtN(kph):"–"}</td><td>${kph?(3600/kph).toFixed(1)+"s":"–"}</td></tr>`}).filter(Boolean);
   $("cmpTable").querySelector("tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="name muted">Sessions with 2+ entries show up here.</td></tr>';
 }
@@ -591,24 +605,22 @@ function renderMap(){
   $("mapTable").querySelector("tbody").innerHTML=MAPMOBS[mp].slice().sort((a,b)=>b.n-a.n).map(({m,n})=>{const x=r&&r.el2?withEl(r.el2,()=>mobRow0(m,w)):mobRow(m,w);
     return `<tr data-id="${m.id}" class="${cur().mobIds.includes(m.id)?"sel":""}" style="${isSkipped(m)?"opacity:.55":""}"><td class="name">${esc(m.name)} <button type="button" class="small" data-sessmob="${m.id}">${cur().mobIds.includes(m.id)?"− Session":"+ Session"}</button>${m.boss?' <span class="pill">boss</span>':` <button type="button" class="small" data-skip="${m.id}">${isSkipped(m)?"Unskip":"Skip"}</button>`}</td><td>≈${n}</td><td>${m.boss?"–":isSkipped(m)?"skipped":Math.round(n/tot*100)+"%"}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${m.size||"–"}</td><td class="${x.mult>100?"good":x.mult<=0?"bad":""}">${x.mult<=0?"can't hurt":Math.round(x.mult)+"%"}</td><td>${isFinite(x.sec)?x.sec.toFixed(1)+"s":"–"}</td><td>${fmtN(m.exp)}</td></tr>`}).join("");
 }
-function renderAll(){applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();renderMap()}
+function renderAll(){applyBuild();applyConsumables();renderBuild();applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();renderMap()}
 
 // ---- events ----
 $("job").innerHTML=Object.keys(JOBS).map(j=>`<option>${j}</option>`).join("");
 $("weapon").innerHTML=Object.keys(WEAPONS).map(w=>`<option>${w}</option>`).join("");
 $("wElem").innerHTML=AE.map(e=>`<option>${e}</option>`).join("");
 $("aElem").innerHTML='<option value="W">Weapon / arrow</option>'+AE.map(e=>`<option>${e}</option>`).join("");
-$("raceSel").innerHTML='<option value="">–</option>'+RACES.map(r=>`<option>${r}</option>`).join("");
-$("elSel").innerHTML='<option value="">–</option>'+AE.map(e=>`<option>${e}</option>`).join("");
 $("job").addEventListener("change",e=>{state.job=e.target.value;C();save();syncChar();renderAll()});
 $("preset").addEventListener("change",e=>{const c=C();const i=+e.target.value;c.preset=i;if(i>=0){c.a={...JOBS[state.job].p[i]}}save();syncChar();renderAll()});
 // ---- stats: status ATK/MATK/HIT/FLEE from the renewal formulas (irowiki.org/wiki/Stats) ----
 const STATS=["str","agi","vit","dex","luk"];
 const RANGED=["Bow","Musical instrument","Whip"];
-const statVal=(c,k)=>k==="int"?sumStat(c.intTxt):(c.st&&c.st[k]!=null&&c.st[k]!==""?sumStat(c.st[k]):null);
+const statVal=(c,k)=>EFF&&c===C()&&EFF.st?(k==="int"?sumStat(EFF.intTxt):EFF.st[k]!=null&&EFF.st[k]!==""?sumStat(EFF.st[k]):null):k==="int"?sumStat(c.intTxt):(c.st&&c.st[k]!=null&&c.st[k]!==""?sumStat(c.st[k]):null);
 function derived(c){const g=k=>statVal(c,k)??0;const lv=num(c.baseLv),str=g("str"),agi=g("agi"),int=g("int"),dex=g("dex"),luk=g("luk"),vit=g("vit");const r=RANGED.includes(c.weapon);
   return {atk:Math.floor(lv/4+(r?dex+str/5:str+dex/5)+luk/3),matk:Math.floor(lv/4)+Math.floor(int*1.5)+Math.floor(dex/5)+Math.floor(luk/3),
-    hit:175+lv+dex+Math.floor(luk/3),flee:100+lv+agi+Math.floor(luk/5),def:Math.max(0,Math.floor((lv+vit)/2+agi/5)),
+    hit:175+lv+dex+Math.floor(luk/3),flee:100+lv+agi+Math.floor(luk/5),def:Math.floor(lv/2)+Math.floor(vit/2)+Math.floor(agi/5),
     crit:1+luk*0.3+lv/100,aspdTerm:Math.sqrt(agi*agi/2+dex*dex/(r?7:5))/4,vit,int}}
 // ASPD base + weapon penalty for 1st and 2nd jobs on Zero (Landgris ROCalculator "paradise" table); missing = unknown
 const ASPD_T={Swordsman:{"Bare hands":156,"One-handed mace":-10,"Two-handed mace":-10,"Dagger":-7,"One-handed sword":-7,"Two-handed sword":-14,"One-handed axe":-15,"Two-handed axe":-20,"One-handed spear":-17,"Two-handed spear":-25},
@@ -635,14 +647,14 @@ const renderStatNote=()=>{const c=C();const miss=STATS.filter(k=>statVal(c,k)==n
   const d=derived(c);const ab=aspdBase(state.job,c.weapon);$("statNote").textContent=`From your stats: status ATK ${d.atk} · status MATK ${d.matk} · HIT ${d.hit} · FLEE ${d.flee} · soft DEF ${d.def} · CRIT ${d.crit.toFixed(1)}${ab!=null?` · ASPD ${(ab+d.aspdTerm).toFixed(1)} before potions/skills`:""} (${RANGED.includes(c.weapon)?"ranged: DEX":"melee: STR"} is your main ATK stat). Your typed values are what the planner uses; changing a stat moves ATK, MATK, HIT, FLEE, DEF, CRIT, ASPD, Max HP and Max SP by the difference.`};
 STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c.st={};const wasSet=STATS.every(x=>statVal(c,x)!=null);const before=derived(c);c.st[k]=e.target.value;if(wasSet)shiftByStats(c,before);save();syncChar();renderAll()}));
 // character number/text fields
-const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","racePct","sizePct","elPct","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"];
-["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","racePct","sizePct","elPct","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>
+const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"];
+["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>
   $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
-["weapon","wElem","raceSel","sizeSel","elSel","nameType","raceType","sizeType","elType"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
+["weapon","wElem","nameType"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
   if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
   c[k]=e.target.value;save();renderAll()}));
 $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
-const potInfo=()=>{const c=C();$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potCostHr())} z/hr`:""};
+const potInfo=()=>{const c=C();$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`:""};
 $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});
 ["potAspd","potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
 ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
@@ -650,7 +662,8 @@ ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;c
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));
 $("converters").addEventListener("change",e=>{C().converters=e.target.checked;save();renderAll()});
 // attack detail fields: editing makes the attack "Custom"
-const aMap={aType:"type",aPct:"pct",aHits:"hits",aElem:"el",aCast:"cast",aDelay:"delay",aSp:"sp",aTargets:"targets"};
+$("cartW").addEventListener("input",e=>{C().cartW=Math.min(8000,Math.max(0,num(e.target.value)));save();renderAll()});
+const aMap={aType:"type",aPct:"pct",aHits:"hits",aElem:"el",aCast:"cast",aDelay:"delay",aSp:"sp",aTargets:"targets",aZeny:"zeny"};
 Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target.value;if(k==="cast"){delete c.a.fct;delete c.a.vct}c.a[k]=(k==="type"||k==="el")?v:Math.max(k==="hits"||k==="targets"?(k==="targets"?1:0.01):0,num(v));
   if(c.preset>=0){c.a.name=(JOBS[state.job].p[c.preset]||{}).name+" (edited)";c.preset=-1;$("preset").value="-1"}save();renderAll()};
   $(id).addEventListener(id==="aType"||id==="aElem"?"change":"input",h)});
@@ -750,6 +763,138 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   });
   apply();
 })();
+// ---- build simulator: in "build" mode the stat fields are computed from base stats + gear (build.js) and shown read-only ----
+// "Check against the game": [key, label, computed total]
+// compared with what the build computes (BUILD_LAST), not with c, since typed Max HP / SP replace the computed ones
+const CHECKS=[["atk","ATK",F=>sumStat(F.atkTxt)],["matk","MATK",F=>sumStat(F.matkTxt)],["hit","HIT",F=>sumStat(F.hitTxt)],["flee","FLEE",F=>sumStat(F.fleeTxt)],
+  ["aspd","ASPD",F=>F.aspd],["def","DEF",F=>sumStat(F.defTxt)],["hp","Max HP",F=>F.maxHp],["sp","Max SP",F=>F.maxSp]];
+const BUILT_IDS=["atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","crit","critDmg","rangePct","skillPct","vctPct","fctPct","acdPct","ignDef","ignMdef","st_str","st_agi","st_vit","st_dex","st_luk","weapon","wElem"];
+let BUILD_LAST=null;
+const buildOf=c=>{if(!c.build)c.build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{}};return c.build};
+function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqToBx(c);return}
+  const r=BUILD.compute({...buildOf(c),baseLv:c.baseLv,jobLv:c.jobLv,extra:consLines().lines},state.job,aspdBase);BUILD_LAST=r;const F=r.fields,A=r.acc;
+  // skill-specific gear lines count when the attack's name contains the skill
+  const nm=String(c.a.name||"").toLowerCase(),match=o=>Object.entries(o).reduce((t,[k,v])=>t+(nm.includes(k.toLowerCase())?v:0),0);
+  Object.assign(c,{atkTxt:F.atkTxt,matkTxt:F.matkTxt,hitTxt:F.hitTxt,fleeTxt:F.fleeTxt,defTxt:F.defTxt,intTxt:F.intTxt,wAtk:F.wAtk,crit:F.crit,critDmg:F.critDmg,
+    rangePct:F.rangePct,skillPct:A.skill+match(A.skillOf),vctPct:F.vctPct+match(A.vctOf),fctPct:F.fctPct+match(A.fctOf),acdPct:F.acdPct,ignDef:F.ignDef,ignMdef:F.ignMdef,
+    weapon:F.weapon,wElem:F.wElem,st:{...(c.st||{}),...F.st},bx:{phys:A.phys,magic:A.magic,myEle:A.myEle,taken:A.taken,exp:A.exp,spCost:A.spCost}});
+  if(F.aspd!=null)c.aspd=F.aspd;if(F.maxHp!=null)c.maxHp=F.maxHp;if(F.maxSp!=null)c.maxSp=F.maxSp;
+  // the exported base HP/SP tables don't match Zero yet, so in-game Max HP / SP typed under "Check against the game" win
+  const ck=buildOf(c).check||{};if(num(ck.hp)>0)c.maxHp=num(ck.hp);if(num(ck.sp)>0)c.maxSp=num(ck.sp)}
+// ---- consumables & buffs: rows {on, name, eff, price, min}; effects are typed like random options ("STR +10, ATK +20, ASPD +10%") ----
+const consOf=c=>{if(!Array.isArray(c.cons))c.cons=[];return c.cons};
+const consLines=()=>{const lines=[],bad=[];consOf(C()).filter(r=>r.on).forEach(r=>{const o=BUILD.parseOptions(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||"Consumable"}: ${x}`))});return {lines,bad}};
+// status-window mode: the typed numbers are read with consumables off, so their effect is added here into EFF (see cf)
+function applyConsumables(){EFF=null;const c=C();if(c.mode==="build")return;const {lines}=consLines();if(!lines.length)return;
+  const A={};lines.forEach(([t,,,v])=>A[t]=(A[t]||0)+v);const g=k=>A[k]||0,f=Math.floor;
+  // stat buffs move status ATK / MATK / HIT / FLEE / DEF / CRIT / ASPD through the same formulas (only for stats you typed)
+  const tmp={...c,st:{...(c.st||{})},intTxt:c.intTxt};STATS.forEach(k=>{if(g(k)&&statVal(c,k)!=null)tmp.st[k]=`${c.st[k]}+${g(k)}`});if(g("int"))tmp.intTxt=`${c.intTxt||0}+${g("int")}`;
+  const b0=derived(c),b1=derived(tmp),d=k=>(b1[k]||0)-(b0[k]||0);
+  const parts=t=>{const p=String(t||"0").split("+").map(x=>parseFloat(x)||0);return [p[0]||0,p.slice(1).reduce((a,x)=>a+x,0)]};
+  const [as,ag]=parts(c.atkTxt),[ms,mg]=parts(c.matkTxt),[ds,dh]=parts(c.defTxt);
+  const atkSt=as+d("atk"),atkGear=f((ag+g("atk"))*(1+g("atk_percent")/100));
+  const matkSt=ms+d("matk"),matkTot=f((matkSt+mg+g("matk"))*(1+g("matk_percent")/100));
+  let aspd=num(c.aspd,170)+d("aspdTerm")+g("aspd");aspd=Math.min(190,Math.round((aspd+(195-aspd)*g("aspd_percent")/100)*10)/10);
+  const vit0=statVal(c,"vit"),vit1=statVal(tmp,"vit"),int0=statVal(c,"int"),int1=statVal(tmp,"int");
+  const hp=num(c.maxHp)>0?f((num(c.maxHp)*(vit0!=null?(100+vit1)/(100+vit0):1)+g("hp"))*(1+g("hp_percent")/100)):c.maxHp;
+  const sp=num(c.maxSp)>0?f((num(c.maxSp)*(100+int1)/(100+int0)+g("sp"))*(1+g("sp_percent")/100)):c.maxSp;
+  EFF={atkTxt:`${atkSt}+${atkGear}`,matkTxt:`${matkSt}+${matkTot-matkSt}`,hitTxt:String(sumStat(c.hitTxt)+d("hit")+g("hit")),fleeTxt:String(sumStat(c.fleeTxt)+d("flee")+g("flee")),
+    defTxt:`${ds+d("def")}+${dh+g("def")}`,crit:num(c.crit)+d("crit")+g("crit"),aspd,maxHp:hp,maxSp:sp,st:tmp.st,intTxt:tmp.intTxt}}
+function renderCons(){const c=C();$("consList").innerHTML=consOf(c).map((r,i)=>`<div class="eqrow" data-i="${i}">
+    <input type="checkbox" data-f="on" ${r.on?"checked":""} aria-label="Use it" style="width:auto">
+    <input data-f="name" value="${esc(r.name||"")}" placeholder="name" style="width:150px">
+    <input data-f="eff" value="${esc(r.eff||"")}" placeholder="e.g. STR +10, ATK +20, ASPD +10%" style="flex:1;min-width:200px">
+    <input data-f="price" type="number" value="${esc(r.price??"")}" placeholder="price" style="width:90px"> z, lasts
+    <input data-f="min" type="number" value="${esc(r.min??"")}" placeholder="min" style="width:64px"> min
+    <button type="button" class="small danger" data-del aria-label="Remove">✕</button></div>`).join("")||'<div class="note">None yet.</div>';consNote()}
+const consNote=()=>{const {bad}=consLines(),cost=potCostHr()-potOnlyHr();$("consNote").innerHTML=(cost>0?`~${fmtN(cost)} z/hr while farming. `:"")+(bad.length?`<span class="bad">Not understood: ${bad.map(esc).join(", ")}</span>`:"")};
+$("consAdd").addEventListener("click",()=>{consOf(C()).push({on:true,name:"",eff:"",price:"",min:""});save();renderCons();renderAll()});
+$("consList").addEventListener("click",e=>{if(!e.target.closest("[data-del]"))return;consOf(C()).splice(+e.target.closest(".eqrow").dataset.i,1);save();renderCons();renderAll()});
+$("consList").addEventListener("input",e=>{const f=e.target.dataset.f;if(!f)return;const r=consOf(C())[+e.target.closest(".eqrow").dataset.i];
+  r[f]=f==="on"?e.target.checked:f==="price"||f==="min"?(e.target.value===""?"":num(e.target.value)):e.target.value;save();renderAll();consNote()});
+// ---- equipment stats (status-window mode): the % lines from the game's Equipment Stats window, as rows {by, t, ch, v} ----
+const EQ_KINDS=[["race","Damage to race",true],["size","Damage to size",true],["ele","Damage to element",true],["kind","Damage to boss / normal",true],
+  ["myEle","Magic damage of an element (your spells)"],["takenRace","Damage taken from race"],["takenEle","Damage taken from element"],["takenKind","Damage taken from boss / normal"],
+  ["exp","EXP gained from monsters"],["expRace","EXP gained from race"],["spCost","Skill SP consumption"]];
+const EQ_TARGETS={race:()=>RACES,size:()=>[["S","Small"],["M","Medium"],["L","Large"]],ele:()=>AE,kind:()=>[["boss","Boss"],["normal","Normal"]],
+  myEle:()=>AE,takenRace:()=>RACES,takenEle:()=>AE,takenKind:()=>[["boss","Boss"],["normal","Normal"]],expRace:()=>RACES};
+// older saves had one race / size / element box each; turn them into rows once
+const eqOf=c=>{if(!Array.isArray(c.eq))c.eq=[];
+  [["raceSel","racePct","raceType","race"],["sizeSel","sizePct","sizeType","size"],["elSel","elPct","elType","ele"]].forEach(([s,p,t,by])=>{
+    if(c[s]&&num(c[p]))c.eq.push({by,t:c[s],ch:c[t]||"both",v:num(c[p])});delete c[s];delete c[p];delete c[t]});return c.eq};
+function eqToBx(c){const o={phys:{all:0,race:{},size:{},ele:{},kind:{}},magic:{all:0,race:{},size:{},ele:{},kind:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},spCost:0};
+  const add=(m,k,v)=>{m[k]=(m[k]||0)+v};
+  eqOf(c).forEach(r=>{const v=num(r.v);if(!v)return;
+    if(["race","size","ele","kind"].includes(r.by)){if(r.ch!=="magic")add(o.phys[r.by],r.t,v);if(r.ch!=="phys")add(o.magic[r.by],r.t,v)}
+    else if(r.by==="myEle")add(o.myEle,r.t,v);else if(r.by.startsWith("taken"))add(o.taken[{takenRace:"race",takenEle:"ele",takenKind:"kind"}[r.by]],r.t,v);
+    else if(r.by==="exp")o.exp.all+=v;else if(r.by==="expRace")add(o.exp.race,r.t,v);else if(r.by==="spCost")o.spCost+=v});return o}
+function renderEq(){const c=C();$("eqPanel").hidden=c.mode==="build";
+  $("eqList").innerHTML=eqOf(c).map((r,i)=>{const k=EQ_KINDS.find(x=>x[0]===r.by)||EQ_KINDS[0],T=EQ_TARGETS[r.by];
+    const opt=(v,l)=>`<option value="${esc(v)}" ${String(v)===String(r.t)?"selected":""}>${esc(l)}</option>`;
+    return `<div class="eqrow" data-i="${i}"><select data-f="by">${EQ_KINDS.map(([v,l])=>`<option value="${v}" ${v===r.by?"selected":""}>${l}</option>`).join("")}</select>
+      ${T?`<select data-f="t">${T().map(x=>Array.isArray(x)?opt(x[0],x[1]):opt(x,x)).join("")}</select>`:""}
+      ${k[2]?`<select data-f="ch">${[["both","Phys + Magic"],["phys","Physical"],["magic","Magic"]].map(([v,l])=>`<option value="${v}" ${v===(r.ch||"both")?"selected":""}>${l}</option>`).join("")}</select>`:""}
+      <input data-f="v" type="number" step="1" value="${esc(r.v??"")}" placeholder="%" aria-label="Percent"> %
+      <button type="button" class="small danger" data-del aria-label="Remove line">✕</button></div>`}).join("")||'<div class="note">No lines yet.</div>'}
+$("eqAdd").addEventListener("click",()=>{eqOf(C()).push({by:"race",t:RACES[0],ch:"both",v:""});save();renderEq();renderAll()});
+$("eqList").addEventListener("click",e=>{if(e.target.closest("[data-del]")==null)return;const i=+e.target.closest(".eqrow").dataset.i;eqOf(C()).splice(i,1);save();renderEq();renderAll()});
+$("eqList").addEventListener("change",e=>{const f=e.target.dataset.f;if(!f||f==="v")return;const r=eqOf(C())[+e.target.closest(".eqrow").dataset.i];r[f]=e.target.value;
+  if(f==="by"){const T=EQ_TARGETS[r.by];const first=T&&T()[0];r.t=first==null?"":Array.isArray(first)?first[0]:first}save();renderEq();renderAll()});
+$("eqList").addEventListener("input",e=>{if(e.target.dataset.f!=="v")return;eqOf(C())[+e.target.closest(".eqrow").dataset.i].v=e.target.value===""?"":num(e.target.value);save();renderAll()});
+// item picker labels: the name, plus the id when two items share a name
+const jobSlug=()=>state.job.toLowerCase();
+// gear lists the job family ("swordsman" covers Knight and Crusader), so a 2nd job also matches its 1st job
+const FIRST_OF={Knight:"Swordsman",Crusader:"Swordsman",Wizard:"Mage",Sage:"Mage",Hunter:"Archer",Bard:"Archer",Dancer:"Archer",Priest:"Acolyte",Monk:"Acolyte",Blacksmith:"Merchant",Alchemist:"Merchant",Assassin:"Thief",Rogue:"Thief"};
+const canWear=it=>!it.jobs||!it.jobs.length||it.jobs.includes(jobSlug())||(FIRST_OF[state.job]&&it.jobs.includes(FIRST_OF[state.job].toLowerCase()));
+const labelOf=(it,list)=>list.filter(x=>x.name===it.name).length>1?`${it.name} #${it.id}`:it.name;
+const pickList=(list)=>{const m=new Map();list.forEach(it=>m.set(labelOf(it,list),it.id));return m};
+let GEAR_LISTS={};
+function gearChoices(slot){const s=BUILD.SLOTS.find(x=>x.k===slot);return (typeof EQUIP!=="undefined"?EQUIP:[]).filter(it=>(it.slot||[]).some(x=>s.takes.includes(x))&&canWear(it))}
+function cardChoices(slot){const cs=BUILD.CARD_FOR[slot];return (typeof CARDS!=="undefined"?CARDS:[]).filter(c=>(c.slot||[]).some(x=>x===cs||x.startsWith(cs)))}
+function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
+  const rows=BUILD.SLOTS.map(s=>{const items=gearChoices(s.k),cards=cardChoices(s.k);GEAR_LISTS["g_"+s.k]=pickList(items);GEAR_LISTS["c_"+s.k]=pickList(cards);
+    lists+=`<datalist id="gl_${s.k}">${[...GEAR_LISTS["g_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist><datalist id="cl_${s.k}">${[...GEAR_LISTS["c_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`;
+    const g=b.gear[s.k]||{},it=g.id&&BUILD.item(g.id),label=n=>{const x=BUILD.item(n);return x?labelOf(x,cards):""};
+    const cardBoxes=it&&it.slots?Array.from({length:it.slots},(_,i)=>`<input data-card="${i}" list="cl_${s.k}" placeholder="card" value="${esc(g.cards&&g.cards[i]?label(g.cards[i]):"")}">`).join(""):"";
+    const refinable=it&&it.refine;
+    return `<tr data-slot="${s.k}"><td>${s.label}</td><td><input class="item" list="gl_${s.k}" placeholder="${items.length?"none":"no items for this job"}" value="${esc(it?labelOf(it,items):"")}"></td>
+      <td>${refinable?`<input class="ref" type="number" min="0" max="20" value="${num(g.refine)}">`:""}</td><td><div class="cards">${cardBoxes}</div></td>
+      <td>${it?`<input class="opts" placeholder="e.g. ATK +25, FLEE +20" value="${esc(g.opts||"")}">`:""}</td></tr>`}).join("");
+  $("gearTable").tBodies[0].innerHTML=rows;$("gearLists").innerHTML=lists}
+function renderBuild(){const c=C(),on=c.mode==="build";
+  if(on&&renderBuild.job!==state.job){renderBuild.job=state.job;renderGearTable()}if(!on)renderBuild.job=null;
+  ROOTQ("[data-cmode]").forEach(x=>x.setAttribute("aria-checked",String(x.dataset.cmode===(on?"build":"status"))));
+  $("buildPanel").hidden=!on;$("statNote").hidden=on;BUILT_IDS.forEach(id=>{const el=$(id);el.disabled=on;if(on&&document.activeElement!==el)el.value=id.startsWith("st_")?(c.st||{})[id.slice(3)]??"":c[id]??""});
+  $("modeNote").textContent=on?"Stats below are worked out from your base stats, job level and gear.":"Type the numbers from your in-game status window.";
+  if(!on)return;const b=buildOf(c);ROOTQ("[data-bs]").forEach(x=>{if(document.activeElement!==x)x.value=b.base[x.dataset.bs]??""});
+  const r=BUILD_LAST;if(!r)return;const jb=r.jobBonus;
+  $("jobBonusNote").textContent=`Job Lv ${r.fields.jobLv} bonus: `+BUILD.STAT6.map(k=>`${k.toUpperCase()} +${jb[k]}`).join(" · ")+(BUILD.curve(state.job,"hp",num(c.baseLv))==null?" · no HP/SP table for this job, type Max HP/SP after switching back":"");
+  // check against the game: type the in-game totals, see the difference per stat
+  const ck=b.check||{},rows=CHECKS.map(([k,label,get])=>{const mine=get(r.fields),g=ck[k];const d=g!=null&&g!==""&&mine!=null?num(g)-mine:null;
+    return `<label>${label}<span class="bar"><input data-ck="${k}" type="number" value="${g??""}" placeholder="${mine??"–"}" style="flex:1;min-width:0">${d==null?"":`<span class="${Math.abs(d)<0.5?"good":"bad"}">${d===0?"✓":(d>0?"+":"")+fmtP(+d.toFixed(1))}</span>`}</span></label>`}).join("");
+  if(!$("checkGrid").contains(document.activeElement))$("checkGrid").innerHTML=rows;
+  $("buildNote").innerHTML=r.unmodelled.length?`<b>Not counted</b> (procs, conditional or unsupported lines):<br>${r.unmodelled.map(esc).join("<br>")}`:""}
+// switching to build keeps a copy of the typed status-window values, and switching back restores them
+const SNAP_KEYS=["atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","crit","critDmg","rangePct","skillPct","vctPct","fctPct","acdPct","ignDef","ignMdef","weapon","wElem","st"];
+ROOTQ("[data-cmode]").forEach(x=>x.addEventListener("click",()=>{const c=C(),to=x.dataset.cmode,from=c.mode==="build"?"build":"status";if(to===from)return;
+  if(to==="build")c.statusSnap=JSON.parse(JSON.stringify(Object.fromEntries(SNAP_KEYS.map(k=>[k,c[k]??null]))));
+  else if(c.statusSnap){SNAP_KEYS.forEach(k=>{const v=c.statusSnap[k];if(v==null)delete c[k];else c[k]=v});delete c.statusSnap}
+  c.mode=to;save();if(to==="build")renderGearTable();renderAll();syncChar()}));
+ROOTQ("[data-bs]").forEach(x=>x.addEventListener("input",()=>{buildOf(C()).base[x.dataset.bs]=num(x.value)||1;save();renderAll()}));
+$("gearTable").addEventListener("change",e=>{const tr=e.target.closest("tr[data-slot]");if(!tr)return;const k=tr.dataset.slot,b=buildOf(C()),g=b.gear[k]||(b.gear[k]={});
+  if(e.target.classList.contains("item")){const v=e.target.value.trim();const id=GEAR_LISTS["g_"+k].get(v);
+    if(!v){delete b.gear[k]}else if(id!=null){if(g.id!==id){g.id=id;g.cards=[];g.refine=0}}else{e.target.value=g.id?e.target.defaultValue:"";return}
+    save();renderGearTable();renderAll();return}
+  if(e.target.dataset.card!=null){const v=e.target.value.trim(),id=GEAR_LISTS["c_"+k].get(v);g.cards=g.cards||[];
+    if(!v)g.cards[+e.target.dataset.card]=null;else if(id!=null)g.cards[+e.target.dataset.card]=id;else{e.target.value="";return}save();renderAll()}});
+$("checkGrid").addEventListener("input",e=>{const k=e.target.dataset.ck;if(!k)return;const b=buildOf(C());b.check=b.check||{};
+  if(e.target.value==="")delete b.check[k];else b.check[k]=num(e.target.value);save();renderAll();
+  // refresh just the difference marks while typing, so the box keeps focus
+  CHECKS.forEach(([kk,,get])=>{const inp=$("checkGrid").querySelector(`[data-ck="${kk}"]`),mark=inp.nextElementSibling,g=b.check[kk],mine=BUILD_LAST?get(BUILD_LAST.fields):null;
+    const d=g!=null&&mine!=null?g-mine:null;if(mark)mark.remove();if(d!=null)inp.insertAdjacentHTML("afterend",`<span class="${Math.abs(d)<0.5?"good":"bad"}">${d===0?"✓":(d>0?"+":"")+fmtP(+d.toFixed(1))}</span>`)})});
+$("gearTable").addEventListener("input",e=>{if(e.target.classList.contains("opts")){const g=buildOf(C()).gear[e.target.closest("tr").dataset.slot];if(g){g.opts=e.target.value;save();renderAll()}return}
+  if(!e.target.classList.contains("ref"))return;const k=e.target.closest("tr").dataset.slot;const g=buildOf(C()).gear[k];if(!g)return;
+  g.refine=Math.max(0,Math.min(20,num(e.target.value)));save();renderAll()});
 // ---- tabs: show one group of sections at a time; the last one opened is remembered in state.tab (Character first for new players) ----
 function showTab(t){
   if(!document.querySelector(`[data-tabbtn="${t}"]`))t="char";
