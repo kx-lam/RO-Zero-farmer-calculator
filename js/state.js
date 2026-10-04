@@ -27,6 +27,9 @@ const numMap=o=>Object.fromEntries(Object.entries(o&&typeof o==="object"?o:{}).m
 for(const j in state.chars){const c=state.chars[j];if(!c||typeof c!=="object"){delete state.chars[j];continue}
   if(c.skills!=null)c.skills=Object.fromEntries(Object.entries(numMap(c.skills)).map(([k,v])=>[k,Math.max(0,Math.round(v))]).filter(([,v])=>v>0));
   if(c.build&&typeof c.build==="object"&&c.build.check!=null)c.build.check=numMap(c.build.check)}
+// market prices you typed for items, and optionally what an NPC pays for them (item id → zeny); numbers only, so a pasted backup can't put anything else in
+state.prices=Object.fromEntries(Object.entries(numMap(state.prices)).filter(([,v])=>v>=0));
+state.npcPrices=Object.fromEntries(Object.entries(numMap(state.npcPrices)).filter(([k,v])=>v>=0&&k in state.prices));
 if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
 const D={bonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[]};
 for(const k in D)if(state[k]==null)state[k]=JSON.parse(JSON.stringify(D[k]));

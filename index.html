@@ -307,6 +307,32 @@
     <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_dun03, yuno_fild02"></label>
   </section>
 
+  <section class="card" id="huntCard" data-tab="maps">
+    <div class="bar"><h2 class="grow">Zeny Hunter</h2><span class="note" id="huntBasis"></span></div>
+    <div class="bar">
+      <div class="seg" role="radiogroup" aria-label="Rank maps or monsters">
+        <button type="button" role="radio" data-hunt="maps">Maps</button>
+        <button type="button" role="radio" data-hunt="mobs">Monsters</button>
+      </div>
+      <label id="huntMinWrap">Min monsters on map<input id="huntMin" type="number" value="40" style="width:90px"></label>
+      <label>Show<select id="huntN"><option>10</option><option>20</option><option>50</option></select></label>
+    </div>
+    <div class="calc" id="huntTiles"></div>
+    <div class="scroll"><table id="huntTable"><thead><tr><th>#</th><th data-hk="name">Map / monster</th><th>Earns from</th><th data-hk="net">Net zeny / hr</th><th data-hk="loot">Loot / hr</th><th data-hk="cost">Costs / hr</th><th data-hk="kph">Kills / hr</th><th data-hk="zk">Zeny / kill</th><th data-hk="epm">EXP / min</th><th data-hk="hpm">HP lost / min</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">Open maps (or monsters farmed on their own) ranked by net zeny / hr with your current attack: loot value per kill (rozerodb, with your drop rate bonus) less skill costs like Mammonite, minus SP items and the consumables you have switched on. Monsters rozerodb has no EXP for yet still count, since they drop loot. Bosses and skipped monsters are left out. Monsters farmed on their own need that many spawns on their best open map, since rare spawns take far longer to find than your walking time assumes. Click a map to open it in the map planner, or a monster to pick it.</div>
+    <h3 style="margin:16px 0 8px">Market prices</h3>
+    <div class="bar">
+      <label class="grow">Item<input id="priceItem" list="priceList" placeholder="e.g. Snake Scale"></label>
+      <label>Players pay (z)<input id="priceVal" type="number" min="0" step="100" style="width:120px"></label>
+      <label>NPC pays (z)<input id="priceNpc" type="number" min="0" step="1" placeholder="0" style="width:110px"></label>
+      <label><span>&nbsp;</span><button type="button" id="priceAdd">Add price</button></label>
+    </div>
+    <datalist id="priceList"></datalist>
+    <div class="note bad" id="priceMsg"></div>
+    <div class="scroll"><table id="priceTable"><thead><tr><th>Item</th><th>Players pay</th><th>NPC pays</th><th>Best drop</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="note">For items you sell to players instead of an NPC: the item then counts at the player price in every zeny figure (Zeny Hunter, the Monsters table and the Session zeny / hr). The loot value from rozerodb already counts each drop at its NPC price, so type what the NPC pays and it's taken off; left blank, it counts as 0. Prices are saved per account.</div>
+  </section>
+
   <section class="card" id="mapCard" data-tab="maps">
     <div class="bar"><h2 class="grow">Map planner</h2></div>
     <div class="form" style="grid-template-columns:2fr 1fr">
