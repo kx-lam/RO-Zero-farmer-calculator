@@ -44,7 +44,7 @@ function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),p
   $("refExpNote").textContent=m?`${fmtN(per)} base EXP per ${m.name}`:"Pick a monster to see kills per level";
   let tot=0;const base=Object.keys(EXP_TABLE).map(Number).sort((a,b)=>a-b).map(l=>{const e=EXP_TABLE[l],row=`<tr${l===blv?' class="sel"':""}><td>${l}</td><td>${fmtN(e)}</td><td>${fmtN(tot)}</td>${m?`<td>${kills(e)}</td>`:""}</tr>`;tot+=e;return row}).join("");
   $("refBaseTable").tHead.innerHTML=`<tr><th>Lv</th><th>EXP to next</th><th>Total</th>${kh}</tr>`;$("refBaseTable").tBodies[0].innerHTML=base;
-  const tier=state.refTier||jobTier(),t=JOB_EXP[tier],mine=tier===jobTier();tot=0;
+  const tier=Object.hasOwn(JOB_EXP,state.refTier)?state.refTier:jobTier(),t=JOB_EXP[tier],mine=tier===jobTier();tot=0;
   ROOTQ("[data-reftier]").forEach(b=>b.setAttribute("aria-checked",String(b.dataset.reftier===tier)));
   // job EXP per kill isn't in the monster data, so the job table has no kills column
   $("refJobTable").tHead.innerHTML=`<tr><th>Job Lv</th><th>Job EXP to next</th><th>Total</th></tr>`;

@@ -13,15 +13,19 @@ const stub = () => {
   });
   return p;
 };
-const store = {};
-const ctx = vm.createContext({
-  document: stub(), console, setTimeout: () => 0, clearTimeout() {}, navigator: stub(), location: stub(), scrollTo() {}, addEventListener() {},
-  localStorage: { getItem: k => k in store ? store[k] : null, setItem: (k, v) => { store[k] = String(v) }, removeItem: k => { delete store[k] } },
-});
 const root = new URL("../", import.meta.url);
 const html = readFileSync(new URL("index.html", root), "utf8");
-for (const [, src] of html.matchAll(/<script src="([^"]+)"><\/script>/g)) vm.runInContext(readFileSync(new URL(src, root), "utf8"), ctx, { filename: src });
-const run = code => vm.runInContext(code, ctx);
+// a fresh copy of the page's scripts; save (optional) is what localStorage holds for the account when they load
+const load = save => {
+  const store = save ? { "rozero-farm-planner-v1": JSON.stringify(save) } : {};
+  const ctx = vm.createContext({
+    document: stub(), console, setTimeout: () => 0, clearTimeout() {}, navigator: stub(), location: stub(), scrollTo() {}, addEventListener() {},
+    localStorage: { getItem: k => k in store ? store[k] : null, setItem: (k, v) => { store[k] = String(v) }, removeItem: k => { delete store[k] } },
+  });
+  for (const [, src] of html.matchAll(/<script src="([^"]+)"><\/script>/g)) vm.runInContext(readFileSync(new URL(src, root), "utf8"), ctx, { filename: src });
+  return code => vm.runInContext(code, ctx);
+};
+const run = load();
 
 let n = 0;
 const t = (name, fn) => { run("state.sessions=[{id:'s1',name:'t',mobIds:[],entries:[]}];state.current='s1';state.chars={};state.bonus=0;state.dropBonus=0"); fn(); n++; console.log("ok", name); };
@@ -143,6 +147,21 @@ t("zeny per kill: the loot value scaled by the drop rate bonus", () => {
   assert.equal(run(`zenyKill({loot:200})`), 200);
   assert.equal(run(`state.dropBonus=50;zenyKill({loot:200})`), 300);
   assert.equal(run(`zenyKill({})`), 0);
+});
+
+t("a restored save is cleaned up before anything uses it", () => {
+  // what a broken or hand-made backup or share link could hold
+  const bad = "x\"'><img src=x onerror=1>";
+  const app = load({ job: "Sage", tab: bad, refTier: bad, current: "s1",
+    sessions: [{ id: "s1", name: "S", mobIds: [1002], entries: [{ t: 1e12, lv: 40, pct: 10 }, { t: 1e12 + 36e5, lv: 40, pct: 30 }],
+      pauses: [{ from: bad, to: 1e12 + 1e6 }, { from: 1e12 + 1e5, to: bad }, { from: 1e12 + 2e5, to: 1e12 + 3e5 }, { from: 1e12 + 4e5 }] }],
+    chars: { Sage: { skills: { "spell-fist": bad, "fire-bolt": "7", hindsight: 3.6, "cold-bolt": -2 }, build: { check: { atk: bad, hit: "250", sp: "" } } }, Knight: "junk" } });
+  assert.deepEqual(app("JSON.stringify(cur().pauses)"), JSON.stringify([{ from: 1e12 + 2e5, to: 1e12 + 3e5 }, { from: 1e12 + 4e5 }]));
+  assert.deepEqual(app("JSON.stringify(state.chars.Sage.skills)"), JSON.stringify({ "fire-bolt": 7, hindsight: 4 }));
+  assert.deepEqual(app("JSON.stringify(state.chars.Sage.build.check)"), JSON.stringify({ hit: 250 }));
+  assert.equal(app("'Knight' in state.chars"), false);
+  assert.equal(app("state.tab"), "char");                              // not one of the tabs: back to Character
+  assert.ok(app("stats(cur())").avgRaw > 0);                            // the tracker maths still runs
 });
 
 t("monster table filters", () => {

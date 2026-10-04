@@ -106,7 +106,7 @@ function renderBuild(){const c=C(),on=c.mode==="build";
   $("jobBonusNote").textContent=`Job Lv ${r.fields.jobLv} bonus: `+BUILD.STAT6.map(k=>`${k.toUpperCase()} +${jb[k]}`).join(" · ")+(BUILD.curve(state.job,"hp",num(c.baseLv))==null?" · no HP/SP table for this job, type Max HP/SP after switching back":"");
   // check against the game: type the in-game totals, see the difference per stat
   const ck=b.check||{},rows=CHECKS.map(([k,label,get])=>{const mine=get(r.fields),g=ck[k];const d=g!=null&&g!==""&&mine!=null?num(g)-mine:null;
-    return `<label>${label}<span class="bar"><input data-ck="${k}" type="number" value="${g??""}" placeholder="${mine??"–"}" style="flex:1;min-width:0">${d==null?"":`<span class="${Math.abs(d)<0.5?"good":"bad"}">${d===0?"✓":(d>0?"+":"")+fmtP(+d.toFixed(1))}</span>`}</span></label>`}).join("");
+    return `<label>${label}<span class="bar"><input data-ck="${k}" type="number" value="${esc(g??"")}" placeholder="${mine??"–"}" style="flex:1;min-width:0">${d==null?"":`<span class="${Math.abs(d)<0.5?"good":"bad"}">${d===0?"✓":(d>0?"+":"")+fmtP(+d.toFixed(1))}</span>`}</span></label>`}).join("");
   if(!$("checkGrid").contains(document.activeElement))$("checkGrid").innerHTML=rows;
   $("buildNote").innerHTML=r.unmodelled.length?`<b>Not counted</b> (procs, conditional or unsupported lines):<br>${r.unmodelled.map(esc).join("<br>")}`:""}
 // switching to build keeps a copy of the typed status-window values, and switching back restores them
