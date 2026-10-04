@@ -403,7 +403,7 @@ const syncChar=()=>{
   $("preset").value=String(c.preset??0);renderSkills();
   ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
   $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";
-  $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("nameType").value=c.nameType||"phys";$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potCostHr())} z/hr`:"";$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
+  $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("nameType").value=c.nameType||"phys";$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;potInfo();$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
   const a=c.a;$("aType").value=a.type;$("aPct").value=a.pct;$("aHits").value=a.hits;$("aElem").value=a.el;$("aCast").value=a.cast;$("aDelay").value=a.delay;$("aSp").value=a.sp;$("aTargets").value=a.targets;$("aZeny").value=a.zeny||"";$("cartW").value=c.cartW||"";$("cartWrap").hidden=!num(a.cart);
   $("bonus").value=state.bonus;
   $("sagePanel").hidden=state.job!=="Sage";if(state.job==="Sage"){const g=G();ROOTQ("[data-sg]").forEach(i=>{const k=i.dataset.sg;if(i.type==="checkbox")i.checked=!!g[k];else i.value=g[k]??""});ROOTQ("[data-sgbolt]").forEach(i=>i.checked=!!g.bolts[i.dataset.sgbolt]);$("sg_hsOn").disabled=!!g.hsAuto}STATS.forEach(k=>$("st_"+k).value=(c.st&&c.st[k])||"");renderStatNote();
@@ -494,7 +494,7 @@ function renderGoal(s,st){
   const curLv=st.last.lv,goal=num(state.goalLv)||(curLv<70?70:curLv+1);
   if(goal<=curLv){tiles.innerHTML=`<div class="note">You're already Lv ${curLv}. Pick a higher level.</div>`;$("goalNote").textContent="";return}
   let need=lvExp(curLv)?lvExp(curLv)*(1-st.last.pct/100):null;for(let l=curLv+1;l<goal&&need!=null;l++)need=lvExp(l)?need+lvExp(l):null;
-  if(need==null){tiles.innerHTML='<div class="note">The EXP table covers Lv 60 to 70, so pick a goal up to Lv 71.</div>';$("goalNote").textContent="";return}
+  if(need==null){tiles.innerHTML='<div class="note">The EXP table covers Lv 1 to 70, so pick a goal up to Lv 71.</div>';$("goalNote").textContent="";return}
   const hrs=need/st.avgRaw;
   $("goalNote").textContent=`at your ${pct(st.avgPct)}/hr average`;
   tiles.innerHTML=`<div class="tile"><div class="k">EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Lv ${curLv} ${st.last.pct.toFixed(2)}% to Lv ${goal}</div></div>
@@ -640,7 +640,7 @@ function renderMap(){
   const w=walkSec(),r=mapStats(mp,w);const L=lvExp(num(C().baseLv));const st=stats(cur());const L2=st?st.L:L;
   $("mapTiles").innerHTML=r?`<div class="tile now"><div class="k">Average EXP / min</div><div class="v mono">${fmtN(r.epm)}</div><div class="s">weighted by spawn counts${r.el2&&convOn()?` · bring ${r.el2} converters`:""}${r.skip?` · skips ${r.skip} you can't hurt`:""}</div></div>
    <div class="tile"><div class="k">Kills / hr</div><div class="v mono">${fmtN(3600/r.secT)}</div><div class="s">${r.sec.toFixed(1)}s fight + ${r.walk.toFixed(1)}s walk</div></div>
-   <div class="tile"><div class="k">EXP / hr</div><div class="v mono">${L2?pct(r.epm*60/L2*100):fmtN(r.epm*60)}</div><div class="s">${L2?`1 level in ${fmtDur(L2/(r.epm*60))}`:"set Base level 60–70 for %"}</div></div>
+   <div class="tile"><div class="k">EXP / hr</div><div class="v mono">${L2?pct(r.epm*60/L2*100):fmtN(r.epm*60)}</div><div class="s">${L2?`1 level in ${fmtDur(L2/(r.epm*60))}`:"set Base level 1–70 for %"}</div></div>
    <div class="tile"><div class="k">Zeny / hr</div><div class="v mono">${fmtN(r.zph)}</div><div class="s">${r.hpm==null?"":`HP lost ~${fmtN(r.hpm)}/min`}</div></div>${isClosed(mp)?'<div class="note bad">This map is marked as not open yet.</div>':""}`
    :'<div class="note bad">Your attack can\'t hurt anything here.</div>';
   const tot=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).reduce((a,x)=>a+x.n,0)||1;
@@ -722,7 +722,7 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();cons
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
   $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
   const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=num(C().jobLv)+1}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
-  if(C().baseLv!==lvG){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm();$("fPct").focus()});
+  if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm();$("fPct").focus()});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
   const parsed=$("pasteBox").value.split(/\n/).map(line=>{const m=line.match(/(\d{1,2}):?(\d{2})[^\d\n]+?(\d+(?:\.\d+)?)\s*%?(?:[^\d\n]+?(\d+(?:\.\d+)?)\s*%?)?/);if(!m||+m[1]>23||+m[2]>59)return null;return {t:entryTime(+m[1],+m[2]),pct:+m[3],jpct:m[4]!=null?+m[4]:null}}).filter(Boolean).sort((a,b)=>a.t-b.t);
   parsed.forEach(x=>{const g=guessLevel(s,x.t,lv,x.pct);if(g!==lv){ups++;lv=g}const ent={t:x.t,lv,pct:x.pct};if(x.jpct!=null)ent.jpct=x.jpct;s.entries=s.entries.filter(e=>e.t!==x.t);s.entries.push(ent);n++});
@@ -781,8 +781,8 @@ $("mobInput").addEventListener("change",e=>{pickMob(MOBS.find(x=>x.name.toLowerC
 $("mobTable").querySelector("tbody").addEventListener("click",e=>{if(e.target.closest("a"))return;const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
 $("mobTable").querySelector("thead").addEventListener("click",e=>{if(e.target.closest(".filters"))return;const th=e.target.closest("th");if(!th||!th.dataset.k)return;
   if(state.sort===th.dataset.k)state.dir*=-1;else{state.sort=th.dataset.k;state.dir=["name","el","size","race","sec","uses","hpm"].includes(th.dataset.k)?1:-1}save();renderMobs()});
-document.querySelectorAll("[data-f]").forEach(inp=>{inp.value=state.filters[inp.dataset.f]||"";inp.addEventListener("input",()=>{state.filters[inp.dataset.f]=inp.value;save();renderMobs()})});
-$("clearF").addEventListener("click",()=>{state.filters={};document.querySelectorAll("[data-f]").forEach(i=>i.value="");save();renderMobs()});
+document.querySelectorAll("#mobTable .filters [data-f]").forEach(inp=>{inp.value=state.filters[inp.dataset.f]||"";inp.addEventListener("input",()=>{state.filters[inp.dataset.f]=inp.value;save();renderMobs()})});
+$("clearF").addEventListener("click",()=>{state.filters={};document.querySelectorAll("#mobTable .filters [data-f]").forEach(i=>i.value="");save();renderMobs()});
 $("minLv").value=state.minLv;$("maxLv").value=state.maxLv;
 ["minLv","maxLv"].forEach(id=>$(id).addEventListener("input",e=>{state[id]=e.target.value===""?(id==="maxLv"?99:1):num(e.target.value);save();renderMobs()}));
 $("hideClosed").checked=state.hideClosed;$("hideClosed").addEventListener("change",e=>{state.hideClosed=e.target.checked;save();renderMobs()});
@@ -822,7 +822,9 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   else if(!data||!Array.isArray(data.sessions)){$("bkMsg").textContent="That backup has no sessions in it.";return}
   if(!bkArmed){bkArmed=true;$("bkRestore").textContent=all?`Click again to replace all accounts (${data.accounts.length} in backup)`:"Click again to replace this account";setTimeout(()=>{bkArmed=false;$("bkRestore").textContent="Restore from text"},4000);return}
   bkArmed=false;
-  if(all){try{accts.list.forEach(a=>localStorage.removeItem(acctKey(a.id)));data.accounts.forEach(a=>{if(a.data)localStorage.setItem(acctKey(a.id),JSON.stringify(a.data))})}catch(err){$("bkMsg").textContent="Couldn't write the backup to this browser's storage.";return}
+  // write every account first, then drop the old ones the backup doesn't have, so a failed write leaves the old accounts in place
+  if(all){const keep=new Set(data.accounts.map(a=>acctKey(a.id)));try{data.accounts.forEach(a=>{if(a.data)localStorage.setItem(acctKey(a.id),JSON.stringify(a.data))})}catch(err){$("bkMsg").textContent="Couldn't write the backup to this browser's storage. Your accounts weren't changed.";return}
+    try{accts.list.forEach(a=>{if(!keep.has(acctKey(a.id)))localStorage.removeItem(acctKey(a.id))});data.accounts.forEach(a=>{if(!a.data)localStorage.removeItem(acctKey(a.id))})}catch(err){}
     accts.list=data.accounts.map((a,i)=>({id:a.id,name:String(a.name||"Account "+(i+1))}));accts.active=accts.list.some(a=>a.id===data.active)?data.active:accts.list[0].id;saveAccts()}
   else{state=data;save()}
   $("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
