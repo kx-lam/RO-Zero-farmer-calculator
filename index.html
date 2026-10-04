@@ -74,7 +74,7 @@
       <div id="gearLists"></div>
       <details class="note">
         <summary>Check against the game</summary>
-        <div style="margin:6px 0">Type the totals from your in-game status window: ATK and DEF as the two parts added up, HIT as shown, FLEE as the left number only (the "+N" after FLEE is Perfect Dodge). A ✓ means the build matches; a number is how far off it is, which usually points at gear the data doesn't cover yet. Max HP and Max SP you type here are used instead of the computed ones, since the base HP/SP tables don't match Zero yet.</div>
+        <div style="margin:6px 0">Type totals from your status window (ATK and DEF as both parts added, FLEE without the "+N"). ✓ means it matches; a number is how far off, usually gear the data doesn't cover. Max HP/SP typed here replace the computed ones.</div>
         <div class="form" id="checkGrid" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
       </details>
       <div class="note" id="buildNote"></div>
@@ -144,7 +144,11 @@
         <label>My attack element %<input id="myElPct" type="number" step="1" placeholder="0" title="Gear like +20% Fire magic damage, when your attack is that element"></label>
         <label>Ignore DEF / MDEF %<span class="bar"><input id="ignDef" type="number" step="1" placeholder="DEF" style="flex:1"><input id="ignMdef" type="number" step="1" placeholder="MDEF" style="flex:1"></span></label>
       </div>
-      <div class="note">Presets are the max-level skills from the <a href="https://rozerodb.com/tools/skill-tree" target="_blank" rel="noopener">rozerodb skill tree</a> (Ragnarok Zero), with your 1st-job skills included. Change any number to match your skill level. Mastery ATK is the flat bonus from passives (Sword/Spear/Axe Mastery, Iron Fists, Demon Bane…); melee/ranged % and skill % are gear lines like "+10% melee physical damage". ATK % from gear is already inside the ATK your status window shows. CRIT only counts for basic attacks (×2 with a katar). Cast: rozerodb gives one cast time, so set how much of it is fixed (renewal is usually 20%); the rest shrinks with DEX/INT. After-cast delay −% comes from gear. Each use takes cast time, then the longest of your attack motion (ASPD) and the delay, which run at the same time. Damage % boxes are separate multipliers, so spreading bonuses across them beats stacking one.</div>
+      <div class="note">Presets are max-level skills from the <a href="https://rozerodb.com/tools/skill-tree" target="_blank" rel="noopener">rozerodb skill tree</a>; change any number to match yours. Mastery ATK is the flat bonus from weapon passives; melee/ranged % and skill % are gear lines. ATK % from gear is already in your status window. CRIT only counts for basic attacks. Fixed share of cast is the part DEX/INT can't shrink (usually 20%). Each damage % box is its own multiplier, so spreading bonuses beats stacking one.</div>
+      <details class="note">
+        <summary>How damage is worked out</summary>
+        <div style="margin-top:4px">From <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info/mechanics</a>, checked against the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a> (Zero). Physical: ATK × size × element × skill % × bonuses, reduced by DEF, × hit chance. Magic: MATK × skill % reduced by MDEF × element, always hits. Cast × (1 − √((2·DEX + INT)/530)). Average damage only; area skills split time across targets.</div>
+      </details>
     </details>
     <details class="card" id="sagePanel" style="padding:12px 14px;gap:8px;background:var(--bg)" open>
       <summary><b>Sage options</b> <span class="note">used by the "Spell Fist (full Sage model)" attack</span></summary>
@@ -173,7 +177,7 @@
         <label class="bar" style="flex-direction:row;gap:4px">SP items at <input data-sg="autoSpPct" type="number" style="width:56px">% SP</label>
       </div>
       <div class="note" id="sageInfo"></div>
-      <div class="note">SP items (box below) are only used while Hindsight is on. Energy Coat SP, Heal SP and Hindsight SP come out of your regen first; whatever is left over is covered by SP items, or Hindsight fires less often without them.</div>
+      <div class="note">SP items (below) are only used with Hindsight on. Energy Coat, Heal and Hindsight SP come from regen first; SP items cover the rest, or Hindsight fires less often.</div>
     </details>
     <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="converters" style="width:auto"> Use elemental converters (Fire / Water / Earth / Wind) on basic attacks and weapon-element skills: picks the best one per monster and per map</label> <span id="convNote" class="warnc"></span></div>
     <div class="bar note"><span>ASPD potion:</span>
@@ -210,7 +214,7 @@
 
   <section class="card" data-tab="char" id="skillCard">
     <div class="bar"><h2 class="grow">Skills</h2><button type="button" class="small" id="skMax">Max all</button><button type="button" class="small danger" id="skReset">Reset</button></div>
-    <div class="note">Set your learned levels like the in-game Skill Tree. Attack presets use the level you learned; masteries add damage with the right weapon; stat passives (Owl's Eye, Improve Dodge…) only count in Build from gear, since your status window already includes them. Leave it empty to keep the max-level presets.</div>
+    <div class="note">Set your learned levels like the in-game Skill Tree. Masteries add damage with the right weapon; stat passives only count in Build from gear, since your status window already has them. Leave empty to use max-level presets.</div>
     <div id="skillTrees" class="trees"></div>
     <div class="note bad" id="skillNote"></div>
     <div id="buffList" class="bar"></div>
@@ -274,7 +278,7 @@
     <div class="scroll tall"><table id="mobTable"><thead><tr>
       <th data-k="name">Monster</th><th data-k="lv">Lv</th><th data-k="el">Element</th><th data-k="size">Size</th><th data-k="race">Race</th><th data-k="hp">HP</th><th data-k="exp">Base EXP</th><th data-k="ratio" title="Base EXP per HP: how much EXP each point of damage earns">EXP / HP</th><th data-k="mult">Your hit %</th><th data-k="hitc">Hit chance</th><th data-k="uses">Uses / kill</th><th data-k="sec">Sec / kill</th><th data-k="epm">EXP / min</th><th data-k="dodge">Dodge %</th><th data-k="hpm">HP lost / min</th><th data-k="zk">Zeny / kill</th><th data-k="topN">Best map</th><th></th>
     </tr><tr class="filters"><td><input data-f="name" placeholder="name"></td><td><input data-f="lv" placeholder="50-90"></td><td><input data-f="el" placeholder="fire"></td><td><input data-f="size" placeholder="L"></td><td><input data-f="race" placeholder="undead"></td><td><input data-f="hp" placeholder="<20000"></td><td><input data-f="exp" placeholder=">5000"></td><td><input data-f="ratio" placeholder=">1"></td><td><input data-f="mult" placeholder=">100"></td><td><input data-f="hitc" placeholder=">90"></td><td><input data-f="uses" placeholder="<=3"></td><td><input data-f="sec" placeholder="<5"></td><td><input data-f="epm" placeholder=""></td><td><input data-f="dodge" placeholder=">50"></td><td><input data-f="hpm" placeholder="<500"></td><td><input data-f="zk" placeholder=">20"></td><td><input data-f="topN" placeholder="map"></td><td><button type="button" class="small" id="clearF">Clear</button></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Click a row to see it in the tiles; "Farming this now" links it to the session, and "Also killing" (or "+ Session" in the map planner) adds more, like aggressive monsters that attack you. A session's monsters are weighted by their spawn counts on its map. Filters take &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, and "or" to combine. Your hit % = damage % per hit after element, size, MDEF/DEF and your bonuses. EXP / min counts fight time plus walking (learned from your log). Monster data from rozerodb.com.</div>
+    <div class="note">Click a row to see it in the tiles; "Farming this now" or "Also killing" adds it to the session. Filters: &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, "or" to combine. Your hit % is skill % after element, size and bonuses. EXP / min includes walking, learned from your log. Data from rozerodb.com.</div>
   </section>
 
   <section class="card" id="bestCard" data-tab="maps">
@@ -284,7 +288,7 @@
       <label>Show<select id="bestN"><option>10</option><option>20</option><option>50</option></select></label>
     </div>
     <div class="scroll"><table id="bestTable"><thead><tr><th>#</th><th data-bk="mp">Map</th><th>Main monsters</th><th data-bk="epm">EXP / min</th><th data-bk="secT">Sec / kill (fight + walk)</th><th data-bk="epk">EXP / kill</th><th data-bk="zph">Zeny / hr</th><th data-bk="hpm">HP lost / min</th><th data-bk="skip">Can't hurt</th><th data-bk="N">Monsters</th><th data-bk="epm">Projected</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Ranks open maps by EXP per minute with your current attack, weighted by spawn counts. "Can't hurt" lists monsters your attack element does 0% to (skipped). Projected scales your current session's %/hr by each map's EXP / min against the EXP / min of just your session's monsters (spawn-weighted) on its map. Click a row to open it in the map planner.</div>
+    <div class="note">Open maps ranked by EXP / min with your current attack, weighted by spawn counts. "Can't hurt" lists monsters your element does 0% to. Projected scales your session's %/hr by each map's EXP / min. Click a row to open it in the map planner.</div>
     <div class="maps" id="regions"></div>
     <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_d03, yun_f02"></label>
   </section>
@@ -322,7 +326,6 @@
     <div class="bar"><h2 class="grow">Backup</h2><span class="note">Your data lives only in this browser. Copy backup covers the current account; Copy all accounts covers every account.</span></div>
     <div class="bar"><button type="button" id="bkCopy">Copy backup</button><button type="button" id="bkShow">Show backup text</button><button type="button" id="bkCopyAll">Copy all accounts</button><button type="button" id="bkShowAll">Show all accounts</button><button type="button" id="bkRestore" class="danger">Restore from text</button><span class="note" id="bkMsg"></span></div>
     <textarea id="bkText" rows="3" placeholder="Paste a backup here, then click Restore from text" style="font:inherit;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical;width:100%"></textarea>
-    <div class="note">Formulas follow <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info/mechanics</a>. Physical: (weapon ATK × (1 + STR/200, or DEX/200 for bows, instruments and whips) × size × element + (other gear ATK + 2 × status ATK) × Neutral element) × skill % × your bonuses × (4000+DEF)/(4000+10·DEF) − (monster Lv + VIT)/2, times hit chance (100 + HIT − monster "100% hit"). Magic: (MATK × skill % × (1000+MDEF)/(1000+10·MDEF) − (monster Lv + INT)/4) × element, always hits. Your dodge: 95 + FLEE − monster "95% flee". Cast time × (1 − √((2·DEX + INT)/530)). Status ATK/MATK/HIT/FLEE/soft DEF from stats use the verified formulas on that page. Basic attacks and skills were checked against the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a> (Zero mode) and match its average damage. Weapon damage variance is left out. Area skills split their time across the monsters they hit. EXP tables cover base Lv 1–70 and job levels from the official guide.</div>
   </section>
 </div>
 
