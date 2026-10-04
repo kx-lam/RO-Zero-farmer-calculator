@@ -1,0 +1,28 @@
+# Runs every tests/*.test.mjs file with plain node (no dependencies) and checks the data exporter compiles.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run tests
+        run: |
+          for f in tests/*.test.mjs; do
+            echo "::group::$f"
+            node "$f"
+            echo "::endgroup::"
+          done
+      - name: Check the data exporter compiles
+        run: python3 -m py_compile tools/export_prontera.py
