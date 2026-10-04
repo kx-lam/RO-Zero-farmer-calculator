@@ -212,7 +212,7 @@ const REGIONS=[
  {id:"nf",name:"Niflheim",when:"not on roadmap",pre:["nif_","niflheim"]},
  {id:"um",name:"Umbala",when:"not on roadmap",pre:["um_"]}];
 const regionOf=map=>REGIONS.find(r=>r.pre.some(p=>map.toLowerCase().startsWith(p)));
-// map names: SPAWN and saves use rozerodb codes (sp_d05); data/maps.js has the in-game code and name (in_sphinx5 · Sphinx F5) and other codes
+// map names: SPAWN and saves use rozerodb codes (sp_d05); data/maps.js has the in-game code and name (in_sphinx5 · Sphinx B5F) and other codes
 const mapCode=mp=>(MAPNAMES[mp]||[])[0]||mp;
 const mapName=mp=>(MAPNAMES[mp]||[])[1]||"";
 const mapLabel=mp=>mapName(mp)?`${mapCode(mp)} (${mapName(mp)})`:mapCode(mp);
