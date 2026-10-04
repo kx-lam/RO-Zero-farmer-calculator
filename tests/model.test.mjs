@@ -239,4 +239,44 @@ t("monsters with no EXP in rozerodb are listed but left out of EXP averages", ()
   assert.ok(r.epk > 0 && isFinite(r.epm));
 });
 
+t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts monsters with no EXP", () => {
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  const mob = MOB.replace("drops:[]", "drops:[],loot:500");
+  const r = run(`huntMob0(${mob},2)`), sec = run(`fightSec(${mob})`) + 2;
+  near(r.zk, 500); near(r.loot, 500 * 3600 / sec); near(r.net, r.loot); assert.equal(r.cost, 0);
+  run(`state.dropBonus=50`);                                            // drop rate bonus scales loot
+  near(run(`huntMob0(${mob},2)`).loot, 750 * 3600 / sec);
+  run(`state.dropBonus=0;C().a.zeny=100`);                              // Mammonite-style zeny per use comes off each kill
+  near(run(`huntMob0(${mob},2)`).zk, 500 - 100 * run(`usesPerKill(${mob})`));
+  run(`C().a.zeny=0;C().potOn=true;C().potMin=30;C().potPrice=1000`);   // an ASPD potion every 30 min: 2,000 z/hr
+  const p = run(`huntMob0(${mob},2)`);
+  near(p.cost, 2000); near(p.net, p.loot - 2000);
+  run(`C().potOn=false`);
+  // Myst has no EXP in rozerodb but still drops loot, so it counts towards zeny on its map
+  const map = run(`huntMap0("mjo_d03",2)`);
+  assert.ok(map.earn.some(x => x.m.name === "Myst") && map.epm > 0 && map.net > 0);
+  // monsters you skip are left out
+  const id = run(`MOBS.find(m=>m.name==="Myst").id`);
+  run(`state.skipMobs=[${id}]`);
+  assert.ok(!run(`huntMap0("mjo_d03",2)`).earn.some(x => x.m.name === "Myst"));
+  run(`state.skipMobs=[]`);
+});
+
+t("market prices: a drop sold to players counts at its player price instead of its NPC price", () => {
+  const mob = "({id:-2,name:'Seller',loot:50,drops:[[909,10],[4001,0.5]]})";
+  near(run(`zenyKill(${mob})`), 50);                                     // no prices typed: rozerodb loot value only
+  run(`state.prices={909:200}`);                                          // players pay 200, NPC price unknown (counts as 0)
+  near(run(`zenyKill(${mob})`), 50 + 200 * 0.10);
+  run(`state.npcPrices={909:10}`);                                        // NPC pays 10: that part is already in the loot value
+  near(run(`zenyKill(${mob})`), 50 + (200 - 10) * 0.10);
+  run(`state.dropBonus=100`);                                             // drop bonus doubles the chance (capped at 100%)
+  near(run(`zenyKill(${mob})`), 100 + 190 * 0.20);
+  run(`state.prices={909:5};state.npcPrices={909:10};state.dropBonus=0`); // cheaper than the NPC: you'd sell to the NPC
+  near(run(`zenyKill(${mob})`), 50);
+  assert.ok(run(`hasLoot({drops:[[909,10]]})`) === false);
+  run(`state.prices={909:200};state.npcPrices={}`);
+  assert.ok(run(`hasLoot({drops:[[909,10]]})`));                         // a priced drop gives a monster with no loot value a zeny figure
+  run(`state.prices={}`);
+});
+
 console.log(`${n} tests passed`);
