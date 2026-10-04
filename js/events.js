@@ -125,7 +125,7 @@ $("cmpTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.tar
 const toggleSessMob=id=>{const s=cur();const i=s.mobIds.indexOf(id);if(i>=0){s.mobIds.splice(i,1);return}
   if(!s.mobIds.length)s.job=state.job;s.mobIds.push(id);const m=MOBS.find(x=>x.id===id);if(s.mobIds.length===1&&m&&s.name==="New session")s.name=m.name};
 const pickMob=m=>{if(!m)return;state.calcMobId=m.id;const s=cur();if(!s.mobIds.length)toggleSessMob(m.id);save();renderAll()};
-$("mobList").innerHTML=MOBS.map(m=>`<option value="${esc(m.name)}">Lv ${m.lv} · ${fmtN(m.exp)} EXP</option>`).join("");
+$("mobList").innerHTML=MOBS.map(m=>`<option value="${esc(m.name)}">Lv ${m.lv} · ${fmtExp(m)} EXP</option>`).join("");
 $("mobInput").addEventListener("change",e=>{pickMob(MOBS.find(x=>x.name.toLowerCase()===e.target.value.trim().toLowerCase()))});
 $("mobTable").querySelector("tbody").addEventListener("click",e=>{if(e.target.closest("a"))return;const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
 $("mobTable").querySelector("thead").addEventListener("click",e=>{if(e.target.closest(".filters"))return;const th=e.target.closest("th");if(!th||!th.dataset.k)return;
@@ -143,8 +143,8 @@ $("bestTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.ta
 $("regions").addEventListener("click",e=>{const b=e.target.closest("[data-region]");if(!b)return;const id=b.dataset.region;state.regions[id]=state.regions[id]===false;syncClosed();save();renderAll()});
 $("closedMaps").addEventListener("change",e=>{state.closed=[...new Set(e.target.value.split(/[\s,]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];syncClosed();save();renderAll()});
 // map planner
-$("mapList").innerHTML=Object.keys(MAPMOBS).sort().map(m=>`<option value="${m}">${MAPMOBS[m].length} monsters</option>`).join("");
-$("mapInput").addEventListener("change",e=>{state.map=e.target.value.trim().toLowerCase();save();renderMap()});
+$("mapList").innerHTML=Object.keys(MAPMOBS).sort((a,b)=>mapCode(a).localeCompare(mapCode(b))).map(m=>`<option value="${mapCode(m)}">${esc(mapName(m))} · ${MAPMOBS[m].length} monsters</option>`).join("");
+$("mapInput").addEventListener("change",e=>{state.map=mapKey(e.target.value);save();renderMap()});
 $("mapFromMob").addEventListener("click",()=>{state.map="";save();renderMap()});
 $("mapTable").querySelector("tbody").addEventListener("click",e=>{const sm=e.target.closest("[data-sessmob]");if(sm){toggleSessMob(+sm.dataset.sessmob);save();renderAll();return}const sk=e.target.closest("[data-skip]");if(sk){const id=+sk.dataset.skip;if(!state.skipMobs)state.skipMobs=[];state.skipMobs=state.skipMobs.includes(id)?state.skipMobs.filter(x=>x!==id):[...state.skipMobs,id];save();renderAll();return}const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
 // goal

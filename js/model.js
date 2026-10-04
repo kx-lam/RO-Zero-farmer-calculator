@@ -148,12 +148,12 @@ function applyHsAuto(){
   const g=G();if(!isSF()||!g.hsAuto){g._note="";return}
   const mp=currentMap()||(calcMob()&&(openMaps(calcMob())[0]||[])[0]);if(!mp||!MAPMOBS[mp]){g._note="Auto needs a monster with an open map";return}
   const L=lvExp(num(C().baseLv))||lvExp(62);const w=walkSec();
-  const top=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)&&x.m.atkMin!=null).sort((a,b)=>b.n-a.n)[0];const mm=top?top.m:null;
+  const top=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)&&!x.m.expUnknown&&x.m.atkMin!=null).sort((a,b)=>b.n-a.n)[0];const mm=top?top.m:null;
   const run=v=>withHs(v,()=>{const k=SG_MOB;SG_MOB=mm;try{return {r:mapStats(mp,w),items:sgItemsPerSec()}}finally{SG_MOB=k}});
   const on=run(true),off=run(false);if(!on.r||!off.r){g._note="Auto: no result for "+mp;return}
   const costHr=(on.items-off.items)*3600*num(C().itemPrice),gain=(on.r.epm-off.r.epm)*60/L*100,net=costHr-(on.r.zph-off.r.zph),per=gain>0?net/gain:Infinity;
   const want=gain>0&&(net<=0||per<=num(g.hsWorth));g.hsOn=want;
-  g._note=`Hindsight auto: ${want?"on":"off"} on ${mp} · ${gain<=0?"no EXP gain":net<=0?"extra loot pays for the SP items":`~${fmtN(per)} z per 1% EXP vs your ${fmtN(num(g.hsWorth))} z limit`} (+${gain.toFixed(2)}%/hr)`;
+  g._note=`Hindsight auto: ${want?"on":"off"} on ${mapCode(mp)} · ${gain<=0?"no EXP gain":net<=0?"extra loot pays for the SP items":`~${fmtN(per)} z per 1% EXP vs your ${fmtN(num(g.hsWorth))} z limit`} (+${gain.toFixed(2)}%/hr)`;
 }
 // drop rate bonus % scales every drop chance
 // zeny a skill costs per kill (Mammonite): zeny per use × uses per kill, shared across monsters hit
@@ -175,10 +175,20 @@ const REGIONS=[
  {id:"nf",name:"Niflheim",when:"not on roadmap",pre:["nif_","niflheim"]},
  {id:"um",name:"Umbala",when:"not on roadmap",pre:["um_"]}];
 const regionOf=map=>REGIONS.find(r=>r.pre.some(p=>map.toLowerCase().startsWith(p)));
-const isClosed=map=>{const r=regionOf(map);return (r&&state.regions[r.id]!==false)||state.closed.includes(map.toLowerCase())};
+// map names: SPAWN and saves use rozerodb codes (sp_d05); data/maps.js has the in-game code and name (in_sphinx5 · Sphinx F5) and other codes
+const mapCode=mp=>(MAPNAMES[mp]||[])[0]||mp;
+const mapName=mp=>(MAPNAMES[mp]||[])[1]||"";
+const mapLabel=mp=>mapName(mp)?`${mapCode(mp)} (${mapName(mp)})`:mapCode(mp);
+// any code, or a name only one map has, back to the rozerodb code
+const MAPALIAS={};{const byName={};Object.entries(MAPNAMES).forEach(([k,[g,n,...rest]])=>{[k,g,...rest].forEach(a=>MAPALIAS[a.toLowerCase()]=k);const l=n.toLowerCase();byName[l]=l in byName?null:k});
+  Object.entries(byName).forEach(([n,k])=>{if(k&&!(n in MAPALIAS))MAPALIAS[n]=k})}
+const mapKey=s=>{const t=String(s??"").trim().toLowerCase();return MAPALIAS[t]||t};
+const isClosed=map=>{const r=regionOf(map);return (r&&state.regions[r.id]!==false)||state.closed.some(c=>mapKey(c)===mapKey(map))};
 const openMaps=m=>(SPAWN[m.id]||[]).filter(x=>!isClosed(x[0])).sort((a,b)=>b[1]-a[1]);
 // monsters you skip (e.g. ones that stun you): left out of map averages, you walk past them
 const isSkipped=m=>!!(state.skipMobs&&state.skipMobs.includes(m.id));
+// rozerodb has no EXP for some monsters yet (Myst, Isis, Anubis...): shown as "?" and left out of EXP averages
+const fmtExp=m=>m.expUnknown?"?":fmtN(m.exp);
 const MAPMOBS={};
 Object.entries(SPAWN).forEach(([id,arr])=>{const m=MOBS.find(x=>x.id===+id);if(!m)return;arr.forEach(([mp,n])=>{(MAPMOBS[mp]=MAPMOBS[mp]||[]).push({m,n})})});
 
@@ -205,12 +215,12 @@ const sessMap=s=>{const k={},tot={};sessMobs(s).forEach(m=>openMaps(m).forEach((
   let best=null;for(const mp in k)if(best==null||k[mp]>k[best]||(k[mp]===k[best]&&tot[mp]>tot[best]))best=mp;return best};
 const spawnOn=(m,mp)=>((SPAWN[m.id]||[]).find(x=>x[0]===mp)||[])[1]||1;
 // keep(m) drops monsters from the mix (and re-weights the rest); if it would drop all of them the full list is kept
-function sessMix(s,keep){const mp=sessMap(s);let list=sessMobs(s).map(m=>({m,w:spawnOn(m,mp)}));if(keep){const k=list.filter(x=>keep(x.m));if(k.length)list=k}
+function sessMix(s,keep){const mp=sessMap(s);let list=sessMobs(s).map(m=>({m,w:spawnOn(m,mp)}));const kn=list.filter(x=>!x.m.expUnknown);if(kn.length)list=kn;if(keep){const k=list.filter(x=>keep(x.m));if(k.length)list=k}
   const W=list.reduce((a,x)=>a+x.w,0);if(!W)return null;
   const avg=f=>list.reduce((a,x)=>a+x.w*f(x.m),0)/W;return {list,W,mp,avg}}
 function sessionPace(s){
   // with this job's attack, monsters you can't hurt aren't being killed, so they're left out of the mix
-  const same=(s.job||state.job)===state.job;const st=stats(s);const mix=sessMix(s,same?m=>isFinite(bestFight(m)):null);if(!st||!mix||st.avgRaw<=0)return null;
+  const same=(s.job||state.job)===state.job;const st=stats(s);const mix=sessMix(s,same?m=>isFinite(bestFight(m)):null);if(!st||!mix||st.avgRaw<=0||!(mix.avg(m=>m.exp)>0))return null;
   const kph=st.avgRaw/(mix.avg(m=>m.exp*expRace(m))*expMul(s));const obs=3600/kph;const fight=same?mix.avg(bestFight):NaN;
   return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,zk:mix.avg(zenyKill),mix,st};
 }
@@ -237,11 +247,11 @@ function mobRow00(m,w){
 }
 // map averages, weighted by spawn counts; monsters you can't hurt are skipped (you walk past them)
 function mapStats0(mp,w){
-  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,z=0,hp=0,hpN=0;const skip=[];
-  list.forEach(({m,n:c})=>{N+=c;const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
+  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,z=0,hp=0,hpN=0;const skip=[],unk=[];
+  list.forEach(({m,n:c})=>{N+=c;if(m.expUnknown){unk.push(m.name);return}const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
     n+=c;exp+=c*r.epk;time+=c*r.tot;z+=c*r.zk;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
   if(!n)return null;
-  return {mp,N,epm:exp/time*60,secT:time/n,sec:time/n-w,walk:w,epk:exp/n,zph:z/time*3600,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip};
+  return {mp,N,epm:exp/time*60,secT:time/n,sec:time/n-w,walk:w,epk:exp/n,zph:z/time*3600,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,unk:unk.length,unkNames:unk};
 }
 // best converter per monster (by EXP/min) and one converter per map
 function mobRow(m,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mobRow0(m,w));r.el2=el;if(!best||r.epm>best.epm)best=r});return best}
