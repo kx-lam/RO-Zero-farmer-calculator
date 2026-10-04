@@ -181,7 +181,9 @@ const bonusMul=(m,magic=false)=>{const c=C();let k=1+num(c.dmgBonus)/100;
   const B=c.bx?(magic?c.bx.magic:c.bx.phys):null,el=m.el||"Neutral";
   if(B)k*=(1+(B.race[m.race]||0)/100)*(1+(B.size[m.size]||0)/100)*(1+(B.ele[el]||0)/100)*(1+(B.all||0)/100)*(1+(B.kind[m.boss?"boss":"normal"]||0)/100);
   if(!m.boss)k*=1+num(c.normalPct)/100;
-  k*=1+num(c.myElPct)/100;if(magic&&c.bx)k*=1+((c.bx.myEle||{})[atkEl()]||0)/100;return k};
+  k*=1+num(c.myElPct)/100;if(magic&&c.bx)k*=1+((c.bx.myEle||{})[atkEl()]||0)/100;
+  // learned passives and buffs: physical damage % (Advanced Katar Mastery, Power Thrust), own spell element % (Endow, Volcano...)
+  if(SKFX){if(!magic)k*=1+SKFX.pct/100;else k*=1+(SKFX.myEle[atkEl()]||0)/100}return k};
 // build mode: gear EXP bonus vs a monster's race, and damage taken from its race / element / boss-normal kind
 const expRace=m=>{const c=C();return c.bx?1+((c.bx.exp.all||0)+((c.bx.exp.race||{})[m.race]||0))/100:1};
 const takenMul=m=>{const c=C();if(!c.bx)return 1;const t=c.bx.taken;return (1+(t.race[m.race]||0)/100)*(1+(t.ele[m.el||"Neutral"]||0)/100)*(1+(t.kind[m.boss?"boss":"normal"]||0)/100)};
@@ -209,7 +211,7 @@ function dmgPerHit(m){
   const P=atkParts();const pool=P.weapon*sizeMod(m,C().weapon)/100*elemMult(m,atkEl())/100+P.neutral*elemMult(m,"Neutral")/100;if(pool<=0)return 0;
   const c=C(),skill=a.type!=="auto";const rng=(1+num(c.rangePct)/100)*(skill?1+num(c.skillPct)/100:1);
   // mastery ATK (flat, from passive skills) is added after the skill ratio, before cards and DEF
-  const df=effDef(m);return Math.max(1,Math.floor((pool*pctEff()/100+num(c.mastery)*elemMult(m,"Neutral")/100)*bonusMul(m)*rng*(4000+df)/(4000+10*df)-mobSoftDef(m)))}
+  const df=effDef(m);return Math.max(1,Math.floor((pool*pctEff()/100+masteryFor(m)*elemMult(m,"Neutral")/100)*bonusMul(m)*rng*(4000+df)/(4000+10*df)-mobSoftDef(m)))}
 // crits (basic attacks only): chance = CRIT (doubled with a katar), always hit, × 1.4 × (1 + crit damage %). Monster crit shield (its LUK) isn't in the data.
 const critChance=()=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,num(cf("crit"))*(c.weapon==="Katar"?2:1)))/100};
 // uses needed per kill: whole hits that land, spread over misses
@@ -220,7 +222,7 @@ function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m
 // SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s unless typed
 const spRegen8=()=>num(C().spRegen)>0?num(C().spRegen):1+Math.floor(num(cf("maxSp"))/100)+Math.floor(statVal(C(),"int")/6);
 // gear "SP consumption +x%" (build mode) scales the SP each use costs
-const spCostMul=()=>{const c=C();return c.bx?Math.max(0,1+num(c.bx.spCost)/100):1};
+const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100)};
 const spNeedPerSec=()=>isSF()?sgUpkeep()+sgDefSP()+hsFullSP()*hsSustain():num(C().a.sp)*spCostMul()/useSec();
 const regenPerSec=()=>spRegen8()/8;
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
@@ -241,7 +243,7 @@ const isSF=()=>C().a.type==="spellfist";
 let HS_OVR=null; // Hindsight forced on/off while comparing
 const withHs=(v,fn)=>{const k=HS_OVR;HS_OVR=v;try{return fn()}finally{HS_OVR=k}};
 const hsOnNow=()=>HS_OVR!=null?HS_OVR:!!G().hsOn;
-const sfBolts=()=>["Fire","Water","Wind"].filter(b=>G().bolts[b]);
+const sfBolts=()=>["Fire","Water","Wind"].filter(b=>G().bolts[b]&&(state.job!=="Sage"||!hasTree(C())||skLv(C(),SG_BOLT[b])>0));
 // Spell Fist: Lv × 5% proc chance on each basic attack; damage (1000 + 100 × bolt Lv)% MATK of the bolt's element (Landgris Zero data, checked in game)
 const sfChance=()=>Math.min(10,Math.max(0,num(G().sfLv)))*5/100;
 const sfPct=()=>1000+100*Math.min(10,Math.max(1,num(G().boltLv,10)));
@@ -391,7 +393,7 @@ function sessEpm(s,w){const mix=sessMix(s);if(!mix)return null;let best=null;
 const syncChar=()=>{
   const c=C();$("job").value=state.job;renderEq();renderCons();
   $("preset").innerHTML=JOBS[state.job].p.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("")+'<option value="-1">Custom</option>';
-  $("preset").value=String(c.preset??0);
+  $("preset").value=String(c.preset??0);renderSkills();
   ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
   $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";
   $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("nameType").value=c.nameType||"phys";$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potCostHr())} z/hr`:"";$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
@@ -605,7 +607,7 @@ function renderMap(){
   $("mapTable").querySelector("tbody").innerHTML=MAPMOBS[mp].slice().sort((a,b)=>b.n-a.n).map(({m,n})=>{const x=r&&r.el2?withEl(r.el2,()=>mobRow0(m,w)):mobRow(m,w);
     return `<tr data-id="${m.id}" class="${cur().mobIds.includes(m.id)?"sel":""}" style="${isSkipped(m)?"opacity:.55":""}"><td class="name">${esc(m.name)} <button type="button" class="small" data-sessmob="${m.id}">${cur().mobIds.includes(m.id)?"− Session":"+ Session"}</button>${m.boss?' <span class="pill">boss</span>':` <button type="button" class="small" data-skip="${m.id}">${isSkipped(m)?"Unskip":"Skip"}</button>`}</td><td>≈${n}</td><td>${m.boss?"–":isSkipped(m)?"skipped":Math.round(n/tot*100)+"%"}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${m.size||"–"}</td><td class="${x.mult>100?"good":x.mult<=0?"bad":""}">${x.mult<=0?"can't hurt":Math.round(x.mult)+"%"}</td><td>${isFinite(x.sec)?x.sec.toFixed(1)+"s":"–"}</td><td>${fmtN(m.exp)}</td></tr>`}).join("");
 }
-function renderAll(){applyBuild();applyConsumables();renderBuild();applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();renderMap()}
+function renderAll(){SKFX=skillEffects(C());const sgTree=sageFromTree(C());ROOTQ('[data-sg="sfLv"],[data-sg="boltLv"],[data-sg="hsLv"],[data-sg="dbLv"]').forEach(i=>{i.disabled=sgTree;i.title=sgTree?"Set by the Skills card":""});ROOTQ("[data-sgbolt]").forEach(i=>i.disabled=sgTree&&!skLv(C(),SG_BOLT[i.dataset.sgbolt]));applyBuild();applyConsumables();renderBuild();applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();renderMap()}
 
 // ---- events ----
 $("job").innerHTML=Object.keys(JOBS).map(j=>`<option>${j}</option>`).join("");
@@ -613,7 +615,7 @@ $("weapon").innerHTML=Object.keys(WEAPONS).map(w=>`<option>${w}</option>`).join(
 $("wElem").innerHTML=AE.map(e=>`<option>${e}</option>`).join("");
 $("aElem").innerHTML='<option value="W">Weapon / arrow</option>'+AE.map(e=>`<option>${e}</option>`).join("");
 $("job").addEventListener("change",e=>{state.job=e.target.value;C();save();syncChar();renderAll()});
-$("preset").addEventListener("change",e=>{const c=C();const i=+e.target.value;c.preset=i;if(i>=0){c.a={...JOBS[state.job].p[i]}}save();syncChar();renderAll()});
+$("preset").addEventListener("change",e=>{const c=C();const i=+e.target.value;c.preset=i;if(i>=0){c.a=levelPreset(JOBS[state.job].p[i],c).a}save();syncChar();renderAll()});
 // ---- stats: status ATK/MATK/HIT/FLEE from the renewal formulas (irowiki.org/wiki/Stats) ----
 const STATS=["str","agi","vit","dex","luk"];
 const RANGED=["Bow","Musical instrument","Whip"];
@@ -652,7 +654,7 @@ const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery",
   $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
 ["weapon","wElem","nameType"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
   if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
-  c[k]=e.target.value;save();renderAll()}));
+  c[k]=e.target.value;save();renderAll();if(k==="weapon")renderSkills()}));
 $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
 const potInfo=()=>{const c=C();$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`:""};
 $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});
@@ -763,6 +765,95 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   });
   apply();
 })();
+// ---- skill tree: learned levels per character in c.skills = {slug: level}, from data/skills.js (roz.prontera.info planner) ----
+const treesOf=job=>(typeof SKILLS!=="undefined"&&SKILLS[job])||[];
+const SK_CACHE={};
+// every skill a job can learn, by slug (Novice and 1st-job trees included); tier = which tree it sits in
+const skOf=job=>SK_CACHE[job]||(SK_CACHE[job]=(()=>{const m={};treesOf(job).forEach((t,ti)=>t.skills.forEach(s=>{if(!m[s.slug])m[s.slug]={...s,tier:ti}}));return m})());
+const learned=c=>{if(!c.skills||typeof c.skills!=="object")c.skills={};return c.skills};
+const hasTree=c=>Object.values(c.skills||{}).some(v=>v>0);
+const skLv=(c,slug)=>(c.skills||{})[slug]||0;
+// raising a skill raises what it needs; lowering is refused while a learned skill still needs the old level
+function raiseSkill(c,slug,lv){const s=skOf(state.job)[slug];if(!s)return;lv=Math.max(0,Math.min(s.max,lv));const L=learned(c);if((L[slug]||0)>=lv)return;L[slug]=lv;(s.pre||[]).forEach(([p,n])=>raiseSkill(c,p,n))}
+function lowerSkill(c,slug,lv){const S=skOf(state.job),L=learned(c);
+  const why=Object.keys(L).filter(k=>L[k]>0&&S[k]).flatMap(k=>(S[k].pre||[]).filter(([p,n])=>p===slug&&n>lv).map(([,n])=>`${S[k].name} needs ${S[slug].name} Lv ${n}`));
+  if(why.length)return why;if(lv<=0)delete L[slug];else L[slug]=lv;return null}
+// level rows: [SP, damage %, hits, variable cast ms, fixed cast ms, after-cast delay ms, cooldown ms, description]
+const skRow=(s,lv)=>{const r=(s.lv||[])[lv-1]||[];const m=String(r[7]||"").match(/(\d+)\s*hits?\b|Hits:\s*(\d+)/i);const hits=r[2]!=null?r[2]:m?+(m[1]||m[2]):null;
+  return [r[0],r[1],hits,r[3],r[4],r[5],r[6],r[7]||""]};
+// attack presets are max-level; with a skill tree they scale to the learned level using the data's level rows
+const SK_ALIAS={"frost driver":"frost-diver"};
+const normSk=x=>String(x).toLowerCase().replace(/\(.*?\)/g,"").replace(/\blv\s*\d+\b/g,"").replace(/[^a-z ]/g," ").replace(/\s+/g," ").trim();
+function presetSkill(p){if(!p||p.type==="spellfist"||/^(copied:|basic attack|combo)/i.test(p.name))return null;const S=skOf(state.job),n=normSk(p.name);
+  const slug=SK_ALIAS[n]||Object.keys(S).find(k=>normSk(S[k].name)===n)||Object.keys(S).find(k=>n.startsWith(normSk(S[k].name)));return slug?S[slug]:null}
+function levelPreset(p,c){const s=presetSkill(p),a={...p};if(!s||!hasTree(c))return {a};const lv=skLv(c,s.slug);if(lv>=s.max)return {a,lv,s};if(lv<=0)return {a,lv:0,s};
+  const hi=skRow(s,s.max),lo=skRow(s,lv),k=i=>hi[i]&&lo[i]!=null?lo[i]/hi[i]:null;
+  if(k(1)!=null)a.pct=Math.round(p.pct*k(1));if(k(2)!=null)a.hits=Math.round(p.hits*k(2)*100)/100;if(lo[0]!=null)a.sp=lo[0];
+  const cHi=(hi[3]||0)+(hi[4]||0),cLo=(lo[3]||0)+(lo[4]||0);if(cHi>0){const f=cLo/cHi;a.cast=Math.round(num(p.cast)*f*100)/100;if(p.vct!=null)a.vct=p.vct*f;if(p.fct!=null)a.fct=p.fct*f}
+  const dHi=Math.max(hi[5]||0,hi[6]||0),dLo=Math.max(lo[5]||0,lo[6]||0);if(dHi>0)a.delay=Math.round(num(p.delay)*dLo/dHi*100)/100;
+  a.name=/Lv\s*\d+/.test(p.name)?p.name.replace(/Lv\s*\d+/,"Lv"+lv):`${p.name} Lv${lv}`;return {a,lv,s}}
+const refreshPreset=c=>{if(c.preset>=0){const p=JOBS[state.job].p[c.preset];if(p)c.a=levelPreset(p,c).a}};
+// passives: values come from the skill's own description at the learned level; this table only says what they need
+const SK_PASSIVE={"sword-mastery":{w:["Dagger","One-handed sword"]},"two-handed-sword-mastery":{w:["Two-handed sword"]},"spear-mastery":{w:["One-handed spear","Two-handed spear"]},
+  "mace-mastery":{w:["One-handed mace","Two-handed mace"]},"axe-mastery":{w:["One-handed axe","Two-handed axe"]},"axe-mastery-2":{w:["One-handed axe","Two-handed axe"]},
+  "katar-mastery":{w:["Katar"]},"advanced-katar-mastery":{w:["Katar"]},"iron-fists":{w:["Knuckle","Bare hands"]},"study":{w:["Book"]},"music-lessons":{w:["Musical instrument"]},
+  "dance-lessons":{w:["Whip"]},"weaponry-research":{},"demon-bane":{races:["Undead","Demon"]},"beastbane":{races:["Brute","Insect"]},"owls-eye":{},"vultures-eye":{},
+  "improve-dodge":{},"flee":{},"faith":{},"soul-drain":{},"meditation":{},"spiritual-thrift":{},"plagiarism":{},"hilt-binding":{}};
+// self-buffs you can switch on; added on top of the status window like consumables
+const SK_BUFF={"two-hand-quicken":{w:["Two-handed sword"]},"spear-quicken":{w:["Two-handed spear"]},"adrenaline-rush":{w:["One-handed axe","Two-handed axe","One-handed mace","Two-handed mace"]},
+  "power-thrust":{},"improve-concentration":{},"increase-agility":{},"blessing":{},"falcon-eyes":{},"fury":{},"impositio-manus":{},"endow-quake":{},"endow-tsunami":{},
+  "endow-tornado":{},"endow-blaze":{},"volcano":{},"deluge":{},"whirlwind":{},"battle-theme":{},"lady-luck":{},"focus-ballet":{},"perfect-tablature":{}};
+const SECOND=job=>!["Novice",...FIRST_JOBS].includes(job);
+// description -> effects: {mastery, pct (physical damage %), spCost, myEle {el: %}, stat: bonus lines (shown in the status window)}
+function skillFx(desc,c){const d=String(desc||""),o={mastery:0,pct:0,spCost:0,myEle:{},stat:[]},stat=(k,v)=>o.stat.push([k,null,null,v]);let m;
+  if((m=d.match(/Damage(?: Increase)?:?\s*\+(\d+(?:\.\d+)?)%/i))||(m=d.match(/^Self:\s*\+(\d+)%/i)))o.pct+=+m[1];
+  else if((m=d.match(/(?:Damage|ATK):?\s*\+(\d+)(?![\d.%])/i))&&!/ATK\/MATK/i.test(d)&&!/Bonus vs/i.test(d))o.mastery+=+m[1];
+  if((m=d.match(/ATK\/MATK\s*\+(\d+)/i))){stat("atk",+m[1]);stat("matk",+m[1])}
+  d.replace(/((?:STR|AGI|VIT|INT|DEX|LUK)(?:,\s*(?:STR|AGI|VIT|INT|DEX|LUK))*)\s*\+(\d+)(%?)/g,(_,ks,v,pc)=>{ks.split(/,\s*/).forEach(k=>{k=k.toLowerCase();
+    const add=pc?Math.floor((statVal(c,k)||0)*v/100):+v;if(add)stat(k,add)})});
+  if((m=d.match(/\bHIT(?: Rate)?\s*\+(\d+)/i)))stat("hit",+m[1]);
+  if((m=d.match(/\bCRIT\s*\+(\d+(?:\.\d+)?)/i)))stat("crit",+m[1]);
+  const fl=[...d.matchAll(/FLEE\s*\+(\d+)/gi)].map(x=>+x[1]);if(fl.length)stat("flee",SECOND(state.job)?fl[fl.length-1]:fl[0]);
+  if((m=d.match(/\bMHP\s*\+(\d+)(?![\d%])/i)))stat("hp",+m[1]);if((m=d.match(/\bMHP\s*\+(\d+)%/i)))stat("hp_percent",+m[1]);
+  if((m=d.match(/(?:Max SP|MSP)\s*\+(\d+)%/i)))stat("sp_percent",+m[1]);
+  if((m=d.match(/ASPD:?\s*\+(\d+(?:\.\d+)?)%/i)))stat("aspd_percent",+m[1]);if((m=d.match(/After Attack Delay\s*-(\d+)%/i)))stat("aspd_percent",+m[1]);
+  if((m=d.match(/Critical Damage\s*\+(\d+)%/i)))stat("crit_damage_percent",+m[1]);
+  if((m=d.match(/SP Consumption\s*-(\d+)%/i)))o.spCost-=+m[1];
+  d.replace(/(Fire|Water|Wind|Earth)(?: Magical)? Damage\s*\+(\d+)%/g,(_,el,v)=>{o.myEle[el]=(o.myEle[el]||0)+ +v});
+  return o}
+// all effects from learned passives and switched-on buffs, for the current weapon
+function skillEffects(c){const out={mastery:[],pct:0,spCost:0,myEle:{},stat:[],buffStat:[]};if(!hasTree(c))return out;const S=skOf(state.job),w=c.weapon;
+  const take=(slug,cond,isBuff)=>{const s=S[slug],lv=skLv(c,slug);if(!s||lv<=0)return;if(cond.w&&!cond.w.includes(w))return;const fx=skillFx(skRow(s,lv)[7],c);
+    if(fx.mastery)out.mastery.push({v:fx.mastery,races:cond.races||null});out.pct+=fx.pct;out.spCost+=fx.spCost;for(const k in fx.myEle)out.myEle[k]=(out.myEle[k]||0)+fx.myEle[k];
+    (isBuff?out.buffStat:out.stat).push(...fx.stat);(s.g||[]).forEach(g=>(g.b||[]).forEach(b=>(isBuff?out.buffStat:out.stat).push(b)))};
+  for(const k in SK_PASSIVE)take(k,SK_PASSIVE[k],false);for(const k in SK_BUFF)if((c.buffs||{})[k])take(k,SK_BUFF[k],true);return out}
+// Sage options follow the skill tree when one is set: Spell Fist, Hindsight, Double Bolt and bolt levels are the learned ones
+const SG_BOLT={Fire:"fire-bolt",Water:"cold-bolt",Wind:"lightning-bolt"};
+function sageFromTree(c){if(state.job!=="Sage"||!hasTree(c))return false;const g=G();
+  g.sfLv=skLv(c,"spell-fist");g.hsLv=skLv(c,"hindsight");if(!g.hsLv)g.hsOn=false;const db=skLv(c,"double-bolt");if(db)g.dbLv=db;else g.dbOn=false;
+  // your ticked bolts stay as chosen; unlearned ones are skipped in sfBolts(), and the bolt level is the lowest learned one in use
+  const lv=Object.keys(SG_BOLT).filter(el=>g.bolts[el]&&skLv(c,SG_BOLT[el])).map(el=>skLv(c,SG_BOLT[el]));g.boltLv=lv.length?Math.min(...lv):1;return true}
+let SKFX=null; // skillEffects(C()) for this render
+const masteryFor=m=>num(C().mastery)+(SKFX?SKFX.mastery.filter(x=>!x.races||x.races.includes(m.race)).reduce((a,x)=>a+x.v,0):0);
+// quest skills cost no points; the data marks most ("free"), these it misses
+const SK_QUEST=["create-elemental-converter"];
+function renderSkills(){const c=C(),L=learned(c),S=skOf(state.job),trees=treesOf(state.job);
+  $("skillTrees").innerHTML=trees.length?trees.map((t,ti)=>{const used=t.skills.reduce((a,s)=>a+(s.free||SK_QUEST.includes(s.slug)?0:L[s.slug]||0),0);
+    // the 2nd-job tree's points follow your job level past the data's Job Lv 60 (one point per level after the first)
+    const pts=t.points!=null&&ti===trees.length-1&&SECOND(state.job)?Math.max(t.points,num(c.jobLv)-1):t.points;const rows=Math.ceil((Math.max(0,...t.skills.map(s=>s.slot))+1)/7);
+    const cells=Array.from({length:rows*7},(_,i)=>{const s=t.skills.find(x=>x.slot===i);if(!s)return '<div class="sk empty"></div>';const lv=L[s.slug]||0,d=skRow(s,Math.max(1,lv))[7];
+      return `<div class="sk${lv?" on":""}${s.passive?" pas":""}" data-sk="${s.slug}" title="${esc(s.name)} Lv${Math.max(1,lv)}${d?": "+esc(d):""}"><button type="button" class="nm" data-act="max">${esc(s.name)}</button>
+        <div class="lv"><button type="button" data-act="dn" aria-label="Lower">−</button><span class="mono">${lv}/${s.max}</span><button type="button" data-act="up" aria-label="Raise">+</button></div></div>`}).join("");
+    return `<div class="tree"><div class="bar"><b>${esc(t.job)}</b><span class="note${pts!=null&&used>pts?" bad":""}">${used}${pts!=null?" / "+pts:""} points</span></div><div class="skgrid">${cells}</div></div>`}).join(""):'<div class="note">No skill tree data for this job.</div>';
+  const buffs=Object.keys(SK_BUFF).filter(k=>S[k]&&skLv(c,k)>0);
+  $("buffList").innerHTML=buffs.length?`<span class="note">Self-buffs while farming (read your status window with them off):</span> `+buffs.map(k=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-buff="${k}" ${(c.buffs||{})[k]?"checked":""} style="width:auto"> ${esc(S[k].name)} <span class="muted">${esc(skRow(S[k],skLv(c,k))[7].replace(/Duration:[^,]*,?\s*/i,""))}</span>${SK_BUFF[k].w&&!SK_BUFF[k].w.includes(c.weapon)?` <span class="warnc">(needs ${esc(SK_BUFF[k].w.join(" / "))})</span>`:""}</label>`).join(""):"";
+  ROOTQ("#preset option").forEach(o=>{const p=JOBS[state.job].p[+o.value];if(!p)return;const r=levelPreset(p,c);o.textContent=r.s&&hasTree(c)?(r.lv?r.a.name:`${p.name} (not learned)`):p.name})}
+$("skillTrees").addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const slug=b.closest("[data-sk]").dataset.sk,c=C(),s=skOf(state.job)[slug],lv=skLv(c,slug);let why=null;
+  if(b.dataset.act==="up")raiseSkill(c,slug,lv+1);else if(b.dataset.act==="dn")why=lowerSkill(c,slug,lv-1);else if(lv<s.max)raiseSkill(c,slug,s.max);else why=lowerSkill(c,slug,0);
+  $("skillNote").textContent=why?why.join(" · "):"";refreshPreset(c);save();renderSkills();syncChar();renderAll()});
+$("skMax").addEventListener("click",()=>{const c=C();treesOf(state.job).forEach(t=>t.skills.forEach(s=>raiseSkill(c,s.slug,s.max)));refreshPreset(c);save();renderSkills();syncChar();renderAll()});
+$("skReset").addEventListener("click",()=>{const c=C();c.skills={};c.buffs={};refreshPreset(c);$("skillNote").textContent="";save();renderSkills();syncChar();renderAll()});
+$("buffList").addEventListener("change",e=>{const k=e.target.dataset.buff;if(!k)return;const c=C();c.buffs=c.buffs||{};c.buffs[k]=e.target.checked;save();renderAll()});
 // ---- build simulator: in "build" mode the stat fields are computed from base stats + gear (build.js) and shown read-only ----
 // "Check against the game": [key, label, computed total]
 // compared with what the build computes (BUILD_LAST), not with c, since typed Max HP / SP replace the computed ones
@@ -772,7 +863,7 @@ const BUILT_IDS=["atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","
 let BUILD_LAST=null;
 const buildOf=c=>{if(!c.build)c.build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{}};return c.build};
 function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqToBx(c);return}
-  const r=BUILD.compute({...buildOf(c),baseLv:c.baseLv,jobLv:c.jobLv,extra:consLines().lines},state.job,aspdBase);BUILD_LAST=r;const F=r.fields,A=r.acc;
+  const r=BUILD.compute({...buildOf(c),baseLv:c.baseLv,jobLv:c.jobLv,extra:[...consLines().lines,...(SKFX?[...SKFX.stat,...SKFX.buffStat]:[])]},state.job,aspdBase);BUILD_LAST=r;const F=r.fields,A=r.acc;
   // skill-specific gear lines count when the attack's name contains the skill
   const nm=String(c.a.name||"").toLowerCase(),match=o=>Object.entries(o).reduce((t,[k,v])=>t+(nm.includes(k.toLowerCase())?v:0),0);
   Object.assign(c,{atkTxt:F.atkTxt,matkTxt:F.matkTxt,hitTxt:F.hitTxt,fleeTxt:F.fleeTxt,defTxt:F.defTxt,intTxt:F.intTxt,wAtk:F.wAtk,crit:F.crit,critDmg:F.critDmg,
@@ -785,7 +876,7 @@ function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqTo
 const consOf=c=>{if(!Array.isArray(c.cons))c.cons=[];return c.cons};
 const consLines=()=>{const lines=[],bad=[];consOf(C()).filter(r=>r.on).forEach(r=>{const o=BUILD.parseOptions(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||"Consumable"}: ${x}`))});return {lines,bad}};
 // status-window mode: the typed numbers are read with consumables off, so their effect is added here into EFF (see cf)
-function applyConsumables(){EFF=null;const c=C();if(c.mode==="build")return;const {lines}=consLines();if(!lines.length)return;
+function applyConsumables(){EFF=null;const c=C();if(c.mode==="build")return;const lines=[...consLines().lines,...(SKFX?SKFX.buffStat:[])];if(!lines.length)return;
   const A={};lines.forEach(([t,,,v])=>A[t]=(A[t]||0)+v);const g=k=>A[k]||0,f=Math.floor;
   // stat buffs move status ATK / MATK / HIT / FLEE / DEF / CRIT / ASPD through the same formulas (only for stats you typed)
   const tmp={...c,st:{...(c.st||{})},intTxt:c.intTxt};STATS.forEach(k=>{if(g(k)&&statVal(c,k)!=null)tmp.st[k]=`${c.st[k]}+${g(k)}`});if(g("int"))tmp.intTxt=`${c.intTxt||0}+${g("int")}`;

@@ -199,6 +199,14 @@
     <div class="calc" id="charTiles"></div>
   </section>
 
+  <section class="card" data-tab="char" id="skillCard">
+    <div class="bar"><h2 class="grow">Skills</h2><button type="button" class="small" id="skMax">Max all</button><button type="button" class="small danger" id="skReset">Reset</button></div>
+    <div class="note">Set your learned levels like the in-game Skill Tree. Attack presets use the level you learned; masteries add damage with the right weapon; stat passives (Owl's Eye, Improve Dodge…) only count in Build from gear, since your status window already includes them. Leave it empty to keep the max-level presets.</div>
+    <div id="skillTrees" class="trees"></div>
+    <div class="note bad" id="skillNote"></div>
+    <div id="buffList" class="bar"></div>
+  </section>
+
   <section class="tiles" aria-label="Summary" data-tab="track">
     <div class="tile now"><div class="k">Current level</div><div class="v" id="tCurLv">–</div><div class="s" id="tCurLvS"></div></div>
     <div class="tile now"><div class="k">Current EXP</div><div class="v" id="tCurPct">–</div><div class="s" id="tCurPctS"></div></div>
@@ -317,6 +325,7 @@
 <script src="data/cards.js"></script>
 <script src="data/refine.js"></script>
 <script src="data/jobs.js"></script>
+<script src="data/skills.js"></script>
 <script src="build.js"></script>
 <script src="app.js"></script>
 </body>

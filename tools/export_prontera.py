@@ -4,7 +4,7 @@
     python tools/export_prontera.py --refresh  # refetch list pages (new items after a patch), keep cached item pages
 
 Pages are fetched one per second and cached in tools/cache/ (gitignored). Delete a cached file to refetch it.
-Writes: data/equipment.js (EQUIP, SETS), data/cards.js (CARDS), data/refine.js (REFINE), data/jobs.js (JOBDATA).
+Writes: data/equipment.js (EQUIP, SETS), data/cards.js (CARDS), data/refine.js (REFINE), data/jobs.js (JOBDATA), data/skills.js (SKILLS).
 """
 import json, os, re, sys, time, urllib.request
 
@@ -174,6 +174,27 @@ def main():
         for b in p["job_bonuses"]:
             bonus.setdefault(b["stat"], []).append(b["job_level"])
         jobs[j] = {"bonus": bonus, "hp": [x["value"] for x in p["curves"]["base_hp"]], "sp": [x["value"] for x in p["curves"]["base_sp"]]}
+    # skill trees: per job the planner returns Novice, 1st and 2nd job trees
+    skills = {}
+    for j in JOBS:
+        v = nuxt(fetch(f"/skills/planner?class={j.lower()}"))[f"skill-planner-{j.lower()}"]
+        v = v if isinstance(v, list) else list(v.values())[0]
+        slug_of = {sk["id"]: sk["slug"] for t in v for sk in t["skills"]}
+        trees = []
+        for t in v:
+            rows = []
+            for sk in t["skills"]:
+                lv = [[L.get("sp_cost") or 0, L.get("damage_ratio_percent"), L.get("hit_count"), L.get("cast_variable_ms"), L.get("cast_fixed_ms"),
+                       L.get("after_cast_delay_ms"), L.get("cooldown_ms"), L.get("description_text") or ""] for L in sorted(sk["levels"], key=lambda L: L["level"])]
+                row = {"slug": sk["slug"], "name": sk["name"], "max": sk["max_level"], "slot": sk["tree_slot"], "passive": sk["passive"] == "passive",
+                       "el": sk.get("element"), "pre": [[slug_of.get(p["skill_id"], p["skill_id"]), p["level"]] for p in sk.get("prerequisites") or []],
+                       "f": sk.get("damage_formula_expression"), "lv": lv, "g": groups(sk.get("bonus_groups")), "free": True if sk.get("free") else None}
+                rows.append({k: x for k, x in row.items() if x not in (None, [], "")})
+            trees.append({"job": t["job_class"]["name"], "points": t.get("skill_points"), "skills": rows})
+        skills[j] = trees
+    write("skills.js", f"// Skill trees per job: Novice, 1st and 2nd job trees with points, and per skill slug, name, max level, slot (grid position),\n"
+          f"// passive, free (quest skill, no points), el, pre: [[skill slug, level]], f: damage formula, lv: per level [SP, damage %, hits, variable cast ms, fixed cast ms,\n"
+          f"// after-cast delay ms, cooldown ms, description], g: bonus groups ({src})", f"const SKILLS={js(skills)};")
     write("jobs.js", f"// Per job: bonus = job levels that give +1 to each stat; hp / sp = base Max HP / SP at base level 1, 2, ... ({src})",
           f"const JOBDATA={js(jobs)};")
     print(f"wrote {len(equip)} equipment, {len(card_rows)} cards, {len(sets)} sets, {len(refine)} refine schedules, {len(jobs)} jobs", flush=True)
