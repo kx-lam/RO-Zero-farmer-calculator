@@ -34,7 +34,7 @@ def main():
     spawn, names, site = js_object("spawn"), js_object("maps"), site_maps()
     ours = {}
     for mob_id, rows in spawn.items():
-        for mp, n in rows:
+        for mp, n, *_ in rows:  # [map, count, PvP count]
             ours.setdefault(mp, {})[int(mob_id)] = n
     issues = 0
     for mp in sorted(ours):

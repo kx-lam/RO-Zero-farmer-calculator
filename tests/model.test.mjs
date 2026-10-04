@@ -420,4 +420,13 @@ t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", ()
   run(`state.prices={};state.npcPrices={};C().skills={};C().potOn=false`);
 });
 
+t("spawn counts come from the client's navigation table (normal channels)", () => {
+  const sp = (id, mp) => run(`JSON.stringify((SPAWN[${id}]||[]).find(x=>x[0]==="${mp}"))`);
+  assert.equal(sp(1002, "prt_f08"), JSON.stringify(["prt_f08", 20, 30]));  // Poring: 20 on prt_fild08, 30 on the PvP channel
+  assert.equal(sp(1169, "mjo_d03"), JSON.stringify(["mjo_d03", 78, 78]));  // Skel Worker on mjo_dun03
+  assert.equal(sp(1013, "maz_d03"), JSON.stringify(["maz_d03", 20, 20]));  // Wolf on prt_maze03: missing before
+  assert.equal(run(`Object.values(SPAWN).flat().filter(x=>!(x[1]>0)).length`), 0);
+  assert.equal(run(`MAPMOBS.prt_f08.find(x=>x.m.id===1002).n`), 20);      // the app uses the normal-channel count
+});
+
 console.log(`${n} tests passed`);
