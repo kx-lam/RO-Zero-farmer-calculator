@@ -142,3 +142,12 @@ details.sub{padding:12px 14px;gap:8px;background:var(--bg)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .tile .v{white-space:pre-line}
 @media (max-width:600px){.form[style]{grid-template-columns:repeat(2,minmax(0,1fr))!important}#bonusRow{grid-template-columns:1fr!important}}
+/* EXP & formulas tab: reference tables, rows aren't clickable */
+#refBaseTable tbody tr,#refJobTable tbody tr,#refFormulas tbody tr,#refElemTable tbody tr,#refSizeTable tbody tr{cursor:default}
+#refFormulas td.f{white-space:normal;text-align:left;font-size:12.5px;min-width:260px}
+#refFormulas th:nth-child(2){text-align:left}
+#refFormulas tr.grp td{font-family:var(--display);font-weight:600;color:var(--muted);font-size:12px;padding-top:14px;text-align:left}
+#refElemTable td,#refSizeTable td{text-align:center}#refElemTable th,#refSizeTable th{text-align:center}
+#refElemTable th:first-child,#refSizeTable th:first-child,#refElemTable td:first-child,#refSizeTable td:first-child{text-align:left}
+td.muted{color:var(--muted)}
+[data-tab="ref"] .row2>*{min-width:0}
