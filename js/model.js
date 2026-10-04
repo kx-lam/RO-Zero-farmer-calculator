@@ -184,10 +184,19 @@ const penNote=m=>{const b=dropBand(m),g=String(dropGap(m)).replace("-","−");re
 // what an NPC actually pays you, with Overcharge (the game rounds down per item)
 const npcPays=id=>Math.floor(npcSell(id)*ocMul());
 const marketGain=id=>{const p=state.prices[id];return p>0?Math.max(0,p-npcPays(id)):0};
+// auto-loot (in-game Looting tab): the item groups you pick up (data/itemtypes.js); a drop left on the ground earns nothing.
+// The game can limit weapons and armor to ones with N+ random options; how often a drop rolls that many isn't known, so here they're all or nothing
+const LOOT_GROUPS=[["w","Weapons"],["a","Armor"],["u","Consumable"],["c","Cards"],["e","Miscellaneous"],["o","Costume"]];
+const looted0=g=>(state.autoLoot||{})[g]!==false;
+const looted=id=>looted0(ITEMTYPE[id]||"e");
+// the exported loot value holds every drop at rozerodb's NPC price; when you leave some behind, the ones you loot are added up instead
+const lootVal=m=>m.loot==null?0:(m.drops||[]).every(([id])=>looted(id))?m.loot:(m.drops||[]).reduce((a,[id,ch])=>looted(id)?a+num(NPCSELL[id])*ch/100:a,0);
 // the guide doesn't give an order: chance × drop bonus × level penalty, then the 100% cap
-const marketVal=m=>(m.drops||[]).reduce((a,[id,ch])=>{const g=marketGain(id);return g>0?a+g*Math.min(100,ch*dropMul()*penMul(m))/100:a},0);
+const marketVal=m=>(m.drops||[]).reduce((a,[id,ch])=>{const g=looted(id)?marketGain(id):0;return g>0?a+g*Math.min(100,ch*dropMul()*penMul(m))/100:a},0);
 const hasLoot=m=>m.loot!=null||marketVal(m)>0;
-const zenyKill=m=>(m.loot||0)*ocMul()*dropMul()*penMul(m)+marketVal(m);
+const zenyKill=m=>lootVal(m)*ocMul()*dropMul()*penMul(m)+marketVal(m);
+// one drop's share of zeny per kill (0 if you don't loot it); over all drops they add up to zenyKill, give or take rozerodb's rounding
+const dropZ=(m,id,ch)=>looted(id)?num(NPCSELL[id])*ocMul()*ch/100*dropMul()*penMul(m)+marketGain(id)*Math.min(100,ch*dropMul()*penMul(m))/100:0;
 
 // ---- maps ----
 const REGIONS=[
@@ -316,19 +325,46 @@ function sessEpm(s,w){const mix=sessMix(s);if(!mix)return null;let best=null;
 // loot per hour (with your drop bonus, less skill costs such as Mammonite) minus SP items and the consumables that are switched on.
 // Unlike the EXP rankings, monsters with no EXP in rozerodb still count here: they drop loot all the same
 const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*spItemPrice()+potCostHr()}finally{SG_MOB=k}};
-function huntMap0(mp,w){
-  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,time=0,z=0,exp=0,expT=0,hp=0,hpN=0;const skip=[],earn=[];
-  list.forEach(({m,n:c})=>{N+=c;const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
-    n+=c;time+=c*r.tot;z+=c*r.zk;earn.push({m,n:c,zk:r.zk});if(!m.expUnknown){exp+=c*r.epk;expT+=c*r.tot}if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
-  if(!n)return null;
-  const top=earn.reduce((a,x)=>!a||x.n>a.n?x:a,null),loot=z/time*3600,cost=huntCostHr(top.m);
-  return {mp,N,kph:n/time*3600,secT:time/n,loot,cost,net:loot-cost,zk:z/n,epm:expT?exp/expT*60:null,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,
-    earn:earn.sort((a,b)=>b.n*b.zk-a.n*a.zk)};
+// the monsters you hunt on a map (in-game Monster tab): state.huntOff[map] lists the ones you pass by, set by hand in the Zeny Hunter.
+// "Best-paying only" (state.huntAuto) picks for the maps you haven't set: monsters ranked by zeny per second (fight + walk), keeping as many
+// as give the most net zeny/hr while still hunting at least minN spawns (the Zeny Hunter's "Min monsters on map"): a rare spawn is
+// rarely waiting for you, and nothing here knows respawn times. Passing monsters by thins out your targets: the next one is about
+// 1/√density away, so walking per kill grows by √(monsters you can hurt / ones you hunt)
+// Or teleport past them (Fly Wing or the Teleport skill), on maps you haven't marked "no teleport" (rozerodb has no map flags):
+// each landing finds a hunted monster about hunted/all of the time, so a kill takes all/hunted − 1 extra jumps, each costing a
+// Fly Wing (state.flyPrice, less Discount; 0 for the Teleport skill) and state.teleSec seconds. Each pick uses whichever of the two nets more.
+// Kill time includes selling trips (tripTot), like every other ranking
+const huntOffOf=mp=>(state.huntOff||{})[mp];
+const killTot=(m,sec,walk)=>{const k=SG_MOB;SG_MOB=m;try{return tripTot(m,sec+walk,walk)}finally{SG_MOB=k}};
+const noTele=mp=>(state.noTele||[]).includes(mp);
+const flyPrice=()=>state.flyPrice==null?250:num(state.flyPrice);
+const flyCost=()=>flyPrice()*discMul();
+const teleSec=()=>state.teleSec==null?1:num(state.teleSec);
+function huntMap0(mp,w,minN=0){
+  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));const N=list.reduce((a,x)=>a+x.n,0);
+  const rows=list.map(({m,n})=>({m,n,r:mobRow0(m,0)})),ok=rows.filter(x=>isFinite(x.r.sec)),skip=rows.filter(x=>!isFinite(x.r.sec)).map(x=>x.m.name);
+  const all=ok.reduce((a,x)=>a+x.n,0);if(!all)return null;
+  const at0=(h,n,walk,tele)=>{let time=0,z=0,exp=0,expT=0,hp=0,hpN=0;
+    h.forEach(({m,n:c,r})=>{const tot=killTot(m,r.sec,walk);time+=c*tot;z+=c*r.zk;if(!m.expUnknown){exp+=c*r.epk;expT+=c*tot}if(r.hpm!=null){hp+=c*r.hpm*tot;hpN+=c*tot}});
+    const top=h.reduce((a,x)=>!a||x.n>a.n?x:a,null),kph=n/time*3600,loot=z/time*3600,cost=huntCostHr(top.m)+tele*kph*flyCost();
+    return {mp,N,n,walk,tele,kph,secT:time/n,loot,cost,net:loot-cost,zk:z/n,epm:expT?exp/expT*60:null,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,
+      earn:h.map(({m,n,r})=>({m,n,zk:r.zk})).sort((a,b)=>b.n*b.zk-a.n*a.zk)}};
+  const at=h=>{const n=h.reduce((a,x)=>a+x.n,0);if(!n)return null;const walked=at0(h,n,w*Math.sqrt(all/n),0);
+    if(n>=all||noTele(mp))return walked;const jumps=all/n-1,tp=at0(h,n,w+jumps*teleSec(),jumps);return tp.net>walked.net?tp:walked};
+  const off=huntOffOf(mp);let best;
+  if(off){best=at(ok.filter(x=>!off.includes(x.m.id)));if(best)best.manual=true}
+  else if(state.huntAuto){const rank=ok.slice().sort((a,b)=>b.r.zk/(b.r.sec+w)-a.r.zk/(a.r.sec+w));
+    for(let k=1;k<=rank.length;k++){const r=at(rank.slice(0,k));if(r&&(r.n>=Math.min(minN,all)||k===rank.length)&&(!best||r.net>best.net))best=r}}
+  else best=at(ok);
+  if(!best)return null;
+  // every monster you can hurt here, hunted or not, for the picker
+  const on=new Set(best.earn.map(x=>x.m.id));best.mobs=ok.map(({m,n,r})=>({m,n,zk:r.zk,on:on.has(m.id)})).sort((a,b)=>b.on-a.on||b.n*b.zk-a.n*a.zk);
+  return best;
 }
 // one monster farmed on its own: its zeny per kill over fight + walk time
 function huntMob0(m,w){const r=mobRow0(m,w);if(!isFinite(r.sec)||!(r.tot>0))return null;const loot=r.zk/r.tot*3600,cost=huntCostHr(m);
   return {m,kph:3600/r.tot,secT:r.tot,loot,cost,net:loot-cost,zk:r.zk,epm:m.expUnknown?null:r.epm,hpm:r.hpm}}
 // best converter (or Spell Fist bolt) by net zeny rather than EXP
 const bestBy=(fn,k)=>{let best=null;elOptions().forEach(el=>{const r=withEl(el,fn);if(r){r.el2=el;if(!best||r[k]>best[k])best=r}});return best};
-const huntMap=(mp,w)=>bestBy(()=>huntMap0(mp,w),"net");
+const huntMap=(mp,w,minN)=>bestBy(()=>huntMap0(mp,w,minN),"net");
 const huntMob=(m,w)=>bestBy(()=>huntMob0(m,w),"net");

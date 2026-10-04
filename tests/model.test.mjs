@@ -356,6 +356,49 @@ t("drop level penalty scales zeny per kill and the Zeny Hunter", () => {
   near(b.zk, a.zk / 2);
 });
 
+t("auto loot: drops of a group you don't loot earn nothing", () => {
+  run(`C().baseLv=1;state.dropBonus=0;state.prices={};state.npcPrices={};state.autoLoot={}`);
+  assert.equal(run(`ITEMTYPE[909]`), "e"); assert.equal(run(`ITEMTYPE[4001]`), "c"); assert.equal(run(`ITEMTYPE[1202]`), "w");
+  const mob = "({id:-4,name:'Looter',lv:1,loot:50,drops:[[909,10],[4001,0.5]]})";
+  near(run(`zenyKill(${mob})`), 50);                                       // everything looted: rozerodb's loot value as is
+  run(`state.autoLoot={c:false}`);                                          // cards left behind: only the Jellopy counts
+  near(run(`zenyKill(${mob})`), run(`NPCSELL[909]`) * 0.10);
+  run(`state.prices={4001:100000}`);                                        // a market price doesn't matter for an item you don't pick up
+  near(run(`zenyKill(${mob})`), run(`NPCSELL[909]`) * 0.10);
+  assert.equal(run(`dropZ(${mob},4001,0.5)`), 0);
+  run(`state.autoLoot={}`);                                                 // each drop's share adds up to zeny per kill
+  const sum = run(`(m=>m.drops.reduce((a,[id,ch])=>a+dropZ(m,id,ch),0))(MOBS.find(m=>m.id===1002))`);
+  assert.ok(Math.abs(run(`zenyKill(MOBS.find(m=>m.id===1002))`) - sum) <= 1);   // loot.js rounds its loot value to the zeny
+  run(`state.prices={};state.autoLoot={}`);
+});
+
+t("Zeny Hunter monster picks: passing monsters by drops them from the map and lengthens the walk", () => {
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  run(`state.huntOff={};state.huntAuto=false`);
+  const all = run(`huntMap0("mjo_d03",2)`);
+  assert.equal(all.earn.length, all.mobs.length); near(all.walk, 2);
+  const off = all.mobs[all.mobs.length - 1], rest = all.n - off.n;
+  run(`state.huntOff={mjo_d03:[${off.m.id}]}`);
+  const r = run(`huntMap0("mjo_d03",2)`);
+  assert.ok(r.manual && !r.earn.some(x => x.m.id === off.m.id) && r.mobs.find(x => x.m.id === off.m.id).on === false);
+  assert.equal(r.n, rest);
+  const walked = 2 * Math.sqrt(all.n / rest), jumps = all.n / rest - 1;        // walking past it, or teleporting: whichever nets more
+  if (r.tele) { near(r.tele, jumps); near(r.walk, 2 + jumps * 1) } else near(r.walk, walked);
+  run(`state.noTele=["mjo_d03"]`);                                            // a map that blocks teleport only walks
+  const nt = run(`huntMap0("mjo_d03",2)`); near(nt.walk, walked); assert.equal(nt.tele, 0);
+  run(`state.noTele=[];state.flyPrice=0;state.teleSec=0`);                   // free, instant teleports: no time lost, no cost
+  const ft = run(`huntMap0("mjo_d03",2)`); near(ft.tele, jumps); near(ft.walk, 2); near(ft.cost, nt.cost);
+  run(`delete state.flyPrice;delete state.teleSec`);
+  run(`state.huntOff={};state.huntAuto=true`);                              // best-paying: never worse than hunting everything
+  const a = run(`huntMap0("mjo_d03",2)`);
+  assert.ok(a.net >= all.net - 1e-6 && !a.manual);
+  const m40 = run(`huntMap0("mjo_d03",2,40)`);                               // but it keeps at least that many spawns
+  assert.ok(m40.n >= Math.min(40, all.n) && m40.net <= a.net + 1e-6);
+  run(`state.huntOff={mjo_d03:[]};`);                                       // a map you set by hand ignores best-paying
+  near(run(`huntMap0("mjo_d03",2)`).net, all.net);
+  run(`state.huntOff={};state.huntAuto=false`);
+});
+
 t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", () => {
   const atk = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
   setup("Blacksmith", { atkTxt: "100+300", st: {}, a: atk, skills: {}, itemPrice: 1000, potOn: true, potMin: 30, potPrice: 1000, cons: [] });
