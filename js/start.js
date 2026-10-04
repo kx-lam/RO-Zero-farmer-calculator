@@ -6,6 +6,7 @@ function showTab(t){
   document.querySelectorAll("[data-tabbtn]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tabbtn===t)));
   if(state.tab!==t){state.tab=t;save()}
   if(t==="ref")refScroll();
+  if(t==="maps")renderHunt();// renderAll only draws the Zeny Hunter while this tab is showing
 }
 document.querySelectorAll("[data-tabbtn]").forEach(b=>b.addEventListener("click",()=>{showTab(b.dataset.tabbtn);scrollTo({top:0})}));
 showTab(state.tab||"char");

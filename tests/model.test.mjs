@@ -152,7 +152,7 @@ t("zeny per kill: the loot value scaled by the drop rate bonus", () => {
 t("a restored save is cleaned up before anything uses it", () => {
   // what a broken or hand-made backup or share link could hold
   const bad = "x\"'><img src=x onerror=1>";
-  const app = load({ job: "Sage", tab: bad, refTier: bad, current: "s1",
+  const app = load({ job: "Sage", tab: bad, refTier: bad, current: "s1", prices: { "904": 3000, [bad]: 5000, "938": bad }, npcPrices: { "904": 10, [bad]: 1 },
     sessions: [{ id: "s1", name: "S", mobIds: [1002], entries: [{ t: 1e12, lv: 40, pct: 10 }, { t: 1e12 + 36e5, lv: 40, pct: 30 }],
       pauses: [{ from: bad, to: 1e12 + 1e6 }, { from: 1e12 + 1e5, to: bad }, { from: 1e12 + 2e5, to: 1e12 + 3e5 }, { from: 1e12 + 4e5 }] }],
     chars: { Sage: { skills: { "spell-fist": bad, "fire-bolt": "7", hindsight: 3.6, "cold-bolt": -2 }, build: { check: { atk: bad, hit: "250", sp: "" } } }, Knight: "junk" } });
@@ -160,6 +160,8 @@ t("a restored save is cleaned up before anything uses it", () => {
   assert.deepEqual(app("JSON.stringify(state.chars.Sage.skills)"), JSON.stringify({ "fire-bolt": 7, hindsight: 4 }));
   assert.deepEqual(app("JSON.stringify(state.chars.Sage.build.check)"), JSON.stringify({ hit: 250 }));
   assert.equal(app("'Knight' in state.chars"), false);
+  assert.deepEqual(app("JSON.stringify(state.prices)"), JSON.stringify({ "904": 3000 }));   // item ids only, numbers only
+  assert.deepEqual(app("JSON.stringify(state.npcPrices)"), JSON.stringify({ "904": 10 }));
   assert.equal(app("state.tab"), "char");                              // not one of the tabs: back to Character
   assert.ok(app("stats(cur())").avgRaw > 0);                            // the tracker maths still runs
 });
