@@ -15,6 +15,8 @@ UA = "RO-Zero-farmer-calculator data export"
 JOBS = ["Novice", "Swordsman", "Mage", "Archer", "Acolyte", "Merchant", "Thief", "Knight", "Crusader", "Wizard", "Sage",
         "Hunter", "Bard", "Dancer", "Priest", "Monk", "Blacksmith", "Alchemist", "Assassin", "Rogue"]
 sys.setrecursionlimit(10000)
+# values roz.prontera.info is missing, from the official client (skillinfoz/skilldelaylist.lub): only fill in what it leaves blank
+CLIENT_FIX = {"falcon-assault": {"cooldown_ms": 500}}
 
 
 def fetch(path, refresh=False):
@@ -186,7 +188,8 @@ def main():
             rows = []
             for sk in t["skills"]:
                 lv = [[L.get("sp_cost") or 0, L.get("damage_ratio_percent"), L.get("hit_count"), L.get("cast_variable_ms"), L.get("cast_fixed_ms"),
-                       L.get("after_cast_delay_ms"), L.get("cooldown_ms"), L.get("description_text") or ""] for L in sorted(sk["levels"], key=lambda L: L["level"])]
+                       L.get("after_cast_delay_ms"), L.get("cooldown_ms") if L.get("cooldown_ms") is not None else CLIENT_FIX.get(sk["slug"], {}).get("cooldown_ms"), L.get("description_text") or ""]
+                      for L in sorted(sk["levels"], key=lambda L: L["level"])]
                 row = {"slug": sk["slug"], "name": sk["name"], "max": sk["max_level"], "slot": sk["tree_slot"], "passive": sk["passive"] == "passive",
                        "el": sk.get("element"), "pre": [[slug_of.get(p["skill_id"], p["skill_id"]), p["level"]] for p in sk.get("prerequisites") or []],
                        "f": sk.get("damage_formula_expression"), "lv": lv, "g": groups(sk.get("bonus_groups")), "free": True if sk.get("free") else None}
