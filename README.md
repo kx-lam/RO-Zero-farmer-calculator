@@ -30,10 +30,19 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 
 - `index.html`: page markup. Open it directly or serve the folder; there's no build step.
 - `style.css`: styles.
-- `app.js`: the calculator and tracker code.
+- `js/*.js`: the calculator and tracker code, one file per section. They're plain scripts that `index.html` loads in this order and that share one global scope, so later files use what earlier ones define:
+  - `game.js`: merges the monster tables and holds the element and size tables and the jobs and attack presets.
+  - `state.js`: storage and accounts, saved state and its migrations, and small helpers.
+  - `model.js`: the damage, SP, defence and Sage models, maps, and the tracker maths.
+  - `render.js`: draws the Character, Session and Monsters & maps tabs.
+  - `events.js`: input handlers, stats, the log form, accounts, sessions, backups and the share link, plus the column picker.
+  - `skills.js`: skill trees, passives and buffs.
+  - `build-ui.js`: build mode, consumables and the equipment stats rows.
+  - `ref.js`: the EXP & formulas tab.
+  - `start.js`: tabs, collapsible cards and the first render.
 - `build.js`: the build simulator. It turns base stats, job level, gear, refine and cards into the same ATK/MATK/HIT/FLEE/ASPD/DEF/HP/SP the status window shows.
 - `data/*.js`: tables exported from the sources below, one per file, so a re-export after a patch only touches that file. `mobs.js` (monsters), `spawn.js` (spawn maps), `loot.js` (drops), `items.js` (item names), `mstat.js` (DEF/MDEF/ATK), `elem.js` (element, HIT/FLEE), `sizes.js` (size and race) and `exp.js` (EXP tables). Each file's first line describes its fields. Gear and skill data (`equipment.js`, `cards.js`, `refine.js`, `jobs.js`, `skills.js`) is regenerated with `python tools/export_prontera.py`; it caches pages in `tools/cache/`. After a patch, run it with `--refresh` to pick up new items and skill, job and refine changes; delete the cache to also pick up changed stats on existing items. Items that fail to download are left out and listed at the end, so rerun it to retry them.
-- `tests/`: `node tests/build.test.mjs` tests the build simulator; `node tests/ingame.test.mjs` checks real characters against their in-game status window; `node tests/model.test.mjs` loads `app.js` with a stand-in page and checks the damage and tracker maths (damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time and the monster table filters). GitHub Actions runs all of them on every pull request and push to `main` (`.github/workflows/tests.yml`).
+- `tests/`: `node tests/build.test.mjs` tests the build simulator; `node tests/ingame.test.mjs` checks real characters against their in-game status window; `node tests/model.test.mjs` loads the `js/` files with a stand-in page and checks the damage and tracker maths (damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time and the monster table filters). GitHub Actions runs all of them on every pull request and push to `main` (`.github/workflows/tests.yml`).
 
 ## Data sources
 
