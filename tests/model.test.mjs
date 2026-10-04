@@ -24,7 +24,7 @@ for (const [, src] of html.matchAll(/<script src="([^"]+)"><\/script>/g)) vm.run
 const run = code => vm.runInContext(code, ctx);
 
 let n = 0;
-const t = (name, fn) => { run("state.sessions=[{id:'s1',name:'t',mobIds:[],entries:[]}];state.current='s1';state.chars={};state.bonus=0;state.dropBonus=0;state.prices={}"); fn(); n++; console.log("ok", name); };
+const t = (name, fn) => { run("state.sessions=[{id:'s1',name:'t',mobIds:[],entries:[]}];state.current='s1';state.chars={};state.bonus=0;state.dropBonus=0"); fn(); n++; console.log("ok", name); };
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ""} ${a} != ${b}`);
 // a made-up monster, so the expected numbers don't depend on the exported tables
 const MOB = "({id:-1,name:'Dummy',lv:50,hp:10000,exp:2000,el:'Water',elv:1,size:'L',race:'Brute',def:20,mdef:10,vit:30,int:20,hit100:200,flee95:250,atkMin:100,atkMax:200,drops:[]})";
@@ -137,6 +137,12 @@ t("walking time: the current session first, then another of the same job, then 2
   run("state.walkOverride=7");
   assert.equal(run("walkSec()"), 7);                                  // typed in Goal wins
   run("state.walkOverride=0");
+});
+
+t("zeny per kill: the loot value scaled by the drop rate bonus", () => {
+  assert.equal(run(`zenyKill({loot:200})`), 200);
+  assert.equal(run(`state.dropBonus=50;zenyKill({loot:200})`), 300);
+  assert.equal(run(`zenyKill({})`), 0);
 });
 
 t("monster table filters", () => {
