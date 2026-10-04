@@ -217,8 +217,8 @@ t("monster table filters", () => {
 
 t("map names: in-game codes, rozerodb codes and unique names all find the same map", () => {
   assert.equal(run(`mapCode("sp_d05")`), "in_sphinx5");
-  assert.equal(run(`mapName("sp_d05")`), "Sphinx F5");
-  for (const s of ["in_sphinx5", "SP_D05", "sp_dun05", " Sphinx F5 "]) assert.equal(run(`mapKey(${JSON.stringify(s)})`), "sp_d05");
+  assert.equal(run(`mapName("sp_d05")`), "Sphinx B5F");
+  for (const s of ["in_sphinx5", "SP_D05", "sp_dun05", " Sphinx B5F "]) assert.equal(run(`mapKey(${JSON.stringify(s)})`), "sp_d05");
   assert.equal(run(`mapKey("mjo_dun03")`), "mjo_d03");
   assert.equal(run(`mapKey("Prontera Field")`), "prontera field");      // a name many maps share stays as typed
   assert.equal(run(`mapCode("nowhere")`), "nowhere");
