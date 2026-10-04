@@ -356,4 +356,25 @@ t("drop level penalty scales zeny per kill and the Zeny Hunter", () => {
   near(b.zk, a.zk / 2);
 });
 
+t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", () => {
+  const atk = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Blacksmith", { atkTxt: "100+300", st: {}, a: atk, skills: {}, itemPrice: 1000, potOn: true, potMin: 30, potPrice: 1000, cons: [] });
+  const mob = "({id:-3,name:'Seller',lv:50,loot:100,drops:[[909,10]]})";
+  run(`C().baseLv=50;state.dropBonus=0;state.prices={};state.npcPrices={}`);
+  near(run(`zenyKill(${mob})`), 100);                                     // no skills learned
+  near(run(`potCostHr()`), 2000);
+  run(`C().skills={overcharge:10,discount:10}`);
+  assert.equal(run(`skRate("overcharge")`), 24);                          // Lv 10: 24% in Zero's skill data
+  assert.equal(run(`(C().skills.overcharge=1,skRate("overcharge"))`), 7);  // Lv 1: 7%
+  run(`C().skills.overcharge=10`);
+  near(run(`zenyKill(${mob})`), 124);                                     // NPC loot value +24%
+  run(`state.prices={909:200};state.npcPrices={909:10}`);                 // a market price replaces the NPC price you'd get with Overcharge
+  near(run(`zenyKill(${mob})`), 124 + (200 - Math.floor(10 * 1.24)) * 0.10);
+  near(run(`potCostHr()`), 2000 * 0.76);                                  // Discount −24% on what you buy from NPCs
+  near(run(`spItemPrice()`), 760);
+  run(`C().npcBuy=false`);                                                // bought from players: no Discount
+  near(run(`potCostHr()`), 2000);
+  run(`state.prices={};state.npcPrices={};C().skills={};C().potOn=false`);
+});
+
 console.log(`${n} tests passed`);
