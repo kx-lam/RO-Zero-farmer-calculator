@@ -15,7 +15,7 @@ const stub = () => {
 };
 const store = {};
 const ctx = vm.createContext({
-  document: stub(), console, setTimeout: () => 0, clearTimeout() {}, navigator: stub(), location: stub(), scrollTo() {},
+  document: stub(), console, setTimeout: () => 0, clearTimeout() {}, navigator: stub(), location: stub(), scrollTo() {}, addEventListener() {},
   localStorage: { getItem: k => k in store ? store[k] : null, setItem: (k, v) => { store[k] = String(v) }, removeItem: k => { delete store[k] } },
 });
 const root = new URL("../", import.meta.url);
