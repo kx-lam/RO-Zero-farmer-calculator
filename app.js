@@ -372,7 +372,9 @@ const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
 // job EXP needed for your current job level (Novice / 1st / 2nd job table)
 const FIRST_JOBS=["Swordsman","Mage","Archer","Acolyte","Merchant","Thief"];
 const jobTier=()=>state.job==="Novice"?"novice":FIRST_JOBS.includes(state.job)?"first":"second";
-const jobNeed=()=>{const l=num(C().jobLv);const t=JOB_EXP[jobTier()];return l>=1&&l<=t.length?t[l-1]:null};
+// each table has one entry per job level and the last level is the max (Novice Job Lv 10, per the official guide), so the max level needs nothing
+const jobMax=(tier=jobTier())=>JOB_EXP[tier].length;
+const jobNeed=()=>{const l=num(C().jobLv);const t=JOB_EXP[jobTier()];return l>=1&&l<t.length?t[l-1]:null};
 function jobRate(s){
   const es=[...s.entries].filter(e=>e.jpct!=null).sort((a,b)=>a.t-b.t);if(es.length<2)return null;
   let gain=0;for(let i=1;i<es.length;i++){let d=es[i].jpct-es[i-1].jpct;if(d<0)d+=100;gain+=d}
@@ -458,7 +460,8 @@ function renderTracker(){
   if(p){const zk=p.zk,gross=p.kph*zk,cost=itemsPerSec()*3600*num(C().itemPrice)+potCostHr()+p.kph*p.mix.avg(skillZeny);$("tZeny").textContent=fmtN(gross-cost);$("tZenyS").textContent=`${fmtN(gross)} z loot`+(cost>0?` − ${fmtN(cost)} z items, potions & skill costs`:"")+` · ${fmtN(zk)} z/kill`}
   else{$("tZeny").textContent="–";$("tZenyS").textContent="Needs a monster and 2+ entries"}
   const j=jobRate(s);
-  if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
+  if(j&&num(C().jobLv)>=jobMax()){$("tJob").textContent="Max";$("tJobS").textContent=`Job Lv ${jobMax()} is the max for ${state.job}`}
+  else if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
   renderChart(s);renderLog(s);renderCompare();renderGoalChart(renderGoal(s,st),renderJobGoal(s));
 }
 function renderChart(s){
@@ -516,6 +519,7 @@ function renderJobGoal(s){
   const t=JOB_EXP[jobTier()],cap=t.length,jl=num(C().jobLv),j=jobRate(s),need0=jobNeed();
   const msg=m=>{tiles.innerHTML=`<div class="note">${m}</div>`};
   if(!jl)return msg("Set your job level on the Character tab to see job level estimates.");
+  if(jl===cap)return msg(`Job Lv ${cap} is the max for ${state.job}.`);
   if(!j||j.rate<=0)return msg("Log Job EXP % on 2+ entries to see job level estimates.");
   if(!need0)return msg(`Job Lv ${jl} is outside the ${state.job} job EXP table (up to Job Lv ${cap}).`);
   const goal=num(state.goalJobLv)||(jl<cap?cap:jl+1);
@@ -727,7 +731,7 @@ function guessLevel(s,t,lv,p){const prev=[...s.entries].filter(e=>e.t<t).sort((a
 $("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m);
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
   $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
-  const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=num(C().jobLv)+1}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
+  const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=Math.min(jobMax(),num(C().jobLv)+1)}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
   if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm();$("fPct").focus()});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
   const parsed=$("pasteBox").value.split(/\n/).map(line=>{const m=line.match(/(\d{1,2}):?(\d{2})[^\d\n]+?(\d+(?:\.\d+)?)\s*%?(?:[^\d\n]+?(\d+(?:\.\d+)?)\s*%?)?/);if(!m||+m[1]>23||+m[2]>59)return null;return {t:entryTime(+m[1],+m[2]),pct:+m[3],jpct:m[4]!=null?+m[4]:null}}).filter(Boolean).sort((a,b)=>a.t-b.t);
@@ -1127,7 +1131,7 @@ function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),p
   ROOTQ("[data-reftier]").forEach(b=>b.setAttribute("aria-checked",String(b.dataset.reftier===tier)));
   // job EXP per kill isn't in the monster data, so the job table has no kills column
   $("refJobTable").tHead.innerHTML=`<tr><th>Job Lv</th><th>Job EXP to next</th><th>Total</th></tr>`;
-  $("refJobTable").tBodies[0].innerHTML=t.map((e,i)=>{const row=`<tr${mine&&i+1===jl?' class="sel"':""}><td>${i+1}</td><td>${fmtN(e)}</td><td>${fmtN(tot)}</td></tr>`;tot+=e;return row}).join("")+`<tr><td>${t.length}</td><td>max</td><td>${fmtN(tot)}</td></tr>`;
+  $("refJobTable").tBodies[0].innerHTML=t.map((e,i)=>{const row=`<tr${mine&&i+1===jl?' class="sel"':""}><td>${i+1}</td><td>${i+1<t.length?fmtN(e):"max"}</td><td>${fmtN(tot)}</td></tr>`;tot+=e;return row}).join("");
   $("refFormulas").tBodies[0].innerHTML=refFormulas();
   const elv=Math.min(4,Math.max(1,num(state.refElv,1)));$("refElv").value=String(elv);const defs=Object.keys(ET),my=atkEl();
   $("refElemTable").tHead.innerHTML=`<tr><th>Attack ↓ / monster →</th>${defs.map(d=>`<th>${d} ${elv}</th>`).join("")}</tr>`;
