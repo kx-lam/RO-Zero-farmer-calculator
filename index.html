@@ -304,14 +304,18 @@
     <div class="bar"><h2 class="grow">Goal</h2><span class="note" id="goalNote"></span></div>
     <div class="bar">
       <label>Reach base level<input id="goalLv" type="number" placeholder="70" style="width:90px"></label>
+      <label>Reach job level<input id="goalJobLv" type="number" placeholder="max" style="width:90px"></label>
       <label>Walking per kill (s)<input id="walkOverride" type="number" step="0.1" min="0" placeholder="learned" style="width:110px"></label>
     </div>
     <div class="calc" id="goalTiles"></div>
+    <h3 style="margin:16px 0 8px">Job level</h3>
+    <div class="calc" id="goalJobTiles"></div>
     <div class="chartWrap" id="goalViz" hidden>
-      <svg class="chart" id="goalChart" viewBox="0 0 800 260" role="img" aria-label="Projected level over farming time"></svg>
+      <svg class="chart" id="goalChart" viewBox="0 0 800 260" role="img" aria-label="Projected base and job level over farming time"></svg>
       <div class="tip" id="goalTip" hidden></div>
-      <div class="scroll"><table id="goalTable"><thead></thead><tbody></tbody></table></div>
     </div>
+    <div class="scroll" id="goalWrap" hidden><table id="goalTable"><thead></thead><tbody></tbody></table></div>
+    <div class="scroll" id="goalJobWrap" hidden><table id="goalJobTable"><thead></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card" data-tab="data">

@@ -13,7 +13,7 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 - **Monster table:** every non-MVP monster with HP, EXP, EXP/HP, your damage, kill time, EXP/min, dodge, HP lost and zeny per kill. It has column filters (`<350`, `100-200`, `fire`, `-` for blank, `or`) and you can show or hide columns.
 - **Best maps:** open maps ranked by EXP/min, weighted by spawn counts. You can skip monsters you don't want to fight, and you can mark regions that aren't open yet as closed.
 - **Map planner:** per-map averages, kills/hr, EXP/hr and zeny/hr.
-- **Goal:** EXP needed and farming time to a target level, with hours per day if you set a date. The tables cover Base Lv 1–70 and Novice, 1st and 2nd job levels.
+- **Goal:** EXP needed and farming time to a target base level and job level, charted together, with a date for each level-up if you farm non-stop. The tables cover Base Lv 1–70 and Novice, 1st and 2nd job levels.
 - **Party:** Even Share (100% + 20% per extra member, split evenly), EXP bonus % and drop rate bonus %.
 - **Accounts:** keep separate characters, sessions and settings for each of your accounts, and switch between them from the top of the page.
 - **Backup:** copy or restore the current account's data, or all accounts at once, as text. Restoring an all-accounts backup replaces every account.

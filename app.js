@@ -454,7 +454,7 @@ function renderTracker(){
   else{$("tZeny").textContent="–";$("tZenyS").textContent="Needs a monster and 2+ entries"}
   const j=jobRate(s);
   if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
-  renderChart(s);renderLog(s);renderCompare();renderGoal(s,st);
+  renderChart(s);renderLog(s);renderCompare();renderGoalChart(renderGoal(s,st),renderJobGoal(s));
 }
 function renderChart(s){
   const svg=$("chart"),es=[...s.entries].sort((a,b)=>a.t-b.t);const W=800,H=340,pl=52,pr=18,pt=16,pb=34;
@@ -489,7 +489,7 @@ function renderCompare(){
   $("cmpTable").querySelector("tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="name muted">Sessions with 2+ entries show up here.</td></tr>';
 }
 function renderGoal(s,st){
-  const tiles=$("goalTiles");$("goalViz").hidden=true;
+  const tiles=$("goalTiles");
   if(!st||st.avgRaw<=0){tiles.innerHTML='<div class="note">Log 2+ entries with EXP going up to see goal estimates.</div>';$("goalNote").textContent="";return}
   const curLv=st.last.lv,goal=num(state.goalLv)||(curLv<70?70:curLv+1);
   if(goal<=curLv){tiles.innerHTML=`<div class="note">You're already Lv ${curLv}. Pick a higher level.</div>`;$("goalNote").textContent="";return}
@@ -500,39 +500,72 @@ function renderGoal(s,st){
   tiles.innerHTML=`<div class="tile"><div class="k">EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Lv ${curLv} ${st.last.pct.toFixed(2)}% to Lv ${goal}</div></div>
    <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(st.avgRaw)} EXP/hr</div></div>
    <div class="tile now"><div class="k">Reach Lv ${goal}</div><div class="v mono">${new Date(Date.now()+hrs*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div><div class="s">farming non-stop from now</div></div>`;
-  renderGoalChart(curLv,st.last.pct,goal,st.avgRaw);
+  // one straight run per level at the average rate, flatter as levels need more EXP
+  const p=st.last.pct,pts=[{h:0,v:curLv+p/100,now:`Lv ${curLv} ${p.toFixed(2)}%`}];let h=lvExp(curLv)*(1-p/100)/st.avgRaw,each=h;
+  for(let l=curLv+1;l<=goal;l++){pts.push({h,v:l,lv:l,each});if(l<goal){each=lvExp(l)/st.avgRaw;h+=each}}
+  return {pts,lo:curLv,hi:goal,name:"Lv",color:"var(--accent)"};
 }
-// projected level over farming hours at the average rate: one straight run per level, flatter as levels need more EXP.
+// job level goal: job EXP still needed at the job EXP/hr you farm at your current job level
+function renderJobGoal(s){
+  const tiles=$("goalJobTiles"),wrap=$("goalJobWrap");wrap.hidden=true;
+  const t=JOB_EXP[jobTier()],cap=t.length,jl=num(C().jobLv),j=jobRate(s),need0=jobNeed();
+  const msg=m=>{tiles.innerHTML=`<div class="note">${m}</div>`};
+  if(!jl)return msg("Set your job level on the Character tab to see job level estimates.");
+  if(!j||j.rate<=0)return msg("Log Job EXP % on 2+ entries to see job level estimates.");
+  if(!need0)return msg(`Job Lv ${jl} is outside the ${state.job} job EXP table (up to Job Lv ${cap}).`);
+  const goal=num(state.goalJobLv)||(jl<cap?cap:jl+1);
+  if(goal<=jl)return msg(`You're already Job Lv ${jl}. Pick a higher job level.`);
+  if(goal>cap)return msg(`${state.job} job levels go up to ${cap}, so pick a goal up to Job Lv ${cap}.`);
+  const rate=j.rate/100*need0,at=x=>new Date(Date.now()+x*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),dur=x=>fmtDur(x).split("\n")[0];
+  let need=need0*(1-j.last/100),rows=[];rows.push({lv:jl+1,each:need/rate,h:need/rate});
+  for(let l=jl+1;l<goal;l++){need+=t[l-1];const each=t[l-1]/rate;rows.push({lv:l+1,each,h:rows[rows.length-1].h+each})}
+  const hrs=need/rate;
+  tiles.innerHTML=`<div class="tile"><div class="k">Job EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Job Lv ${jl} ${j.last.toFixed(2)}% to Job Lv ${goal}</div></div>
+   <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(rate)} job EXP/hr</div></div>
+   <div class="tile now"><div class="k">Reach Job Lv ${goal}</div><div class="v mono">${at(hrs)}</div><div class="s">farming non-stop from now</div></div>`;
+  const tb=$("goalJobTable");wrap.hidden=false;
+  tb.tHead.innerHTML=`<tr><th>Job level</th><th>Time for this level</th><th>Total farming</th><th>Reached, farming non-stop</th></tr>`;
+  tb.tBodies[0].innerHTML=rows.map(q=>`<tr><td class="name">Job Lv ${q.lv}</td><td>${dur(q.each)}</td><td>${dur(q.h)}</td><td>${at(q.h)}</td></tr>`).join("");
+  return {pts:[{h:0,v:jl+j.last/100,now:`Job Lv ${jl} ${j.last.toFixed(2)}%`},...rows.map(q=>({h:q.h,v:q.lv,lv:q.lv,each:q.each}))],lo:jl,hi:goal,name:"Job Lv",color:"var(--good)"};
+}
+// projected base level (left axis) and job level (right axis) over farming hours at the average rates.
 // Each level-up gets the date you would reach it farming non-stop from now.
 let GOAL_PTS=[];
-function renderGoalChart(lv,p,goal,rate){
-  $("goalViz").hidden=false;const svg=$("goalChart");const W=800,H=260,pl=52,pr=18,pt=24,pb=34;
+function renderGoalChart(base,job){
+  const sers=[base,job].filter(Boolean);$("goalViz").hidden=!sers.length;$("goalWrap").hidden=!base;GOAL_PTS=[];if(!sers.length)return;
+  const svg=$("goalChart");const W=800,H=260,pl=base?52:18,pr=job?62:18,pt=24,pb=34;
   const now=Date.now();
   const dur=x=>fmtDur(x).split("\n")[0];
   const at=x=>new Date(now+x*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
-  const pts=[{h:0,v:lv+p/100,lv}];let h=lvExp(lv)*(1-p/100)/rate,each=h;
-  for(let l=lv+1;l<=goal;l++){pts.push({h,v:l,lv:l,each});if(l<goal){each=lvExp(l)/rate;h+=each}}
-  const hi=pts[pts.length-1].h||1,ylo=lv;const X=x=>pl+x/hi*(W-pl-pr),Y=v=>pt+(goal-v)/(goal-ylo)*(H-pt-pb);
-  pts.forEach((q,i)=>{q.x=X(q.h);q.y=Y(q.v);q.eta=at(q.h);
-    q.tip=i?`<b>Lv ${q.lv}</b><br>${dur(q.each)} for this level · ${dur(q.h)} total<br>${q.eta} farming non-stop`:`<b>Now</b><br>Lv ${lv} ${p.toFixed(2)}%`});
-  let g="";const ls=Math.max(1,Math.ceil((goal-ylo)/6));
-  for(let l=ylo;l<=goal;l+=ls)g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(l)}" y2="${Y(l)}" stroke="var(--grid)" stroke-dasharray="4 4"/><text x="${pl-8}" y="${Y(l)+4}" text-anchor="end">Lv ${l}</text>`;
+  const hi=Math.max(...sers.map(S=>S.pts[S.pts.length-1].h))||1;const X=x=>pl+x/hi*(W-pl-pr),YS=S=>v=>pt+(S.hi-v)/(S.hi-S.lo)*(H-pt-pb);
+  let g="";
+  // level gridlines and labels: base on the left, job on the right
+  sers.forEach(S=>{const Y=YS(S),ls=Math.max(1,Math.ceil((S.hi-S.lo)/6)),left=S===base;
+    for(let l=S.lo;l<=S.hi;l+=ls)g+=(S===sers[0]?`<line x1="${pl}" x2="${W-pr}" y1="${Y(l)}" y2="${Y(l)}" stroke="var(--grid)" stroke-dasharray="4 4"/>`:"")+`<text x="${left?pl-8:W-pr+8}" y="${Y(l)+4}" text-anchor="${left?"end":"start"}" style="fill:${S.color}">${left?"Lv":"Job"} ${l}</text>`});
   const xs=niceStep(hi/5);for(let i=0;i*xs<=hi+1e-9;i++){const x=i*xs;if(X(x)>W-pr-30&&x<hi)continue;g+=`<text x="${X(x)}" y="${H-10}" text-anchor="middle">${fmtP(+x.toFixed(2))}h</text>`}
-  const line=pts.map(q=>`${q.x},${q.y}`).join(" ");
-  g+=`<polygon points="${X(0)},${H-pb} ${line} ${X(hi)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><line id="goalHair" y1="${pt}" y2="${H-pb}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
-  if(pts.length<=30)pts.forEach((q,i)=>{g+=`<circle data-gi="${i}" cx="${q.x}" cy="${q.y}" r="${i&&i<pts.length-1?4:5.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`});
-  g+=`<text x="${X(hi)-8}" y="${Y(goal)-10}" text-anchor="end" style="fill:var(--fg)">Lv ${goal} · ${dur(hi)}</text>`;
-  svg.innerHTML=g;GOAL_PTS=pts;
-  const t=$("goalTable");
-  t.tHead.innerHTML=`<tr><th>Level</th><th>Time for this level</th><th>Total farming</th><th>Reached, farming non-stop</th></tr>`;
-  t.tBodies[0].innerHTML=pts.slice(1).map(q=>`<tr><td class="name">Lv ${q.lv}</td><td>${dur(q.each)}</td><td>${dur(q.h)}</td><td>${q.eta}</td></tr>`).join("");
+  g+=`<line id="goalHair" y1="${pt}" y2="${H-pb}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>`;
+  sers.forEach((S,si)=>{const Y=YS(S),pts=S.pts,end=pts[pts.length-1];
+    pts.forEach((q,i)=>{q.x=X(q.h);q.y=Y(q.v);q.eta=at(q.h);
+      q.tip=i?`<b>${S.name} ${q.lv}</b><br>${dur(q.each)} for this level · ${dur(q.h)} total<br>${q.eta} farming non-stop`:`<b>Now</b><br>${q.now}`});
+    const line=pts.map(q=>`${q.x},${q.y}`).join(" ");
+    if(S===base)g+=`<polygon points="${X(0)},${H-pb} ${line} ${end.x},${H-pb}" fill="var(--accent-soft)" stroke="none"/>`;
+    g+=`<polyline points="${line}" fill="none" stroke="${S.color}" stroke-width="2" stroke-linejoin="round"/>`;
+    if(pts.length<=30)pts.forEach((q,i)=>{g+=`<circle cx="${q.x}" cy="${q.y}" r="${i&&i<pts.length-1?4:5.5}" fill="${S.color}" stroke="var(--surface)" stroke-width="2"/>`});
+    // end label: right of the point when there's room, else above it (first line) or below it (second) so they don't collide
+    const lab=`${S.name} ${S.hi} · ${dur(end.h)}`;
+    g+=end.x<W-pr-200?`<text x="${end.x+10}" y="${end.y+4}" style="fill:var(--fg)">${lab}</text>`:`<text x="${end.x-8}" y="${si?end.y+20:end.y-10}" text-anchor="end" style="fill:var(--fg)">${lab}</text>`;
+    GOAL_PTS.push(...pts)});
+  svg.innerHTML=g;
+  if(base){const t=$("goalTable");
+    t.tHead.innerHTML=`<tr><th>Level</th><th>Time for this level</th><th>Total farming</th><th>Reached, farming non-stop</th></tr>`;
+    t.tBodies[0].innerHTML=base.pts.slice(1).map(q=>`<tr><td class="name">Lv ${q.lv}</td><td>${dur(q.each)}</td><td>${dur(q.h)}</td><td>${q.eta}</td></tr>`).join("")}
 }
-// hover the goal chart: snap to the nearest level-up and show its tooltip
+// hover the goal chart: snap to the nearest level-up on either line and show its tooltip
 (function goalHover(){
   const svg=$("goalChart"),tip=$("goalTip");
   const hide=()=>{tip.hidden=true;const hr=$("goalHair");if(hr)hr.setAttribute("visibility","hidden")};
-  svg.addEventListener("pointermove",e=>{if(!GOAL_PTS.length)return;const r=svg.getBoundingClientRect(),k=r.width/800,px=(e.clientX-r.left)/k;
-    const q=GOAL_PTS.reduce((a,b)=>Math.abs(b.x-px)<Math.abs(a.x-px)?b:a);
+  svg.addEventListener("pointermove",e=>{if(!GOAL_PTS.length)return;const r=svg.getBoundingClientRect(),k=r.width/800,px=(e.clientX-r.left)/k,py=(e.clientY-r.top)/k;
+    const d=q=>Math.hypot(q.x-px,(q.y-py)/2),q=GOAL_PTS.reduce((a,b)=>d(b)<d(a)?b:a);
     const hr=$("goalHair");hr.setAttribute("x1",q.x);hr.setAttribute("x2",q.x);hr.setAttribute("visibility","visible");
     tip.innerHTML=q.tip;tip.hidden=false;const w=tip.offsetWidth/2;tip.style.left=Math.min(Math.max(q.x*k,w),r.width-w)+"px";tip.style.top=q.y*k+"px"});
   svg.addEventListener("pointerleave",hide);
@@ -756,6 +789,8 @@ $("mapTable").querySelector("tbody").addEventListener("click",e=>{const sm=e.tar
 // goal
 $("goalLv").value=state.goalLv||"";$("walkOverride").value=state.walkOverride||"";
 $("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;save();renderTracker()});
+$("goalJobLv").value=state.goalJobLv||"";
+$("goalJobLv").addEventListener("input",e=>{state.goalJobLv=num(e.target.value)||null;save();renderTracker()});
 $("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
 // backup
 const bkText=()=>JSON.stringify(state);
