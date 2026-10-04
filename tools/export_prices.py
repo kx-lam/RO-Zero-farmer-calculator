@@ -1,12 +1,16 @@
-"""Export NPC sell prices and item types for every item monsters drop (data/loot.js) into data/prices.js and data/itemtypes.js.
+"""Export NPC sell prices, weights and item types for every item monsters drop (data/loot.js) into data/prices.js,
+data/weights.js and data/itemtypes.js.
 
-    python tools/export_prices.py            # fetch what isn't cached, then write data/prices.js and data/itemtypes.js
+    python tools/export_prices.py            # fetch what isn't cached, then write data/prices.js, data/weights.js and data/itemtypes.js
     python tools/export_prices.py --refresh  # refetch every item (prices changed after a patch)
 
 Prices come from rozerodb.com's item API (/api/items/<id>: buy_price, sell_price), the site data/loot.js came from, so
 they should add up to its loot value per kill. Not from rAthena: its prices don't match RO Zero.
 Items are fetched one per second and cached in tools/cache/ (gitignored). Delete a cached file to refetch it.
 Items rozerodb has no sell price for are written as null (roz.prontera.info and ragnarokzero.net had none for the ones checked either).
+Weights come from the same records (weight). rozerodb may store them in tenths like the game files (Jellopy 10) or as
+shown in game (Jellopy 1): Jellopy (909) weighs 1 in game, so its record sets the scale. Items with no weight count as 0.
+Cached records from before weights were exported have no weight: run with --refresh once.
 Item types follow the in-game auto-loot (Looting tab) groups; see loot_type().
 Then it checks every monster: sum(sell x chance / 100) over its drops should round to LOOT[id][0]. It prints how many
 match, the worst mismatches, and the items it couldn't price.
@@ -49,7 +53,13 @@ def item(item_id, refresh=False):
                 raise
             time.sleep(5)
     if rec is not None:
-        rec.pop("raw_json", None)  # big (drop lists, descriptions) and not needed
+        raw = rec.pop("raw_json", None)  # big (drop lists, descriptions) and not needed, apart from the weight when it's only in there
+        if rec.get("weight") is None and raw:
+            try:
+                raw = json.loads(raw) if isinstance(raw, str) else raw
+                rec["weight"] = raw.get("weight", raw.get("Weight")) if isinstance(raw, dict) else None
+            except ValueError:
+                pass
     os.makedirs(CACHE, exist_ok=True)
     json.dump(rec, open(f, "w", encoding="utf-8"))
     time.sleep(1)
@@ -77,10 +87,11 @@ def main():
     refresh = "--refresh" in sys.argv
     loot = js_object("loot", "LOOT")
     ids = sorted({str(i) for v in loot.values() for i, _ in v[3]}, key=int)
-    sell, kind, missing = {}, {}, []
+    sell, weight, kind, missing = {}, {}, {}, []
     for n, i in enumerate(ids):
         rec = item(i, refresh)
         sell[i] = rec.get("sell_price") if rec else None
+        weight[i] = rec.get("weight") if rec else None
         kind[i] = loot_type(rec)
         if sell[i] is None:
             missing.append(i)
@@ -96,6 +107,20 @@ def main():
     print("auto-loot groups:", {k: list(kind.values()).count(k) for k in "wauceo"})
     if missing:
         print("no price:", " ".join(missing))
+
+    # weights: scale so Jellopy weighs 1, as in game
+    jel = weight.get("909")
+    if not jel:
+        print("WARNING: no weight for Jellopy (909): rozerodb's records may name the field differently; data/weights.js not written")
+    else:
+        scale = 1 / jel
+        w = {i: round(v * scale, 2) for i, v in weight.items() if isinstance(v, (int, float))}
+        w = {i: int(v) if v == int(v) else v for i, v in w.items()}
+        with open(os.path.join(DATA, "weights.js"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(f"// Item weight by id for every item in data/loot.js, as shown in game (rozerodb.com /api/items: weight{'' if jel == 1 else f' / {jel:g}'}; missing = none on rozerodb, counted as 0); written by tools/export_prices.py\n")
+            f.write("const ITEMW=" + json.dumps(w, separators=(",", ":")) + ";\n")
+        nw = [i for i in ids if i not in w]
+        print(f"{len(w)} of {len(ids)} items weighed (rozerodb weight / {jel:g})" + (f"; no weight: {' '.join(nw)}" if nw else ""))
 
     # check: each monster's drops at these prices should give rozerodb's loot value per kill
     rows = []

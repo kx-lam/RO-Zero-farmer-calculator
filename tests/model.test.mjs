@@ -281,6 +281,33 @@ t("market prices: a drop sold to players counts at its player price instead of i
   run(`state.prices={}`);
 });
 
+t("weight: trips end at the sell point, no regen past 70%, nothing past 90%", () => {
+  const atk = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, a: atk, maxW: 0 });
+  assert.equal(run(`ITEMW[909]`), 1);                                      // Jellopy weighs 1
+  const mob = MOB.replace("drops:[]", "drops:[[909,100]]");
+  const tot = run(`fightSec(${mob})`) + 2;
+  near(run(`tripTot(${mob},${tot},2)`), tot);                               // no Max Weight typed: off
+  run(`Object.assign(C(),{maxW:1000,curW:100,sellAt:70,townMin:2})`);
+  near(run(`weightKill(${mob})`), 1);
+  near(run(`tripTot(${mob},${tot},2)`), tot + 120 / 600);                   // 600 weight of room at 70%: a 2-minute trip spread over 600 kills
+  near(run(`mobRow0(${mob},2)`).tot, tot + 120 / 600);
+  assert.equal(Math.round(run(`tripInfo(${mob},2)`).kills), 600);
+  run(`C().sellAt=90`);                                                     // basic attacks need no SP, so you carry on to 90%
+  near(run(`tripTot(${mob},${tot},2)`), tot + 120 / 800);
+  assert.equal(run(`withRegenOff(()=>regenPerSec())`), 0);
+  run(`C().a={...C().a,type:"magic",matkTxt:"300",sp:30,el:"Wind"};C().matkTxt="300";C().autoSp=false`);
+  const t2 = run(`fightSec(${mob})`) + 2;                                   // a spell costs SP: with no regen and no SP items you can't fight past 70%
+  near(run(`tripTot(${mob},${t2},2)`), t2 + 120 / 600);
+  assert.ok(run(`tripInfo(${mob},2)`).fell);
+  run(`C().sellAt=70;C().curW=800`);                                        // already past the sell point
+  assert.equal(run(`tripTot(${mob},${t2},2)`), Infinity);
+  run(`C().sellAt=70;C().curW=100;C().baseLv=99`);                         // far above the monster: the drop penalty means less loot to carry
+  assert.ok(run(`dropPenalty(${mob})`) > 0);
+  near(run(`weightKill(${mob})`), 1 - run(`dropPenalty(${mob})`) / 100);
+  run(`C().maxW=0;C().curW=0`);
+});
+
 t("NPC prices: rozerodb's NPC price is the default, a typed one overrides it", () => {
   assert.ok(run(`NPCSELL[909]`) > 0);                                     // Jellopy has an NPC price in data/prices.js
   assert.equal(run(`npcSell(909)`), run(`NPCSELL[909]`));
@@ -370,6 +397,27 @@ t("Zeny Hunter monster picks: passing monsters by drops them from the map and le
   run(`state.huntOff={mjo_d03:[]};`);                                       // a map you set by hand ignores best-paying
   near(run(`huntMap0("mjo_d03",2)`).net, all.net);
   run(`state.huntOff={};state.huntAuto=false`);
+});
+
+t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", () => {
+  const atk = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Blacksmith", { atkTxt: "100+300", st: {}, a: atk, skills: {}, itemPrice: 1000, potOn: true, potMin: 30, potPrice: 1000, cons: [] });
+  const mob = "({id:-3,name:'Seller',lv:50,loot:100,drops:[[909,10]]})";
+  run(`C().baseLv=50;state.dropBonus=0;state.prices={};state.npcPrices={}`);
+  near(run(`zenyKill(${mob})`), 100);                                     // no skills learned
+  near(run(`potCostHr()`), 2000);
+  run(`C().skills={overcharge:10,discount:10}`);
+  assert.equal(run(`skRate("overcharge")`), 24);                          // Lv 10: 24% in Zero's skill data
+  assert.equal(run(`(C().skills.overcharge=1,skRate("overcharge"))`), 7);  // Lv 1: 7%
+  run(`C().skills.overcharge=10`);
+  near(run(`zenyKill(${mob})`), 124);                                     // NPC loot value +24%
+  run(`state.prices={909:200};state.npcPrices={909:10}`);                 // a market price replaces the NPC price you'd get with Overcharge
+  near(run(`zenyKill(${mob})`), 124 + (200 - Math.floor(10 * 1.24)) * 0.10);
+  near(run(`potCostHr()`), 2000 * 0.76);                                  // Discount −24% on what you buy from NPCs
+  near(run(`spItemPrice()`), 760);
+  run(`C().npcBuy=false`);                                                // bought from players: no Discount
+  near(run(`potCostHr()`), 2000);
+  run(`state.prices={};state.npcPrices={};C().skills={};C().potOn=false`);
 });
 
 console.log(`${n} tests passed`);
