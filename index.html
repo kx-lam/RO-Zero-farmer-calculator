@@ -13,35 +13,48 @@
 <div class="wrap">
   <header>
     <h1 id="title">Rozero farm planner</h1><div class="note" id="subtitle"></div><div class="note" id="pauseNote" hidden></div>
-    <div class="bar acct" style="margin-top:8px">
-      <span class="note">Account</span>
-      <select id="acctSel" class="grow" aria-label="Account"></select>
-      <input id="acctName" class="grow" aria-label="Account name" hidden>
-      <button id="renameAcct" style="min-width:5.5em">Rename</button>
-      <button id="newAcct">New account</button>
-      <button id="delAcct" class="danger" style="min-width:9em" title="Delete this account and all its data">Delete</button>
-    </div>
-    <div class="bar" style="margin-top:6px">
-      <select id="sessionSel" class="grow" aria-label="Session"></select>
-      <input id="sessName" class="grow" aria-label="Session name" hidden>
-      <button id="pauseBtn" style="min-width:6.5em" title="Stop the clock while you sell, change maps or do something else">Pause</button>
-      <button id="renameSession" style="min-width:5.5em">Rename</button>
-      <button id="newSession">New session</button>
-      <button id="delSession" class="danger" style="min-width:9em">Delete</button>
-    </div>
   </header>
-  <section class="card" id="pickJob" hidden>
-    <h2>Pick your job to start</h2>
-    <div class="note">The calculator, monster list and map rankings all depend on your job. You can switch any time on the Character tab.</div>
-    <label>Job<select id="pickJobSel" style="max-width:320px"></select></label>
-    <div class="note" style="margin-top:8px">Moving from another browser? <button type="button" class="small" id="pickBackup">Restore a backup</button></div>
-  </section>
   <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" data-tabbtn="acct">Account</button>
     <button type="button" role="tab" data-tabbtn="char">Character</button>
     <button type="button" role="tab" data-tabbtn="track">Session</button>
     <button type="button" role="tab" data-tabbtn="maps">Monsters &amp; maps</button>
-    <button type="button" role="tab" data-tabbtn="data">Backup</button>
   </nav>
+  <section class="card" id="acctCard" data-tab="acct">
+    <h2>Account &amp; session</h2>
+    <div class="bar acct">
+      <span class="note pickLbl">Account</span>
+      <select id="acctSel" class="grow" aria-label="Account"></select>
+      <input id="acctName" class="grow" aria-label="Account name" hidden>
+      <div class="menu">
+        <button type="button" class="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="acctMenu" aria-label="Account actions" title="Account actions">⋯</button>
+        <div class="menuList" id="acctMenu" role="menu" hidden>
+          <button type="button" role="menuitem" id="renameAcct">Rename</button>
+          <button type="button" role="menuitem" id="newAcct">New account</button>
+          <button type="button" role="menuitem" id="delAcct" class="danger" data-keep title="Delete this account and all its data">Delete</button>
+        </div>
+      </div>
+    </div>
+    <div class="bar">
+      <span class="note pickLbl">Session</span>
+      <select id="sessionSel" class="grow" aria-label="Session"></select>
+      <input id="sessName" class="grow" aria-label="Session name" hidden>
+      <div class="menu">
+        <button type="button" class="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="sessMenu" aria-label="Session actions" title="Session actions">⋯</button>
+        <div class="menuList" id="sessMenu" role="menu" hidden>
+          <button type="button" role="menuitem" id="renameSession">Rename</button>
+          <button type="button" role="menuitem" id="newSession">New session</button>
+          <button type="button" role="menuitem" id="delSession" class="danger" data-keep>Delete</button>
+        </div>
+      </div>
+    </div>
+    <div class="note">Each account keeps its own job, character and sessions. Sessions are your farming runs; the Session tab shows the one picked here.</div>
+  </section>
+  <section class="card" data-tab="acct">
+    <div class="bar"><h2 class="grow">Backup</h2><span class="note">Your data lives only in this browser. Copy backup covers the current account; Copy all accounts covers every account.</span></div>
+    <div class="bar"><button type="button" id="bkCopy">Copy backup</button><button type="button" id="bkShow">Show backup text</button><button type="button" id="bkCopyAll">Copy all accounts</button><button type="button" id="bkShowAll">Show all accounts</button><button type="button" id="bkRestore" class="danger">Restore from text</button><span class="note" id="bkMsg"></span></div>
+    <textarea id="bkText" rows="3" placeholder="Paste a backup here, then click Restore from text" style="font:inherit;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical;width:100%"></textarea>
+  </section>
 
   <section class="card" data-tab="char">
     <div class="bar"><h2 class="grow">Your character</h2><span class="note" id="jobNote"></span></div>
@@ -233,7 +246,7 @@
   </section>
 
   <section class="card" data-tab="track">
-    <div class="bar"><h2 class="grow">EXP progress</h2></div>
+    <div class="bar"><h2 class="grow">EXP progress</h2><button type="button" id="pauseBtn" style="min-width:6.5em" title="Stop the clock while you sell, change maps or do something else">Pause</button></div>
     <svg class="chart" id="chart" viewBox="0 0 800 340" role="img" aria-label="EXP percentage over time"></svg>
   </section>
 
@@ -322,11 +335,6 @@
     <div class="scroll" id="goalJobWrap" hidden><table id="goalJobTable"><thead></thead><tbody></tbody></table></div>
   </section>
 
-  <section class="card" data-tab="data">
-    <div class="bar"><h2 class="grow">Backup</h2><span class="note">Your data lives only in this browser. Copy backup covers the current account; Copy all accounts covers every account.</span></div>
-    <div class="bar"><button type="button" id="bkCopy">Copy backup</button><button type="button" id="bkShow">Show backup text</button><button type="button" id="bkCopyAll">Copy all accounts</button><button type="button" id="bkShowAll">Show all accounts</button><button type="button" id="bkRestore" class="danger">Restore from text</button><span class="note" id="bkMsg"></span></div>
-    <textarea id="bkText" rows="3" placeholder="Paste a backup here, then click Restore from text" style="font:inherit;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical;width:100%"></textarea>
-  </section>
 </div>
 
 <script src="data/exp.js"></script>

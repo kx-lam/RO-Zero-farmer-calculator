@@ -28,6 +28,15 @@ button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.danger{color:var(--bad)}
 button.small{padding:3px 8px;font-size:12px}
+.pickLbl{flex:none;width:4.5em}
+/* account and session ⋯ menus: the secondary account and session actions open in a small list under the button */
+.menu{position:relative;flex:none}
+.menuBtn{-webkit-tap-highlight-color:transparent;padding:7px 12px;font-weight:700;letter-spacing:.05em;line-height:1.5}
+.menuBtn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+.menuList:not([hidden]){position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;min-width:11em;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.14)}
+.menuList button{border:0;border-radius:6px;background:none;text-align:left;padding:7px 10px;white-space:nowrap}
+.menuList button:hover:not(:disabled),.menuList button:focus-visible{background:var(--grid)}
+.menuList button:disabled{color:var(--muted);cursor:default;opacity:.6}
 label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .tile.now{background:var(--accent-soft);border-color:transparent}
@@ -127,10 +136,6 @@ details.sub{padding:12px 14px;gap:8px;background:var(--bg)}
 .tabs button:hover{color:var(--fg);background:var(--grid)}
 .tabs button[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
 [hidden]{display:none!important}
-/* first visit: only the title and the job picker until a job is chosen */
-body.nojob .wrap>:not(header):not(#pickJob),body.nojob header>.bar:not(.acct){display:none!important}
-/* before a job is picked, the Backup card can still be opened to restore a save */
-body.nojob.nojobbk .wrap>section[data-tab="data"]:not(#pickJob){display:block!important}
 /* long monster list: scroll inside the card with the header and filters pinned */
 .scroll.tall{max-height:70vh;overflow:auto}
 .scroll.tall thead{position:sticky;top:0;z-index:1;background:var(--surface)}

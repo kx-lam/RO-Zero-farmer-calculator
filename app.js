@@ -116,11 +116,11 @@ const saveAccts=()=>{try{localStorage.setItem(ACCT_KEY,JSON.stringify(accts))}ca
 const acctKey=id=>id==="a0"?KEY:KEY+":"+id;
 const store={get(){try{return JSON.parse(localStorage.getItem(acctKey(accts.active)))}catch(e){return null}},set(v){try{localStorage.setItem(acctKey(accts.active),JSON.stringify(v))}catch(e){}}};
 let state=store.get()||{};
-if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",job:"",mobIds:[],entries:[]}];
+if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",mobIds:[],entries:[]}];
 // sessions hold a list of monsters (one map, plus the aggressive ones you end up killing); older saves had a single mobId
 state.sessions.forEach(s=>{if(!Array.isArray(s.mobIds))s.mobIds=s.mobId!=null?[s.mobId]:[];delete s.mobId});
-// no job until the player picks one on the start screen
-if(!JOBS[state.job])state.job="";
+// new accounts start as Novice; change it on the Character tab
+if(!JOBS[state.job])state.job="Novice";
 if(!state.chars)state.chars={};
 if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
 const D={bonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[],prices:{}};
@@ -426,12 +426,12 @@ function renderChar(){
 }
 
 // ---- render: tracker ----
-function renderSessions(){$("sessionSel").innerHTML=state.sessions.map(s=>`<option value="${s.id}" ${s.id===state.current?"selected":""}>${esc(s.name)}${s.job?` · ${esc(s.job)}`:""}</option>`).join("")}
+function renderSessions(){$("sessionSel").innerHTML=state.sessions.map(s=>`<option value="${s.id}" ${s.id===state.current?"selected":""}>${esc(s.name)}</option>`).join("")}
 function renderTracker(){
   const s=cur(),st=stats(s);
   if(document.activeElement!==$("partyN"))$("partyN").value=partyN(s);if(document.activeElement!==$("partyBonus"))$("partyBonus").value=partyBonus(s);
   $("partyNote").textContent=partyN(s)>1?`Each kill gives you ${Math.round(expMul(s)/(1+num(state.bonus)/100)*100)}% of its EXP (party of ${partyN(s)}). Even Share only works within 15 base levels.`:"";
-  $("title").textContent=`${s.name} · ${s.job||state.job}`;
+  $("title").textContent=`${s.name} · ${state.job}`;
   const pz=openPause(s);$("pauseBtn").textContent=pz?"Resume":"Pause";$("pauseBtn").classList.toggle("primary",!!pz);$("pauseNote").hidden=!pz;
   if(pz)$("pauseNote").textContent=`Paused since ${fmtT(pz.from)}. Time away isn't counted. Press Resume, or just log an entry, when you're back.`;
   const ms=sessMobs(s),mob=ms.length===1?ms[0]:null;
@@ -731,7 +731,7 @@ $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel")
 $("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.pauses)s.pauses=[];
   if(p){p.to=Date.now();save();renderAll();showTab("track");$("fPct").focus()}else{s.pauses.push({from:Date.now()});save();renderAll()}});
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
-const openSession=id=>{state.current=id;state.calcMobId=null;const s=cur();if(s.job&&JOBS[s.job]&&s.job!==state.job){state.job=s.job;syncChar()}save();renderAll();resetForm()};
+const openSession=id=>{state.current=id;state.calcMobId=null;save();renderAll();resetForm()};
 // accounts: switching saves this one and reloads the page with the other one's data
 function renderAccts(){$("acctSel").innerHTML=accts.list.map(a=>`<option value="${a.id}" ${a.id===accts.active?"selected":""}>${esc(a.name)}</option>`).join("");$("delAcct").disabled=accts.list.length<2}
 const switchAcct=id=>{save();accts.active=id;saveAccts();location.reload()};
@@ -744,6 +744,18 @@ $("acctName").addEventListener("blur",()=>setTimeout(()=>endAcctRename(true),150
 let acctDelArmed=false;
 $("delAcct").addEventListener("click",()=>{if(accts.list.length<2)return;if(!acctDelArmed){acctDelArmed=true;$("delAcct").textContent="Confirm delete";setTimeout(()=>{acctDelArmed=false;$("delAcct").textContent="Delete"},3000);return}
   try{localStorage.removeItem(acctKey(accts.active))}catch(e){}accts.list=accts.list.filter(a=>a.id!==accts.active);accts.active=accts.list[0].id;saveAccts();location.reload()});
+// account and session ⋯ menus: click toggles, an outside click or Esc closes, picking an item closes (Delete stays open for its confirm click)
+const menus=[...document.querySelectorAll(".menu")];
+const closeMenu=(m,refocus)=>{const b=m.querySelector(".menuBtn");if(b.getAttribute("aria-expanded")!=="true")return;b.setAttribute("aria-expanded","false");m.querySelector(".menuList").hidden=true;if(refocus)b.focus()};
+menus.forEach(m=>{const b=m.querySelector(".menuBtn"),list=m.querySelector(".menuList"),items=()=>[...list.querySelectorAll("button:not(:disabled)")];
+  b.addEventListener("click",()=>{const open=b.getAttribute("aria-expanded")==="true";menus.forEach(x=>closeMenu(x));if(!open){b.setAttribute("aria-expanded","true");list.hidden=false}});
+  b.addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();if(list.hidden)b.click();items()[0]?.focus()}});
+  list.addEventListener("click",e=>{const it=e.target.closest("button");if(it&&!it.hasAttribute("data-keep"))closeMenu(m)});
+  list.addEventListener("keydown",e=>{const its=items(),i=its.indexOf(document.activeElement);
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();its[(i+(e.key==="ArrowDown"?1:its.length-1))%its.length]?.focus()}
+    else if(e.key==="Tab")closeMenu(m)})});
+document.addEventListener("click",e=>menus.forEach(m=>{if(!m.contains(e.target))closeMenu(m)}));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")menus.forEach(m=>closeMenu(m,m.contains(document.activeElement)))});
 renderAccts();
 $("sessionSel").addEventListener("change",e=>openSession(e.target.value));
 // rename: swap the session picker for a text box; Enter or leaving the box saves, Esc cancels
@@ -753,11 +765,11 @@ const endRename=keep=>{const i=$("sessName");if(i.hidden)return;if(keep){const v
 $("renameSession").addEventListener("click",()=>{const i=$("sessName");if(!i.hidden){endRename(true);return}renameId=cur().id;i.value=cur().name;i.hidden=false;$("sessionSel").hidden=true;$("renameSession").textContent="Save";i.focus();i.select()});
 $("sessName").addEventListener("keydown",e=>{if(e.key==="Enter")endRename(true);else if(e.key==="Escape")endRename(false)});
 $("sessName").addEventListener("blur",()=>setTimeout(()=>endRename(true),150));
-$("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",job:state.job,mobIds:[],entries:[]});openSession(id);showTab("maps");$("mobInput").focus()});
+$("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",mobIds:[],entries:[]});openSession(id);showTab("maps");$("mobInput").focus()});
 let delArmed=false;
 $("delSession").addEventListener("click",()=>{if(!delArmed){delArmed=true;$("delSession").textContent="Confirm delete";setTimeout(()=>{delArmed=false;$("delSession").textContent="Delete"},3000);return}
   delArmed=false;$("delSession").textContent="Delete";state.sessions=state.sessions.filter(s=>s.id!==state.current);
-  if(!state.sessions.length)state.sessions.push({id:"s"+Date.now(),name:"New session",job:state.job,mobIds:[],entries:[]});openSession(state.sessions[0].id)});
+  if(!state.sessions.length)state.sessions.push({id:"s"+Date.now(),name:"New session",mobIds:[],entries:[]});openSession(state.sessions[0].id)});
 $("cmpTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.target.closest("tr[data-sid]");if(!tr)return;openSession(tr.dataset.sid);window.scrollTo({top:0,behavior:"smooth"})});
 // monsters
 // add or remove a monster from the current session; the first one names a fresh session and sets its job
@@ -1055,6 +1067,7 @@ $("gearTable").addEventListener("input",e=>{if(e.target.classList.contains("opts
   g.refine=Math.max(0,Math.min(20,num(e.target.value)));save();renderAll()});
 // ---- tabs: show one group of sections at a time; the last one opened is remembered in state.tab (Character first for new players) ----
 function showTab(t){
+  if(t==="data")t="acct";// Backup now lives on the Account tab
   if(!document.querySelector(`[data-tabbtn="${t}"]`))t="char";
   document.querySelectorAll("[data-tab]").forEach(el=>el.hidden=el.dataset.tab!==t);
   document.querySelectorAll("[data-tabbtn]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tabbtn===t)));
@@ -1065,18 +1078,13 @@ showTab(state.tab||"char");
 // ---- collapsible cards: click a heading (or Enter/Space on it) to fold the card; saved by heading text ----
 (function setupCollapse(){
   if(!state.collapsed)state.collapsed={};
-  document.querySelectorAll(".card:not(#pickJob)").forEach(card=>{const h=card.querySelector(":scope>h2, :scope>.bar>h2");if(!h)return;
+  document.querySelectorAll(".card:not(#acctCard)").forEach(card=>{const h=card.querySelector(":scope>h2, :scope>.bar>h2");if(!h)return;
     const head=h.parentElement===card?h:h.parentElement;head.classList.add("cardHead");const key=h.textContent.trim();
     h.tabIndex=0;h.setAttribute("role","button");
     const set=v=>{card.classList.toggle("collapsed",v);h.setAttribute("aria-expanded",String(!v))};set(!!state.collapsed[key]);
     const flip=()=>{const v=!card.classList.contains("collapsed");state.collapsed[key]=v;if(!v)delete state.collapsed[key];save();set(v)};
     h.addEventListener("click",flip);h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();flip()}})});
 })();
-// ---- start: first visit shows only a job picker; everything else needs a job ----
-const startApp=()=>{document.body.classList.remove("nojob");syncClosed();syncChar();renderAll();resetForm()};
-if(state.job)startApp();
-else{document.body.classList.add("nojob");$("pickJob").hidden=false;
-  $("pickJobSel").innerHTML='<option value="" selected disabled>Choose a job…</option>'+$("job").innerHTML;
-  $("pickBackup").addEventListener("click",()=>{document.body.classList.add("nojobbk");showTab("data");$("bkText").focus()});
-  $("pickJobSel").addEventListener("change",e=>{state.job=e.target.value;const s=cur();if(!s.job)s.job=state.job;C();save();$("pickJob").hidden=true;document.body.classList.remove("nojobbk");showTab("char");startApp()})}
+// ---- start ----
+syncClosed();syncChar();renderAll();resetForm();
 
