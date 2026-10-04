@@ -364,10 +364,11 @@ function sessionPace(s){
   const kph=st.avgRaw/(mix.avg(m=>m.exp*expRace(m))*expMul(s));const obs=3600/kph;const fight=same?mix.avg(bestFight):NaN;
   return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,zk:mix.avg(zenyKill),mix,st};
 }
+// the current session's walking time; without one, the first other session of this job that has one (the others are only worked out then)
 const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
-  const ps=state.sessions.filter(s=>(s.job||state.job)===state.job).map(sessionPace).filter(p=>p&&p.walk!=null);
-  const p=sessionPace(cur());if(p&&p.walk!=null)return Math.max(1,p.walk);
-  return ps.length?Math.max(1,ps[0].walk):2};
+  const c=cur(),p=sessionPace(c);if(p&&p.walk!=null)return Math.max(1,p.walk);
+  for(const s of state.sessions){if(s===c||(s.job||state.job)!==state.job)continue;const q=sessionPace(s);if(q&&q.walk!=null)return Math.max(1,q.walk)}
+  return 2};
 // job EXP needed for your current job level (Novice / 1st / 2nd job table)
 const FIRST_JOBS=["Swordsman","Mage","Archer","Acolyte","Merchant","Thief"];
 const jobTier=()=>state.job==="Novice"?"novice":FIRST_JOBS.includes(state.job)?"first":"second";
@@ -838,14 +839,18 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   const IDS=["cmpTable","mobTable","bestTable","mapTable"];
   if(!state.hideCols)state.hideCols={};
   const st=document.createElement("style");document.body.appendChild(st);
-  const apply=()=>{st.textContent=IDS.flatMap(id=>(state.hideCols[id]||[]).map(n=>`#${id} tr>:nth-child(${n}){display:none}`)).join("\n")};
+  // hidden columns are saved by header name, so adding or moving a column doesn't hide the wrong one; the position is looked up here
+  const names=id=>{const t=document.getElementById(id);return t&&t.tHead?[...t.tHead.rows[0].cells].map(c=>(c.textContent||"").trim()):[]};
+  const apply=()=>{st.textContent=IDS.flatMap(id=>{const ns=names(id);return (state.hideCols[id]||[]).map(k=>ns.indexOf(k)).filter(i=>i>=0).map(i=>`#${id} tr>:nth-child(${i+1}){display:none}`)}).join("\n")};
   IDS.forEach(id=>{const t=document.getElementById(id);if(!t||!t.tHead)return;
-    const ths=[...t.tHead.rows[0].cells];const box=document.createElement("details");box.className="note";box.style.cssText="margin:2px 0";
+    const ths=[...t.tHead.rows[0].cells];
+    // older saves kept column numbers: turn them into the names of the columns they pointed at
+    state.hideCols[id]=(state.hideCols[id]||[]).map(k=>typeof k==="number"?ths[k-1]&&(ths[k-1].textContent||"").trim():k).filter(Boolean);const box=document.createElement("details");box.className="note";box.style.cssText="margin:2px 0";
     box.innerHTML=`<summary style="cursor:pointer">Show / hide columns</summary><div class="bar" style="flex-wrap:wrap;gap:4px 14px;margin-top:6px">${ths.map((th,i)=>{const name=(th.textContent||"").trim();if(!name)return "";
-      return `<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-col="${i+1}" style="width:auto" ${(state.hideCols[id]||[]).includes(i+1)?"":"checked"}> ${name}</label>`}).join("")}
+      return `<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-col="${esc(name)}" style="width:auto" ${(state.hideCols[id]||[]).includes(name)?"":"checked"}> ${esc(name)}</label>`}).join("")}
       <button type="button" class="small" data-allcols>Show all</button></div>`;
     const anchor=t.closest(".scroll")||t;anchor.parentNode.insertBefore(box,anchor);
-    box.addEventListener("change",e=>{const c=e.target.closest("[data-col]");if(!c)return;const n=+c.dataset.col;const set=new Set(state.hideCols[id]||[]);
+    box.addEventListener("change",e=>{const c=e.target.closest("[data-col]");if(!c)return;const n=c.dataset.col;const set=new Set(state.hideCols[id]||[]);
       c.checked?set.delete(n):set.add(n);state.hideCols[id]=[...set];save();apply()});
     box.addEventListener("click",e=>{if(!e.target.closest("[data-allcols]"))return;state.hideCols[id]=[];box.querySelectorAll("[data-col]").forEach(x=>x.checked=true);save();apply()});
   });
