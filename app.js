@@ -307,12 +307,18 @@ Object.entries(SPAWN).forEach(([id,arr])=>{const m=MOBS.find(x=>x.id===+id);if(!
 
 // ---- tracker math ----
 function cumulative(e,base){let total=0;for(let l=base;l<e.lv;l++)total+=lvExp(l)||100;return total+(e.pct/100)*(lvExp(e.lv)||100)}
+// pausing: s.pauses=[{from,to}] (to missing while paused); paused time is left out of every rate, EXP gained is still counted
+const openPause=s=>(s.pauses||[]).find(p=>p.to==null);
+const pausedMs=(s,a,b)=>(s.pauses||[]).reduce((x,p)=>x+Math.max(0,Math.min(b,p.to??Date.now())-Math.max(a,p.from)),0);
+const activeH=(s,a,b)=>(b-a-pausedMs(s,a,b))/36e5;
+// logging an entry after a pause started means you're back
+const autoResume=(s,t)=>{const p=openPause(s);if(p&&t>=p.from)p.to=Math.max(p.from,t)};
 function stats(s){
   const es=[...s.entries].sort((a,b)=>a.t-b.t);if(es.length<2)return null;
-  const base=es[0].lv,last=es[es.length-1],prev=es[es.length-2];const raw=e=>cumulative(e,base);const hrs=(a,b)=>(b.t-a.t)/36e5;
+  const base=es[0].lv,last=es[es.length-1],prev=es[es.length-2];const raw=e=>cumulative(e,base);const hrs=(a,b)=>activeH(s,a.t,b.t);
   if(hrs(es[0],last)<=0)return null;
   const avgRaw=(raw(last)-raw(es[0]))/hrs(es[0],last);const recRaw=hrs(prev,last)>0?(raw(last)-raw(prev))/hrs(prev,last):0;const L=lvExp(last.lv)||100;
-  return {es,last,prev,avgRaw,recRaw,avgPct:avgRaw/L*100,recPct:recRaw/L*100,L,recentMin:Math.round((last.t-prev.t)/6e4),spanMin:Math.round((last.t-es[0].t)/6e4),
+  return {es,last,prev,avgRaw,recRaw,avgPct:avgRaw/L*100,recPct:recRaw/L*100,L,recentMin:Math.round(hrs(prev,last)*60),spanMin:Math.round(hrs(es[0],last)*60),
     fullH:avgRaw>0?L/avgRaw:Infinity,nextH:avgRaw>0?L*(1-last.pct/100)/avgRaw:Infinity};
 }
 // pace and walking only make sense for sessions of the job you have selected (fight time uses its attack)
@@ -342,7 +348,7 @@ const jobNeed=()=>{const l=num(C().jobLv);const t=JOB_EXP[jobTier()];return l>=1
 function jobRate(s){
   const es=[...s.entries].filter(e=>e.jpct!=null).sort((a,b)=>a.t-b.t);if(es.length<2)return null;
   let gain=0;for(let i=1;i<es.length;i++){let d=es[i].jpct-es[i-1].jpct;if(d<0)d+=100;gain+=d}
-  const h=(es[es.length-1].t-es[0].t)/36e5;return h>0?{rate:gain/h,last:es[es.length-1].jpct,h}:null;
+  const h=activeH(s,es[0].t,es[es.length-1].t);return h>0?{rate:gain/h,last:es[es.length-1].jpct,h}:null;
 }
 function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally{SG_MOB=kSG}}
 function mobRow00(m,w){
@@ -403,6 +409,8 @@ function renderTracker(){
   if(document.activeElement!==$("partyN"))$("partyN").value=partyN(s);if(document.activeElement!==$("partyBonus"))$("partyBonus").value=partyBonus(s);
   $("partyNote").textContent=partyN(s)>1?`Each kill gives you ${Math.round(expMul(s)/(1+num(state.bonus)/100)*100)}% of its EXP (party of ${partyN(s)}). Even Share only works within 15 base levels.`:"";
   $("title").textContent=`${s.name} · ${s.job||state.job}`;
+  const pz=openPause(s);$("pauseBtn").textContent=pz?"Resume":"Pause";$("pauseBtn").classList.toggle("primary",!!pz);$("pauseNote").hidden=!pz;
+  if(pz)$("pauseNote").textContent=`Paused since ${fmtT(pz.from)}. Time away isn't counted. Press Resume, or just log an entry, when you're back.`;
   const ms=sessMobs(s),mob=ms.length===1?ms[0]:null;
   $("subtitle").innerHTML=ms.length>1?`Farming ${ms.map(m=>esc(m.name)).join(", ")}${sessMap(s)?` on ${sessMap(s)}`:""} · weighted by spawn counts`:mob?`Farming ${esc(mob.name)} · Lv ${mob.lv} · ${mob.el?`<span class="el ${mob.el}">${mob.el} ${mob.elv}</span> · `:""}${mob.size||""} ${mob.race||""} · ${fmtN(mob.exp)} base EXP · <a href="${dbUrl(mob)}" target="_blank" rel="noopener">rozerodb ↗</a>`:"Pick a monster in the Monsters &amp; maps tab and press \"Farming this now\"";
   const lastE=[...s.entries].sort((a,b)=>a.t-b.t).pop();
@@ -430,12 +438,14 @@ function renderChart(s){
   if(!es.length){svg.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle">No entries yet</text>`;return}
   const base=es[0].lv;const y=es.map(e=>(e.lv-base)*100+e.pct);let lo=Math.min(...y),hi=Math.max(...y);
   const span=Math.max(hi-lo,2),step=niceStep(span/4);lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;if(hi===lo)hi=lo+step;
-  const n=es.length,t0=es[0].t,t1=es[n-1].t;const X=i=>n===1||t1===t0?(pl+W-pr)/2:pl+(es[i].t-t0)/(t1-t0)*(W-pl-pr);const Y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
+  const n=es.length,t0=es[0].t,t1=es[n-1].t,act=t=>activeH(s,t0,t),actSpan=act(t1);const XT=t=>n===1||actSpan<=0?(pl+W-pr)/2:pl+act(t)/actSpan*(W-pl-pr),X=i=>XT(es[i].t);const Y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
   const multi=es[n-1].lv!==base;let g="";
   for(let v=lo;v<=hi+1e-9;v+=step){const lvl=base+Math.floor(v/100),q=((v%100)+100)%100;g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-dasharray="4 4"/><text x="${pl-8}" y="${Y(v)+4}" text-anchor="end">${multi?`${lvl}·${fmtP(q)}`:`${fmtP(v)}%`}</text>`}
   let lastX=-1e9;const labs=[];es.forEach((e,i)=>{const x=X(i);if(x-lastX>=48){labs.push(i);lastX=x}});
   if(labs[labs.length-1]!==n-1){if(n>1&&X(n-1)-X(labs[labs.length-1])<48)labs.pop();labs.push(n-1)}
   labs.forEach(i=>{g+=`<text x="${X(i)}" y="${H-10}" text-anchor="middle">${fmtT(es[i].t)}</text>`});
+  // paused time is squeezed out of the x-axis; a dashed line marks where each pause was
+  (s.pauses||[]).filter(p=>p.from>t0&&p.from<t1).forEach(p=>{const x=XT(p.from),m=Math.round(((p.to??Date.now())-p.from)/6e4);g+=`<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="var(--warn)" stroke-dasharray="3 4"/><text x="${x+4}" y="${pt+10}" style="fill:var(--warn)">paused ${m} min</text>`});
   const pts=y.map((v,i)=>`${X(i)},${Y(v)}`).join(" ");
   g+=`<polygon points="${X(0)},${H-pb} ${pts} ${X(n-1)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.25" stroke-linejoin="round"/>`;
   y.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===n-1?5.5:4}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${fmtT(es[i].t)} · Lv ${es[i].lv} ${es[i].pct}%</title></circle>`});
@@ -445,7 +455,7 @@ function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x)));const f=x/p;
 function fmtP(v){return Number.isInteger(v)?String(v):v.toFixed(1)}
 function renderLog(s){
   const es=[...s.entries].sort((a,b)=>a.t-b.t);const base=es.length?es[0].lv:0;
-  $("logTable").querySelector("tbody").innerHTML=es.map((e,i)=>{let rate="";if(i>0){const q=es[i-1],h=(e.t-q.t)/36e5;rate=h>0?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):"–"}
+  $("logTable").querySelector("tbody").innerHTML=es.map((e,i)=>{let rate="";if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>0?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):"–"}
     return `<tr data-t="${e.t}" style="cursor:default"><td>${fmtT(e.t)}</td><td>${e.lv}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td><td><button class="small danger" data-del="${e.t}" aria-label="Delete entry">✕</button></td></tr>`}).reverse().join("")
     ||`<tr><td colspan="6" class="name muted">No entries yet. Add your current level and EXP %.</td></tr>`;
   $("setupNote").textContent=s.job&&s.job!==state.job?`This session was logged as ${s.job}. Switch Job to ${s.job} to see its pace and walking time.`:"";
@@ -656,13 +666,15 @@ function guessLevel(s,t,lv,p){const prev=[...s.entries].filter(e=>e.t<t).sort((a
 $("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m);
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
   $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
-  const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=num(C().jobLv)+1}s.entries.push(ent);if(!s.job)s.job=state.job;
+  const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=num(C().jobLv)+1}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
   if(C().baseLv!==lvG){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm();$("fPct").focus()});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
   const parsed=$("pasteBox").value.split(/\n/).map(line=>{const m=line.match(/(\d{1,2}):?(\d{2})[^\d\n]+?(\d+(?:\.\d+)?)\s*%?(?:[^\d\n]+?(\d+(?:\.\d+)?)\s*%?)?/);if(!m||+m[1]>23||+m[2]>59)return null;return {t:entryTime(+m[1],+m[2]),pct:+m[3],jpct:m[4]!=null?+m[4]:null}}).filter(Boolean).sort((a,b)=>a.t-b.t);
   parsed.forEach(x=>{const g=guessLevel(s,x.t,lv,x.pct);if(g!==lv){ups++;lv=g}const ent={t:x.t,lv,pct:x.pct};if(x.jpct!=null)ent.jpct=x.jpct;s.entries=s.entries.filter(e=>e.t!==x.t);s.entries.push(ent);n++});
   $("pasteMsg").textContent=n?`Added ${n} entr${n===1?"y":"ies"}${ups?` with ${ups} level-up${ups>1?"s":""} (now Lv ${lv})`:` at Lv ${lv}`}.`:"No lines matched. Use the format 15:05 17.9% (job % optional)";
-  if(n){if(!s.job)s.job=state.job;$("pasteBox").value="";save();renderAll()}});
+  if(n){autoResume(s,parsed[parsed.length-1].t);if(!s.job)s.job=state.job;$("pasteBox").value="";save();renderAll()}});
+$("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.pauses)s.pauses=[];
+  if(p){p.to=Date.now();save();renderAll();showTab("track");$("fPct").focus()}else{s.pauses.push({from:Date.now()});save();renderAll()}});
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
 const openSession=id=>{state.current=id;state.calcMobId=null;const s=cur();if(s.job&&JOBS[s.job]&&s.job!==state.job){state.job=s.job;syncChar()}save();renderAll();resetForm()};
 $("sessionSel").addEventListener("change",e=>openSession(e.target.value));
