@@ -447,7 +447,7 @@ function renderTracker(){
   else{$("tZeny").textContent="–";$("tZenyS").textContent="Needs a monster and 2+ entries"}
   const j=jobRate(s);
   if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
-  renderChart(s);renderLog(s);renderCompare();renderGoal(s,st);
+  renderChart(s);renderLog(s);renderCompare();renderGoal(s,st);renderJobGoal(s);
 }
 function renderChart(s){
   const svg=$("chart"),es=[...s.entries].sort((a,b)=>a.t-b.t);const W=800,H=340,pl=52,pr=18,pt=16,pb=34;
@@ -494,6 +494,28 @@ function renderGoal(s,st){
    <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(st.avgRaw)} EXP/hr</div></div>
    <div class="tile now"><div class="k">Reach Lv ${goal}</div><div class="v mono">${new Date(Date.now()+hrs*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div><div class="s">farming non-stop from now</div></div>`;
   renderGoalChart(curLv,st.last.pct,goal,st.avgRaw);
+}
+// job level goal: job EXP still needed at the job EXP/hr you farm at your current job level
+function renderJobGoal(s){
+  const tiles=$("goalJobTiles"),wrap=$("goalJobWrap");wrap.hidden=true;
+  const t=JOB_EXP[jobTier()],cap=t.length,jl=num(C().jobLv),j=jobRate(s),need0=jobNeed();
+  const msg=m=>{tiles.innerHTML=`<div class="note">${m}</div>`};
+  if(!jl)return msg("Set your job level on the Character tab to see job level estimates.");
+  if(!j||j.rate<=0)return msg("Log Job EXP % on 2+ entries to see job level estimates.");
+  if(!need0)return msg(`Job Lv ${jl} is outside the ${state.job} job EXP table (up to Job Lv ${cap}).`);
+  const goal=num(state.goalJobLv)||(jl<cap?cap:jl+1);
+  if(goal<=jl)return msg(`You're already Job Lv ${jl}. Pick a higher job level.`);
+  if(goal>cap)return msg(`${state.job} job levels go up to ${cap}, so pick a goal up to Job Lv ${cap}.`);
+  const rate=j.rate/100*need0,at=x=>new Date(Date.now()+x*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),dur=x=>fmtDur(x).split("\n")[0];
+  let need=need0*(1-j.last/100),rows=[];rows.push({lv:jl+1,each:need/rate,h:need/rate});
+  for(let l=jl+1;l<goal;l++){need+=t[l-1];const each=t[l-1]/rate;rows.push({lv:l+1,each,h:rows[rows.length-1].h+each})}
+  const hrs=need/rate;
+  tiles.innerHTML=`<div class="tile"><div class="k">Job EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Job Lv ${jl} ${j.last.toFixed(2)}% to Job Lv ${goal}</div></div>
+   <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(rate)} job EXP/hr</div></div>
+   <div class="tile now"><div class="k">Reach Job Lv ${goal}</div><div class="v mono">${at(hrs)}</div><div class="s">farming non-stop from now</div></div>`;
+  const tb=$("goalJobTable");wrap.hidden=false;
+  tb.tHead.innerHTML=`<tr><th>Job level</th><th>Time for this level</th><th>Total farming</th><th>Reached, farming non-stop</th></tr>`;
+  tb.tBodies[0].innerHTML=rows.map(q=>`<tr><td class="name">Job Lv ${q.lv}</td><td>${dur(q.each)}</td><td>${dur(q.h)}</td><td>${at(q.h)}</td></tr>`).join("");
 }
 // projected level over farming hours at the average rate: one straight run per level, flatter as levels need more EXP.
 // Each level-up gets the date you would reach it farming non-stop from now.
@@ -736,6 +758,8 @@ $("mapTable").querySelector("tbody").addEventListener("click",e=>{const sm=e.tar
 // goal
 $("goalLv").value=state.goalLv||"";$("walkOverride").value=state.walkOverride||"";
 $("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;save();renderTracker()});
+$("goalJobLv").value=state.goalJobLv||"";
+$("goalJobLv").addEventListener("input",e=>{state.goalJobLv=num(e.target.value)||null;save();renderTracker()});
 $("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
 // backup
 const bkText=()=>JSON.stringify(state);
