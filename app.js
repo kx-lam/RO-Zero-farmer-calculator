@@ -820,6 +820,20 @@ $("bkCopy").addEventListener("click",()=>bkCopyText(bkText(),"Backup"));
 $("bkCopyAll").addEventListener("click",()=>bkCopyText(bkAllText(),`Backup of all ${accts.list.length} accounts`));
 $("bkShow").addEventListener("click",()=>{$("bkText").value=bkText();$("bkText").select();$("bkMsg").textContent="Backup text is in the box."});
 $("bkShowAll").addEventListener("click",()=>{$("bkText").value=bkAllText();$("bkText").select();$("bkMsg").textContent="Backup text for all accounts is in the box."});
+// share link: the current account, deflated and base64url-encoded into the URL hash (#s=…), which never reaches the server
+const b64u={enc:b=>{let s="";for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")},
+  dec:t=>Uint8Array.from(atob(t.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0))};
+const packShare=async t=>b64u.enc(new Uint8Array(await new Response(new Blob([t]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer()));
+const unpackShare=async t=>new Response(new Blob([b64u.dec(t)]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+$("bkLink").addEventListener("click",async()=>{let url;try{save();url=location.origin+location.pathname+"#s="+await packShare(bkText())}catch(err){$("bkMsg").textContent="This browser can't make share links. Use Copy backup instead.";return}
+  bkCopyText(url,`Share link (${url.length.toLocaleString()} characters)`)});
+// opening a share link loads it into the backup box; nothing is replaced until Restore is clicked twice
+async function loadShareLink(){const m=location.hash.match(/^#s=([\w-]+)/);if(!m)return;
+  try{history.replaceState(null,"",location.pathname+location.search)}catch(err){}
+  showTab("acct");
+  try{const t=await unpackShare(m[1]),data=JSON.parse(t);if(!data||!Array.isArray(data.sessions))throw 0;
+    $("bkText").value=t;$("bkMsg").textContent="A shared account is in the box below. Click Restore from text (twice) to replace this account with it."}
+  catch(err){$("bkMsg").textContent="That share link is broken or cut off, so nothing was loaded."}}
 let bkArmed=false;
 // a single-account backup replaces the current account; an all-accounts backup replaces every account
 $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkText").value)}catch(err){$("bkMsg").textContent="That isn't a valid backup. Paste the whole text from Copy backup.";return}
@@ -1161,4 +1175,4 @@ showTab(state.tab||"char");
 })();
 // ---- start ----
 syncClosed();syncChar();renderAll();resetForm();
-
+loadShareLink();addEventListener("hashchange",loadShareLink);
