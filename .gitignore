@@ -1,1 +1,3 @@
 .bak/
+tools/cache/
+tools/__pycache__/

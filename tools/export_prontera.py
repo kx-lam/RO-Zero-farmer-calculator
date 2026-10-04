@@ -1,0 +1,183 @@
+"""Export gear and job data from roz.prontera.info into data/*.js for the build simulator.
+
+    python tools/export_prontera.py            # fetch what isn't cached, then write the data files
+    python tools/export_prontera.py --refresh  # refetch list pages (new items after a patch), keep cached item pages
+
+Pages are fetched one per second and cached in tools/cache/ (gitignored). Delete a cached file to refetch it.
+Writes: data/equipment.js (EQUIP, SETS), data/cards.js (CARDS), data/refine.js (REFINE), data/jobs.js (JOBDATA).
+"""
+import json, os, re, sys, time, urllib.request
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CACHE = os.path.join(ROOT, "tools", "cache")
+SITE = "https://roz.prontera.info"
+UA = "RO-Zero-farmer-calculator data export"
+JOBS = ["Novice", "Swordsman", "Mage", "Archer", "Acolyte", "Merchant", "Thief", "Knight", "Crusader", "Wizard", "Sage",
+        "Hunter", "Bard", "Dancer", "Priest", "Monk", "Blacksmith", "Alchemist", "Assassin", "Rogue"]
+sys.setrecursionlimit(10000)
+
+
+def fetch(path, refresh=False):
+    """Page HTML, from cache when present."""
+    f = os.path.join(CACHE, re.sub(r"[^A-Za-z0-9._-]+", "_", path.strip("/")) + ".html")
+    if os.path.exists(f) and not refresh:
+        return open(f, encoding="utf-8").read()
+    req = urllib.request.Request(SITE + path, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        html = r.read().decode("utf-8")
+    os.makedirs(CACHE, exist_ok=True)
+    open(f, "w", encoding="utf-8").write(html)
+    time.sleep(1)
+    return html
+
+
+def nuxt(html):
+    """Decode the page's __NUXT_DATA__ payload (a flat array where values point at other indexes)."""
+    m = re.search(r'<script[^>]*id="__NUXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
+    A, memo = json.loads(m.group(1)), {}
+
+    def d(i):
+        if not isinstance(i, int):
+            return i
+        if i < 0:
+            return None
+        if i in memo:
+            return memo[i]
+        v = A[i]
+        if isinstance(v, list):
+            if v and v[0] in ("Reactive", "ShallowReactive", "Ref", "ShallowRef", "EmptyRef", "EmptyShallowRef"):
+                memo[i] = d(v[1]) if len(v) > 1 else None
+                return memo[i]
+            r = memo[i] = []
+            r.extend(d(x) for x in (v[1:] if v and v[0] == "Set" else v))
+            return r
+        if isinstance(v, dict):
+            r = memo[i] = {}
+            for k, x in v.items():
+                r[k] = d(x)
+            return r
+        return v
+    return d(0)["data"]
+
+
+def groups(gs):
+    """Bonus groups -> compact dicts. GvG/siege-only groups are dropped; procs/autocasts keep only their text."""
+    out = []
+    for g in gs or []:
+        if g.get("siege_only"):
+            continue
+        o = {}
+        for k, short in (("refine_min", "r"), ("refine_sum_min", "rs"), ("min_base_level", "lv")):
+            if g.get(k) is not None:
+                o[short] = g[k]
+        if g.get("condition_class_slugs"):
+            o["cls"] = g["condition_class_slugs"]
+        if g.get("proc_trigger") or g.get("autocast_skill") or g.get("inflict_status") or g.get("proc_chance_percent"):
+            o["proc"] = g.get("effect_text") or ""
+        name = lambda v: v.get("name") if isinstance(v, dict) else v  # skills come as {slug, name}
+        b = [[x["bonus_type"], x.get("target_kind"), x.get("target"), x["value"], x.get("per_refine_levels"),
+              name(x.get("target_skill")), name(x.get("scaling_skill"))] for x in g.get("bonuses") or []
+             if x.get("target_kind") != "player"]  # PvP-only lines don't matter for farming
+        for x in b:  # trim trailing nulls
+            while x and x[-1] is None:
+                x.pop()
+        if b:
+            o["b"] = b
+        pvp_only = bool(g.get("bonuses")) and not b  # every line targeted players
+        if g.get("effect_text") and not b and not pvp_only:
+            o["text"] = g["effect_text"]
+        if o.get("b") or o.get("proc") or o.get("text"):
+            out.append(o)
+    return out
+
+
+def item_row(slug):
+    d = nuxt(fetch(f"/items/{slug}"))
+    k = next(k for k in d if k.startswith("item-") and k.endswith("-en"))
+    page = d[k]
+    it = page["item"]
+    row = {"id": it["item_id_ingame"], "slug": slug, "name": it["name"], "slot": it.get("equip_slots") or ([it["equip_slot"]] if it.get("equip_slot") else None),
+           "type": it.get("weapon_type"), "el": it.get("element"), "slots": it.get("slots") or 0,
+           "lv": it.get("min_level") or 0, "wlv": it.get("weapon_level") or 0, "refine": it.get("refine_schedule"),
+           "atk": it.get("physical_attack") or 0, "matk": it.get("magic_attack") or 0,
+           "def": it.get("physical_defense") or 0, "mdef": it.get("magic_defense") or 0,
+           "jobs": [c.get("slug") or c.get("name") if isinstance(c, dict) else c for c in page.get("required_classes") or []],
+           "g": groups(page.get("bonus_groups"))}
+    # flat stat columns (e.g. "MHP +15", a card's "ATK +20") often have no bonus line; add them unless a line already covers that stat
+    cols = {"str": "str", "agi": "agi", "vit": "vit", "int": "int", "dex": "dex", "luck": "luk", "hit": "hit", "flee": "flee", "crit": "crit", "hp": "hp", "sp": "sp"}
+    if page.get("section") == "cards":
+        cols.update({"physical_attack": "atk", "magic_attack": "matk", "physical_defense": "def", "magic_defense": "mdef"})
+        for k in ("atk", "matk", "def", "mdef"):
+            row.pop(k, None)
+    have = {b[0] for g in row["g"] for b in g.get("b", [])}
+    flat = [[t, None, None, it[c]] for c, t in cols.items() if it.get(c) and t not in have]
+    if flat:
+        row["g"].insert(0, {"b": flat})
+    sets = [{"slug": s["slug"], "name": s["name"], "pieces": s["piece_slugs"], "g": groups(s.get("bonus_groups"))}
+            for s in page.get("sets") or []]
+    return {k: v for k, v in row.items() if v not in (None, [], "")}, sets
+
+
+def write(name, header, body):
+    with open(os.path.join(ROOT, "data", name), "w", encoding="utf-8", newline="\n") as f:
+        f.write(header.rstrip() + "\n" + body + "\n")
+
+
+def js(v):
+    return json.dumps(v, ensure_ascii=False, separators=(",", ":"))
+
+
+def main():
+    refresh = "--refresh" in sys.argv
+    first = nuxt(fetch("/equipment", refresh))
+    lst = next(v for k, v in first.items() if k.startswith("item-list"))
+    slugs = [x["slug"] for x in lst["data"]]
+    for p in range(2, lst["meta"]["pageCount"] + 1):
+        d = nuxt(fetch(f"/equipment?page={p}", refresh))
+        slugs += [x["slug"] for x in next(v for k, v in d.items() if k.startswith("item-list"))["data"]]
+    cards = [c["slug"] for c in nuxt(fetch("/cards", refresh))["card-index-en"]["cards"]]
+    print(f"{len(slugs)} equipment, {len(cards)} cards", flush=True)
+
+    equip, card_rows, sets = [], [], {}
+    for i, s in enumerate(slugs + cards, 1):
+        try:
+            row, ss = item_row(s)
+        except Exception as e:
+            print(f"  skip {s}: {e}", flush=True)
+            continue
+        (card_rows if i > len(slugs) else equip).append(row)
+        for x in ss:
+            sets[x["slug"]] = x
+        if i % 100 == 0:
+            print(f"  {i}/{len(slugs) + len(cards)}", flush=True)
+
+    src = "Exported by tools/export_prontera.py from roz.prontera.info"
+    fields = ("// fields: id, slug, name, slot (every slot it takes), type (weapon type), el, slots, lv (required), wlv (weapon level), refine (schedule),\n"
+              "// atk, matk, def, mdef, g: bonus groups {r: min refine, rs: min combined refine, lv: min base level, cls: job slugs,\n"
+              "// proc: text of an effect that isn't a plain stat, b: [[type, target kind, target, value, per N refines, skill, scaling skill]]}")
+    write("equipment.js", f"// Equipment ({src}); GvG-only bonuses are left out.\n{fields}\n// SETS: combos by item slug, same bonus groups.",
+          f"const EQUIP={js(equip)};\nconst SETS={js(list(sets.values()))};")
+    write("cards.js", f"// Cards ({src}); same fields as data/equipment.js.", f"const CARDS={js(card_rows)};")
+
+    rf = nuxt(fetch("/refine", refresh))["refine"]["schedules"]
+    refine = {s["key"]: [[x["bonus_atk"], x["bonus_matk"], x["bonus_def"]] for x in s["steps"]] for s in rf}
+    write("refine.js", f"// Refine bonus totals at +1, +2, ... per schedule: [ATK, MATK, DEF] ({src})", f"const REFINE={js(refine)};")
+
+    jobs = {}
+    for j in JOBS:
+        d = nuxt(fetch(f"/stats/planner?class={j.lower()}"))
+        p = next(v for k, v in d.items() if k.startswith("stat-planner-"))
+        if p["job_class"]["name"].lower() != j.lower():
+            print(f"  {j}: planner returned {p['job_class']['name']}, skipped", flush=True)
+            continue
+        bonus = {}
+        for b in p["job_bonuses"]:
+            bonus.setdefault(b["stat"], []).append(b["job_level"])
+        jobs[j] = {"bonus": bonus, "hp": [x["value"] for x in p["curves"]["base_hp"]], "sp": [x["value"] for x in p["curves"]["base_sp"]]}
+    write("jobs.js", f"// Per job: bonus = job levels that give +1 to each stat; hp / sp = base Max HP / SP at base level 1, 2, ... ({src})",
+          f"const JOBDATA={js(jobs)};")
+    print(f"wrote {len(equip)} equipment, {len(card_rows)} cards, {len(sets)} sets, {len(refine)} refine schedules, {len(jobs)} jobs", flush=True)
+
+
+if __name__ == "__main__":
+    main()
