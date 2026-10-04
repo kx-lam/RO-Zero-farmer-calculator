@@ -302,18 +302,19 @@
       <label>Show<select id="bestN"><option>10</option><option>20</option><option>50</option></select></label>
     </div>
     <div class="scroll"><table id="bestTable"><thead><tr><th>#</th><th data-bk="mp">Map</th><th>Main monsters</th><th data-bk="epm">EXP / min</th><th data-bk="secT">Sec / kill (fight + walk)</th><th data-bk="epk">EXP / kill</th><th data-bk="zph">Zeny / hr</th><th data-bk="hpm">HP lost / min</th><th data-bk="skip">Can't hurt</th><th data-bk="N">Monsters</th><th data-bk="epm">Projected</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Open maps ranked by EXP / min with your current attack, weighted by spawn counts. "Can't hurt" lists monsters your element does 0% to. Projected scales your session's %/hr by each map's EXP / min. Click a row to open it in the map planner.</div>
+    <div class="note">Open maps ranked by EXP / min with your current attack, weighted by spawn counts. "Can't hurt" lists monsters your element does 0% to. Projected scales your session's %/hr by each map's EXP / min. Click a row to open it in the map planner. Maps show their in-game code (in_sphinx5); you can type that, the rozerodb code (sp_d05) or the name. "EXP ?" marks monsters rozerodb has no EXP for yet: they're left out of EXP / min.</div>
     <div class="maps" id="regions"></div>
-    <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_d03, yun_f02"></label>
+    <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_dun03, yuno_fild02"></label>
   </section>
 
   <section class="card" id="mapCard" data-tab="maps">
     <div class="bar"><h2 class="grow">Map planner</h2></div>
     <div class="form" style="grid-template-columns:2fr 1fr">
-      <label>Map<input id="mapInput" list="mapList" placeholder="e.g. gef_d01"></label>
+      <label>Map<input id="mapInput" list="mapList" placeholder="e.g. gef_dun01 or Sphinx F5"></label>
       <label><span>&nbsp;</span><button type="button" id="mapFromMob">Use session monster's map</button></label>
     </div>
     <datalist id="mapList"></datalist>
+    <div class="note" id="mapName"></div>
     <div class="calc" id="mapTiles"></div>
     <div class="scroll"><table id="mapTable"><thead><tr><th>Monster</th><th>Count</th><th>Share</th><th>Lv</th><th>Element</th><th>Size</th><th>Your hit %</th><th>Sec / kill</th><th>Base EXP</th></tr></thead><tbody></tbody></table></div>
   </section>
@@ -377,6 +378,7 @@
 <script src="data/exp.js"></script>
 <script src="data/mobs.js"></script>
 <script src="data/spawn.js"></script>
+<script src="data/maps.js"></script>
 <script src="data/loot.js"></script>
 <script src="data/items.js"></script>
 <script src="data/mstat.js"></script>

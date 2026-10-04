@@ -213,4 +213,30 @@ t("monster table filters", () => {
   assert.ok(m("<10 or >100", 150) && !m("<10 or >100", 50));
 });
 
+t("map names: in-game codes, rozerodb codes and unique names all find the same map", () => {
+  assert.equal(run(`mapCode("sp_d05")`), "in_sphinx5");
+  assert.equal(run(`mapName("sp_d05")`), "Sphinx F5");
+  for (const s of ["in_sphinx5", "SP_D05", "sp_dun05", " Sphinx F5 "]) assert.equal(run(`mapKey(${JSON.stringify(s)})`), "sp_d05");
+  assert.equal(run(`mapKey("mjo_dun03")`), "mjo_d03");
+  assert.equal(run(`mapKey("Prontera Field")`), "prontera field");      // a name many maps share stays as typed
+  assert.equal(run(`mapCode("nowhere")`), "nowhere");
+  run(`state.regions={};state.closed=["in_sphinx5"]`);                  // a map closed by its in-game code
+  assert.ok(run(`isClosed("sp_d05")`) && !run(`isClosed("sp_d04")`));
+  run(`state.closed=[]`);
+});
+
+t("monsters with no EXP in rozerodb are listed but left out of EXP averages", () => {
+  const myst = run(`MOBS.find(m=>m.name==="Myst")`);
+  assert.ok(myst.expUnknown && myst.exp === 0);
+  assert.equal(run(`fmtExp(MOBS.find(m=>m.name==="Myst"))`), "?");
+  assert.ok(run(`MAPMOBS.mjo_d03.some(x=>x.m.name==="Myst"&&x.n===39)`));
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  const r = run(`mapStats0("mjo_d03",2)`);
+  assert.equal([...r.unkNames].sort().join(), "Cramp,Giearth,Myst");
+  // only the monsters with known EXP make up EXP / kill
+  const known = run(`MAPMOBS.mjo_d03.filter(x=>!x.m.boss&&!x.m.expUnknown).map(x=>x.m.name)`);
+  assert.ok(known.length && !known.includes("Myst"));
+  assert.ok(r.epk > 0 && isFinite(r.epm));
+});
+
 console.log(`${n} tests passed`);

@@ -41,7 +41,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
 }
 function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?m.exp*expRace(m)*expMul():0;
   const kills=e=>per>0?fmtN(Math.ceil(e/per)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";
-  $("refExpNote").textContent=m?`${fmtN(per)} base EXP per ${m.name}`:"Pick a monster to see kills per level";
+  $("refExpNote").textContent=m?(m.expUnknown?`rozerodb has no EXP for ${m.name} yet`:`${fmtN(per)} base EXP per ${m.name}`):"Pick a monster to see kills per level";
   let tot=0;const base=Object.keys(EXP_TABLE).map(Number).sort((a,b)=>a-b).map(l=>{const e=EXP_TABLE[l],row=`<tr${l===blv?' class="sel"':""}><td>${l}</td><td>${fmtN(e)}</td><td>${fmtN(tot)}</td>${m?`<td>${kills(e)}</td>`:""}</tr>`;tot+=e;return row}).join("");
   $("refBaseTable").tHead.innerHTML=`<tr><th>Lv</th><th>EXP to next</th><th>Total</th>${kh}</tr>`;$("refBaseTable").tBodies[0].innerHTML=base;
   const tier=Object.hasOwn(JOB_EXP,state.refTier)?state.refTier:jobTier(),t=JOB_EXP[tier],mine=tier===jobTier();tot=0;
