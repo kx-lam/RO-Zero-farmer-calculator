@@ -79,7 +79,7 @@ const spRegen8=()=>num(C().spRegen)>0?num(C().spRegen):1+Math.floor(num(cf("maxS
 // gear "SP consumption +x%" (build mode) scales the SP each use costs
 const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100)};
 const spNeedPerSec=()=>isSF()?sgUpkeep()+sgDefSP()+hsFullSP()*hsSustain():num(C().a.sp)*spCostMul()/useSec();
-const regenPerSec=()=>spRegen8()/8;
+const regenPerSec=()=>REGEN_OFF?0:spRegen8()/8;
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&num(C().itemSp)>0?Math.max(0,spNeedPerSec()-regenPerSec())/num(C().itemSp):0;
 const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&num(C().itemSp)>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
@@ -247,18 +247,38 @@ function jobRate(s){
   let gain=0;for(let i=1;i<es.length;i++){let d=es[i].jpct-es[i-1].jpct;if(d<0)d+=100;gain+=d}
   const h=activeH(s,es[0].t,es[es.length-1].t);return h>0?{rate:gain/h,last:es[es.length-1].jpct,h}:null;
 }
+// ---- weight: at 70% of Max Weight HP and SP stop regenerating, at 90% you can't attack or use skills (official guide) ----
+// a trip ends at your sell point (70% keeps regen, 90% carries more but fights 70–90% with no regen); then you go to town and back
+const W_NOREGEN=0.7,W_STOP=0.9;
+let REGEN_OFF=false;
+const withRegenOff=fn=>{const k=REGEN_OFF;REGEN_OFF=true;try{return fn()}finally{REGEN_OFF=k}};
+// weight picked up per kill: each drop's weight (data/weights.js) × its chance, with your drop bonus
+const weightKill=m=>(m.drops||[]).reduce((a,[id,ch])=>a+(ITEMW[id]||0)*Math.min(100,ch*dropMul())/100,0);
+const wOn=()=>num(C().maxW)>0;
+const wRoom=lim=>Math.max(0,num(C().maxW)*lim-num(C().curW));
+const townSec=()=>Math.max(0,num(C().townMin,3))*60;
+// selling at 90% only pays when you can keep fighting with no regen (no SP needed, or SP items on)
+function tripParts(m,tot,w){const rA=wRoom(W_NOREGEN);let rB=0,totB=tot;
+  if(num(C().sellAt)===90){totB=withRegenOff(()=>fightSec(m))+w;if(isFinite(totB))rB=Math.max(0,wRoom(W_STOP)-rA)}return {rA,rB,totB}}
+// seconds per kill with selling trips: kills up to 70% at your normal pace, then 70–90% at the no-regen pace, plus the town trip spread
+// over the trip's kills. It's linear in weight per kill, so the spawn-weighted map averages still add up
+function tripTot(m,tot,w){if(!wOn()||!isFinite(tot))return tot;const wk=weightKill(m);if(!(wk>0))return tot;
+  const {rA,rB,totB}=tripParts(m,tot,w);if(rA+rB<=0)return Infinity;return (rA*tot+(rB?rB*totB:0))/(rA+rB)+townSec()*wk/(rA+rB)}
+// one trip on this monster alone: kills, minutes farming, and whether the 90% sell point fell back to 70%
+function tripInfo(m,w){const k=SG_MOB;SG_MOB=m;try{if(!wOn())return null;const wk=weightKill(m),tot=fightSec(m)+w;if(!(wk>0)||!isFinite(tot))return {wk,kills:Infinity};
+  const {rA,rB,totB}=tripParts(m,tot,w);return {wk,kills:(rA+rB)/wk,min:(rA*tot+(rB?rB*totB:0))/wk/60,fell:num(C().sellAt)===90&&rB<=0&&wRoom(W_STOP)>rA}}finally{SG_MOB=k}}
 function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally{SG_MOB=kSG}}
 function mobRow00(m,w){
-  const sec=fightSec(m),tot=sec+w,epk=m.exp*expRace(m)*expMul();
+  const sec=fightSec(m),tot=tripTot(m,sec+w,w),epk=m.exp*expRace(m)*expMul();
   return {sec,tot,epm:isFinite(tot)&&tot>0?epk/tot*60:0,epk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk:zenyKill(m)-skillZeny(m)};
 }
 // map averages, weighted by spawn counts; monsters you can't hurt are skipped (you walk past them)
 function mapStats0(mp,w){
-  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,z=0,hp=0,hpN=0;const skip=[],unk=[];
+  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,fight=0,z=0,hp=0,hpN=0;const skip=[],unk=[];
   list.forEach(({m,n:c})=>{N+=c;if(m.expUnknown){unk.push(m.name);return}const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
-    n+=c;exp+=c*r.epk;time+=c*r.tot;z+=c*r.zk;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
+    n+=c;exp+=c*r.epk;time+=c*r.tot;fight+=c*r.sec;z+=c*r.zk;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
   if(!n)return null;
-  return {mp,N,epm:exp/time*60,secT:time/n,sec:time/n-w,walk:w,epk:exp/n,zph:z/time*3600,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,unk:unk.length,unkNames:unk};
+  return {mp,N,epm:exp/time*60,secT:time/n,sec:fight/n,walk:w,sell:time/n-fight/n-w,epk:exp/n,zph:z/time*3600,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,unk:unk.length,unkNames:unk};
 }
 // best converter per monster (by EXP/min) and one converter per map
 function mobRow(m,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mobRow0(m,w));r.el2=el;if(!best||r.epm>best.epm)best=r});return best}

@@ -212,6 +212,12 @@
       <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
       <span id="itemInfo"></span>
     </div>
+    <div class="bar note"><span>Weight:</span>
+      <label class="bar" style="flex-direction:row;gap:4px">now <input id="curW" type="number" min="0" style="width:72px"> of max <input id="maxW" type="number" min="0" placeholder="off" style="width:72px"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">go sell at <select id="sellAt" style="width:auto"><option value="70">70%</option><option value="90">90%</option></select></label>
+      <label class="bar" style="flex-direction:row;gap:4px">town and back <input id="townMin" type="number" step="0.5" min="0" placeholder="3" style="width:64px"> min</label>
+      <span class="muted">at 70% HP and SP stop regenerating; at 90% you can't attack or use skills</span>
+    </div>
     <div class="bar note"><span>Taking damage:</span>
       <label class="bar" style="flex-direction:row;gap:4px">HP back per minute <input id="hpRegen" type="number" style="width:80px"> <span class="muted">(regen, cards, heals)</span></label>
     </div>
@@ -407,6 +413,7 @@
 <script src="data/maps.js"></script>
 <script src="data/loot.js"></script>
 <script src="data/items.js"></script>
+<script src="data/weights.js"></script>
 <script src="data/mstat.js"></script>
 <script src="data/elem.js"></script>
 <script src="data/sizes.js"></script>
