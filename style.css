@@ -128,7 +128,9 @@ details.sub{padding:12px 14px;gap:8px;background:var(--bg)}
 .tabs button[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
 [hidden]{display:none!important}
 /* first visit: only the title and the job picker until a job is chosen */
-body.nojob .wrap>:not(header):not(#pickJob),body.nojob header>.bar{display:none!important}
+body.nojob .wrap>:not(header):not(#pickJob),body.nojob header>.bar:not(.acct){display:none!important}
+/* before a job is picked, the Backup card can still be opened to restore a save */
+body.nojob.nojobbk .wrap>section[data-tab="data"]:not(#pickJob){display:block!important}
 /* long monster list: scroll inside the card with the header and filters pinned */
 .scroll.tall{max-height:70vh;overflow:auto}
 .scroll.tall thead{position:sticky;top:0;z-index:1;background:var(--surface)}

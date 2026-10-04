@@ -13,7 +13,15 @@
 <div class="wrap">
   <header>
     <h1 id="title">Rozero farm planner</h1><div class="note" id="subtitle"></div><div class="note" id="pauseNote" hidden></div>
-    <div class="bar" style="margin-top:8px">
+    <div class="bar acct" style="margin-top:8px">
+      <span class="note">Account</span>
+      <select id="acctSel" class="grow" aria-label="Account"></select>
+      <input id="acctName" class="grow" aria-label="Account name" hidden>
+      <button id="renameAcct" style="min-width:5.5em">Rename</button>
+      <button id="newAcct">New account</button>
+      <button id="delAcct" class="danger" style="min-width:9em" title="Delete this account and all its data">Delete</button>
+    </div>
+    <div class="bar" style="margin-top:6px">
       <select id="sessionSel" class="grow" aria-label="Session"></select>
       <input id="sessName" class="grow" aria-label="Session name" hidden>
       <button id="pauseBtn" style="min-width:6.5em" title="Stop the clock while you sell, change maps or do something else">Pause</button>
@@ -26,6 +34,7 @@
     <h2>Pick your job to start</h2>
     <div class="note">The calculator, monster list and map rankings all depend on your job. You can switch any time on the Character tab.</div>
     <label>Job<select id="pickJobSel" style="max-width:320px"></select></label>
+    <div class="note" style="margin-top:8px">Moving from another browser? <button type="button" class="small" id="pickBackup">Restore a backup</button></div>
   </section>
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" data-tabbtn="char">Character</button>
@@ -306,8 +315,8 @@
   </section>
 
   <section class="card" data-tab="data">
-    <div class="bar"><h2 class="grow">Backup</h2><span class="note">Your data lives only in this browser</span></div>
-    <div class="bar"><button type="button" id="bkCopy">Copy backup</button><button type="button" id="bkShow">Show backup text</button><button type="button" id="bkRestore" class="danger">Restore from text</button><span class="note" id="bkMsg"></span></div>
+    <div class="bar"><h2 class="grow">Backup</h2><span class="note">Your data lives only in this browser. Copy backup covers the current account; Copy all accounts covers every account.</span></div>
+    <div class="bar"><button type="button" id="bkCopy">Copy backup</button><button type="button" id="bkShow">Show backup text</button><button type="button" id="bkCopyAll">Copy all accounts</button><button type="button" id="bkShowAll">Show all accounts</button><button type="button" id="bkRestore" class="danger">Restore from text</button><span class="note" id="bkMsg"></span></div>
     <textarea id="bkText" rows="3" placeholder="Paste a backup here, then click Restore from text" style="font:inherit;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical;width:100%"></textarea>
     <div class="note">Formulas follow <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info/mechanics</a>. Physical: (weapon ATK × (1 + STR/200, or DEX/200 for bows, instruments and whips) × size × element + (other gear ATK + 2 × status ATK) × Neutral element) × skill % × your bonuses × (4000+DEF)/(4000+10·DEF) − (monster Lv + VIT)/2, times hit chance (100 + HIT − monster "100% hit"). Magic: (MATK × skill % × (1000+MDEF)/(1000+10·MDEF) − (monster Lv + INT)/4) × element, always hits. Your dodge: 95 + FLEE − monster "95% flee". Cast time × (1 − √((2·DEX + INT)/530)). Status ATK/MATK/HIT/FLEE/soft DEF from stats use the verified formulas on that page. Basic attacks and skills were checked against the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a> (Zero mode) and match its average damage. Weapon damage variance is left out. Area skills split their time across the monsters they hit. EXP tables cover base Lv 1–70 and job levels from the official guide.</div>
   </section>

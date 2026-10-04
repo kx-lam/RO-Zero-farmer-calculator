@@ -107,7 +107,14 @@ const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="
 const $=id=>document.getElementById(id);
 const ROOTQ=sel=>[...document.querySelectorAll(sel)];
 const KEY="rozero-farm-planner-v1";
-const store={get(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}},set(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}};
+// accounts: each one keeps its own full save; the first uses the original key so older saves carry over
+const ACCT_KEY="rozero-farm-planner-accounts";
+const accts=(()=>{let a=null;try{a=JSON.parse(localStorage.getItem(ACCT_KEY))}catch(e){}
+  if(!a||!Array.isArray(a.list)||!a.list.length)a={list:[{id:"a0",name:"Account 1"}],active:"a0"};
+  if(!a.list.some(x=>x.id===a.active))a.active=a.list[0].id;return a})();
+const saveAccts=()=>{try{localStorage.setItem(ACCT_KEY,JSON.stringify(accts))}catch(e){}};
+const acctKey=id=>id==="a0"?KEY:KEY+":"+id;
+const store={get(){try{return JSON.parse(localStorage.getItem(acctKey(accts.active)))}catch(e){return null}},set(v){try{localStorage.setItem(acctKey(accts.active),JSON.stringify(v))}catch(e){}}};
 let state=store.get()||{};
 if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",job:"",mobIds:[],entries:[]}];
 // sessions hold a list of monsters (one map, plus the aggressive ones you end up killing); older saves had a single mobId
@@ -692,6 +699,19 @@ $("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.p
   if(p){p.to=Date.now();save();renderAll();showTab("track");$("fPct").focus()}else{s.pauses.push({from:Date.now()});save();renderAll()}});
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
 const openSession=id=>{state.current=id;state.calcMobId=null;const s=cur();if(s.job&&JOBS[s.job]&&s.job!==state.job){state.job=s.job;syncChar()}save();renderAll();resetForm()};
+// accounts: switching saves this one and reloads the page with the other one's data
+function renderAccts(){$("acctSel").innerHTML=accts.list.map(a=>`<option value="${a.id}" ${a.id===accts.active?"selected":""}>${esc(a.name)}</option>`).join("");$("delAcct").disabled=accts.list.length<2}
+const switchAcct=id=>{save();accts.active=id;saveAccts();location.reload()};
+$("acctSel").addEventListener("change",e=>switchAcct(e.target.value));
+$("newAcct").addEventListener("click",()=>{const id="a"+Date.now();let n=accts.list.length+1;while(accts.list.some(a=>a.name==="Account "+n))n++;accts.list.push({id,name:"Account "+n});switchAcct(id)});
+const endAcctRename=keep=>{const i=$("acctName");if(i.hidden)return;if(keep){const v=i.value.trim(),a=accts.list.find(x=>x.id===accts.active);if(v&&a){a.name=v;saveAccts()}}i.hidden=true;$("acctSel").hidden=false;$("renameAcct").textContent="Rename";renderAccts()};
+$("renameAcct").addEventListener("click",()=>{const i=$("acctName");if(!i.hidden){endAcctRename(true);return}i.value=accts.list.find(x=>x.id===accts.active).name;i.hidden=false;$("acctSel").hidden=true;$("renameAcct").textContent="Save";i.focus();i.select()});
+$("acctName").addEventListener("keydown",e=>{if(e.key==="Enter")endAcctRename(true);else if(e.key==="Escape")endAcctRename(false)});
+$("acctName").addEventListener("blur",()=>setTimeout(()=>endAcctRename(true),150));
+let acctDelArmed=false;
+$("delAcct").addEventListener("click",()=>{if(accts.list.length<2)return;if(!acctDelArmed){acctDelArmed=true;$("delAcct").textContent="Confirm delete";setTimeout(()=>{acctDelArmed=false;$("delAcct").textContent="Delete"},3000);return}
+  try{localStorage.removeItem(acctKey(accts.active))}catch(e){}accts.list=accts.list.filter(a=>a.id!==accts.active);accts.active=accts.list[0].id;saveAccts();location.reload()});
+renderAccts();
 $("sessionSel").addEventListener("change",e=>openSession(e.target.value));
 // rename: swap the session picker for a text box; Enter or leaving the box saves, Esc cancels
 // renameId pins the session being renamed, so a save that lands after a session switch still renames the right one
@@ -739,14 +759,26 @@ $("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;
 $("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
 // backup
 const bkText=()=>JSON.stringify(state);
-$("bkCopy").addEventListener("click",()=>{const t=bkText();const fb=()=>{$("bkText").value=t;$("bkText").select();$("bkMsg").textContent="Couldn't copy automatically, so the backup is selected in the box below."};
-  try{navigator.clipboard.writeText(t).then(()=>{$("bkMsg").textContent="Backup copied. Paste it somewhere safe."},fb)}catch(err){fb()}});
+// combined backup: every account's save plus the account list
+const bkAllText=()=>{save();return JSON.stringify({allAccounts:1,active:accts.active,accounts:accts.list.map(a=>{let data=null;try{data=JSON.parse(localStorage.getItem(acctKey(a.id)))}catch(e){}return {id:a.id,name:a.name,data}})})};
+const bkCopyText=(t,what)=>{const fb=()=>{$("bkText").value=t;$("bkText").select();$("bkMsg").textContent="Couldn't copy automatically, so the backup is selected in the box below."};
+  try{navigator.clipboard.writeText(t).then(()=>{$("bkMsg").textContent=`${what} copied. Paste it somewhere safe.`},fb)}catch(err){fb()}};
+$("bkCopy").addEventListener("click",()=>bkCopyText(bkText(),"Backup"));
+$("bkCopyAll").addEventListener("click",()=>bkCopyText(bkAllText(),`Backup of all ${accts.list.length} accounts`));
 $("bkShow").addEventListener("click",()=>{$("bkText").value=bkText();$("bkText").select();$("bkMsg").textContent="Backup text is in the box."});
+$("bkShowAll").addEventListener("click",()=>{$("bkText").value=bkAllText();$("bkText").select();$("bkMsg").textContent="Backup text for all accounts is in the box."});
 let bkArmed=false;
+// a single-account backup replaces the current account; an all-accounts backup replaces every account
 $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkText").value)}catch(err){$("bkMsg").textContent="That isn't a valid backup. Paste the whole text from Copy backup.";return}
-  if(!data||!Array.isArray(data.sessions)){$("bkMsg").textContent="That backup has no sessions in it.";return}
-  if(!bkArmed){bkArmed=true;$("bkRestore").textContent="Click again to replace everything";setTimeout(()=>{bkArmed=false;$("bkRestore").textContent="Restore from text"},4000);return}
-  bkArmed=false;state=data;save();$("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
+  const all=data&&data.allAccounts&&Array.isArray(data.accounts);
+  if(all){if(!data.accounts.length||data.accounts.some(a=>!a||typeof a.id!=="string"||!a.id)){$("bkMsg").textContent="That backup has no accounts in it.";return}}
+  else if(!data||!Array.isArray(data.sessions)){$("bkMsg").textContent="That backup has no sessions in it.";return}
+  if(!bkArmed){bkArmed=true;$("bkRestore").textContent=all?`Click again to replace all accounts (${data.accounts.length} in backup)`:"Click again to replace this account";setTimeout(()=>{bkArmed=false;$("bkRestore").textContent="Restore from text"},4000);return}
+  bkArmed=false;
+  if(all){try{accts.list.forEach(a=>localStorage.removeItem(acctKey(a.id)));data.accounts.forEach(a=>{if(a.data)localStorage.setItem(acctKey(a.id),JSON.stringify(a.data))})}catch(err){$("bkMsg").textContent="Couldn't write the backup to this browser's storage.";return}
+    accts.list=data.accounts.map((a,i)=>({id:a.id,name:String(a.name||"Account "+(i+1))}));accts.active=accts.list.some(a=>a.id===data.active)?data.active:accts.list[0].id;saveAccts()}
+  else{state=data;save()}
+  $("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
 // ---- show / hide table columns (saved per table) ----
 (function setupColPicks(){
   const IDS=["cmpTable","mobTable","bestTable","mapTable"];
@@ -1010,5 +1042,6 @@ const startApp=()=>{document.body.classList.remove("nojob");syncClosed();syncCha
 if(state.job)startApp();
 else{document.body.classList.add("nojob");$("pickJob").hidden=false;
   $("pickJobSel").innerHTML='<option value="" selected disabled>Choose a job…</option>'+$("job").innerHTML;
-  $("pickJobSel").addEventListener("change",e=>{state.job=e.target.value;const s=cur();if(!s.job)s.job=state.job;C();save();$("pickJob").hidden=true;startApp()})}
+  $("pickBackup").addEventListener("click",()=>{document.body.classList.add("nojobbk");showTab("data");$("bkText").focus()});
+  $("pickJobSel").addEventListener("change",e=>{state.job=e.target.value;const s=cur();if(!s.job)s.job=state.job;C();save();$("pickJob").hidden=true;document.body.classList.remove("nojobbk");showTab("char");startApp()})}
 
