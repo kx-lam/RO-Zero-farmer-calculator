@@ -53,6 +53,7 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 
 - Monsters, spawns, drops, NPC prices and skills: [rozerodb.com](https://rozerodb.com)
 - Spawn, drop and item name cross-check, in-game map codes and names: [ragnarokzero.net](https://ragnarokzero.net/database/maps)
+- Monster race and HP cross-check: [einh-guild.de](https://einh-guild.de), [midgardhub.com](https://midgardhub.com/database/monsters)
 - Formulas: [roz.prontera.info/mechanics](https://roz.prontera.info/mechanics), [iRO Wiki](https://irowiki.org/wiki/Stats)
 - Zero skill data, element table and ASPD table: [Landgris ROCalculator](https://landgris.github.io/ROCalculator/?zero)
 - Size table and EXP tables: [official game guide](https://roz.mygnjoy.com/en/intro/guide/12)
