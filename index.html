@@ -19,6 +19,7 @@
     <button type="button" role="tab" data-tabbtn="char">Character</button>
     <button type="button" role="tab" data-tabbtn="track">Session</button>
     <button type="button" role="tab" data-tabbtn="maps">Monsters &amp; maps</button>
+    <button type="button" role="tab" data-tabbtn="ref">EXP &amp; formulas</button>
   </nav>
   <section class="card" id="acctCard" data-tab="acct">
     <h2>Account &amp; session</h2>
@@ -333,6 +334,42 @@
     </div>
     <div class="scroll" id="goalWrap" hidden><table id="goalTable"><thead></thead><tbody></tbody></table></div>
     <div class="scroll" id="goalJobWrap" hidden><table id="goalJobTable"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card" data-tab="ref">
+    <div class="bar"><h2 class="grow">EXP tables</h2><span class="note" id="refExpNote"></span></div>
+    <div class="row2">
+      <div class="build">
+        <h3 style="margin:0">Base level</h3>
+        <div class="scroll tall"><table id="refBaseTable"><thead></thead><tbody></tbody></table></div>
+      </div>
+      <div class="build">
+        <div class="bar"><h3 class="grow" style="margin:0">Job level</h3>
+          <div class="seg" role="radiogroup" aria-label="Job EXP table">
+            <button type="button" role="radio" data-reftier="novice">Novice</button>
+            <button type="button" role="radio" data-reftier="first">1st job</button>
+            <button type="button" role="radio" data-reftier="second">2nd job</button>
+          </div></div>
+        <div class="scroll tall"><table id="refJobTable"><thead></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div class="note">EXP is what each level needs to reach the next one; "Total" is EXP from level 1. Your levels from the Character tab are highlighted. Kills use the monster picked on the Monsters &amp; maps tab with your EXP and party bonuses. Source: <a href="https://roz.mygnjoy.com/en/intro/guide/21" target="_blank" rel="noopener">official game guide</a>.</div>
+  </section>
+  <section class="card" data-tab="ref">
+    <div class="bar"><h2 class="grow">Game formulas</h2><span class="note">"Yours" uses your Character tab</span></div>
+    <div class="scroll"><table id="refFormulas" class="formulas"><thead><tr><th>Value</th><th>Formula</th><th>Yours</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">Formulas the calculator uses, from <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info</a>, <a href="https://irowiki.org/wiki/Stats" target="_blank" rel="noopener">iRO Wiki</a> and the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a>. ⌊ ⌋ rounds down. Stats are your totals (base + job bonus + gear).</div>
+  </section>
+  <section class="card" data-tab="ref">
+    <div class="bar"><h2 class="grow">Element table</h2>
+      <label style="flex-direction:row;align-items:center;gap:6px">Monster element level<select id="refElv"><option>1</option><option>2</option><option>3</option><option>4</option></select></label></div>
+    <div class="scroll"><table id="refElemTable"><thead></thead><tbody></tbody></table></div>
+    <div class="note">Damage % by your attack element (rows) against the monster's element (columns). Source: <a href="https://rozerodb.com/guides/elements-sizes" target="_blank" rel="noopener">rozerodb</a>.</div>
+  </section>
+  <section class="card" data-tab="ref">
+    <h2>Weapon size table</h2>
+    <div class="scroll"><table id="refSizeTable"><thead><tr><th>Weapon</th><th>Small</th><th>Medium</th><th>Large</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">Damage % for basic attacks and physical skills by monster size; magic ignores size. Your weapon is highlighted.</div>
   </section>
 
 </div>
