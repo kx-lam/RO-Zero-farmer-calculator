@@ -262,4 +262,21 @@ t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts 
   run(`state.skipMobs=[]`);
 });
 
+t("market prices: a drop sold to players counts at its player price instead of its NPC price", () => {
+  const mob = "({id:-2,name:'Seller',loot:50,drops:[[909,10],[4001,0.5]]})";
+  near(run(`zenyKill(${mob})`), 50);                                     // no prices typed: rozerodb loot value only
+  run(`state.prices={909:200}`);                                          // players pay 200, NPC price unknown (counts as 0)
+  near(run(`zenyKill(${mob})`), 50 + 200 * 0.10);
+  run(`state.npcPrices={909:10}`);                                        // NPC pays 10: that part is already in the loot value
+  near(run(`zenyKill(${mob})`), 50 + (200 - 10) * 0.10);
+  run(`state.dropBonus=100`);                                             // drop bonus doubles the chance (capped at 100%)
+  near(run(`zenyKill(${mob})`), 100 + 190 * 0.20);
+  run(`state.prices={909:5};state.npcPrices={909:10};state.dropBonus=0`); // cheaper than the NPC: you'd sell to the NPC
+  near(run(`zenyKill(${mob})`), 50);
+  assert.ok(run(`hasLoot({drops:[[909,10]]})`) === false);
+  run(`state.prices={909:200};state.npcPrices={}`);
+  assert.ok(run(`hasLoot({drops:[[909,10]]})`));                         // a priced drop gives a monster with no loot value a zeny figure
+  run(`state.prices={}`);
+});
+
 console.log(`${n} tests passed`);

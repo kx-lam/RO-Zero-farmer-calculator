@@ -159,8 +159,14 @@ function applyHsAuto(){
 // drop rate bonus % scales every drop chance
 // zeny a skill costs per kill (Mammonite): zeny per use × uses per kill, shared across monsters hit
 const skillZeny=m=>{const z=num(C().a.zeny);if(!z)return 0;const u=usesPerKill(m);return isFinite(u)?z*u/targets():0};
-// zeny per kill: the exported loot value (rozerodb) scaled by your drop rate bonus
-const zenyKill=m=>(m.loot||0)*(1+num(state.dropBonus)/100);
+// zeny per kill: the exported loot value (rozerodb, NPC prices) scaled by your drop rate bonus. A drop you sell to players
+// counts at the market price you typed instead: the loot value already holds its NPC price, so the market price adds only what
+// it beats the NPC price by (type the NPC price to take it off; blank counts it as 0). Its chance is scaled by the drop bonus, capped at 100%
+const dropMul=()=>1+num(state.dropBonus)/100;
+const marketGain=id=>{const p=state.prices[id];return p>0?Math.max(0,p-num(state.npcPrices[id])):0};
+const marketVal=m=>(m.drops||[]).reduce((a,[id,ch])=>{const g=marketGain(id);return g>0?a+g*Math.min(100,ch*dropMul())/100:a},0);
+const hasLoot=m=>m.loot!=null||marketVal(m)>0;
+const zenyKill=m=>(m.loot||0)*dropMul()+marketVal(m);
 
 // ---- maps ----
 const REGIONS=[

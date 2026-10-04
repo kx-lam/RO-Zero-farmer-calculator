@@ -147,6 +147,17 @@ ROOTQ("[data-hunt]").forEach(b=>b.addEventListener("click",()=>{state.huntMode=b
 $("huntMin").addEventListener("input",renderHunt);$("huntN").addEventListener("change",renderHunt);
 $("huntTable").querySelector("thead").addEventListener("click",e=>{const th=e.target.closest("th[data-hk]");if(!th)return;const k=th.dataset.hk;
   if((state.huntSort||"net")===k)state.huntDir=-(state.huntDir||-1);else state.huntDir=(k==="name"||k==="cost"||k==="hpm")?1:-1;state.huntSort=k;save();renderHunt()});
+// market prices: add by name ("Name #id" from the list, or a unique name), edit, remove, or click a drop in the table
+const DROP_IDS=[...new Set(MOBS.flatMap(m=>(m.drops||[]).map(d=>String(d[0]))))].filter(id=>ITEMN[id]);
+$("priceList").innerHTML=DROP_IDS.map(id=>`<option value="${esc(ITEMN[id])} #${id}"></option>`).join("");
+const findItem=s=>{s=String(s).trim();const h=s.match(/#(\d+)$/);if(h&&ITEMN[h[1]])return h[1];const l=s.toLowerCase();const hit=DROP_IDS.filter(id=>ITEMN[id].toLowerCase()===l);return hit.length?hit[0]:null};
+const addPrice=(id,focus)=>{if(!(id in state.prices))state.prices[id]=0;save();renderPrices();if(focus){const i=document.querySelector(`[data-price="${id}"]`);if(i){i.focus();i.scrollIntoView({behavior:"smooth",block:"center"})}}};
+$("priceAdd").addEventListener("click",()=>{const id=findItem($("priceItem").value),p=$("priceVal").value;if(!id){$("priceMsg").textContent="Pick an item from the list.";return}
+  $("priceMsg").textContent="";state.prices[id]=Math.max(0,num(p));const np=$("priceNpc").value;if(np!=="")state.npcPrices[id]=Math.max(0,num(np));$("priceItem").value="";$("priceVal").value="";$("priceNpc").value="";save();renderAll()});
+$("priceTable").addEventListener("input",e=>{const i=e.target.closest("[data-price],[data-npc]");if(!i)return;
+  if(i.dataset.price)state.prices[i.dataset.price]=Math.max(0,num(i.value));else if(i.value==="")delete state.npcPrices[i.dataset.npc];else state.npcPrices[i.dataset.npc]=Math.max(0,num(i.value));save();renderAll()});
+$("priceTable").addEventListener("click",e=>{const b=e.target.closest("[data-unprice]");if(!b)return;delete state.prices[b.dataset.unprice];delete state.npcPrices[b.dataset.unprice];save();renderAll()});
+$("huntTable").querySelector("tbody").addEventListener("click",e=>{const a=e.target.closest("[data-pitem]");if(a){e.preventDefault();e.stopPropagation();addPrice(a.dataset.pitem,true)}},true);
 $("huntTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.target.closest("tr[data-map],tr[data-id]");if(!tr)return;
   if(tr.dataset.map){state.map=tr.dataset.map;save();renderMap();$("mapCard").scrollIntoView({behavior:"smooth",block:"start"})}
   else{state.calcMobId=+tr.dataset.id;save();renderAll();$("mobTiles").scrollIntoView({behavior:"smooth",block:"center"})}});
