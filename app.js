@@ -127,7 +127,7 @@ state.sessions.forEach(s=>{s.id=String(s.id);s.name=String(s.name??"Session");s.
 if(!JOBS[state.job])state.job="Novice";
 if(!state.chars)state.chars={};
 if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
-const D={bonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[],prices:{}};
+const D={bonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[]};
 for(const k in D)if(state[k]==null)state[k]=JSON.parse(JSON.stringify(D[k]));
 const save=()=>store.set(state);
 const C=()=>{if(!state.chars[state.job])state.chars[state.job]=charDefault(state.job);const c=state.chars[state.job];
@@ -309,7 +309,8 @@ function applyHsAuto(){
 // drop rate bonus % scales every drop chance
 // zeny a skill costs per kill (Mammonite): zeny per use × uses per kill, shared across monsters hit
 const skillZeny=m=>{const z=num(C().a.zeny);if(!z)return 0;const u=usesPerKill(m);return isFinite(u)?z*u/targets():0};
-const zenyKill=m=>{let z=m.loot||0;(m.drops||[]).forEach(([id,r])=>{const p=state.prices[id];if(p>0)z+=r/100*p});return z*(1+num(state.dropBonus)/100)};
+// zeny per kill: the exported loot value (rozerodb) scaled by your drop rate bonus
+const zenyKill=m=>(m.loot||0)*(1+num(state.dropBonus)/100);
 
 // ---- maps ----
 const REGIONS=[
@@ -1119,9 +1120,9 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Time per skill use","cast time + max(after-cast delay × (1 − delay %), 1 / attacks per second)",()=>`${useSec().toFixed(2)} s (${esc(c.a.name||"attack")})`)+
    grp("Damage")+
    R("Weapon ATK",`weapon ATK (incl. refine) × (1 + ${ranged?"DEX":"STR"}/200)`,()=>{const P=atkParts();return P.weapon?fmtN(P.weapon):null})+
-   R("Physical damage","⌊((weapon ATK × size % × element % + (2 × status ATK + other gear ATK) × Neutral %) × skill % + mastery ATK) × damage bonuses × (4000 + DEF) / (4000 + 10 × DEF) − monster soft DEF⌋, at least 1",()=>m&&c.a.type!=="magic"&&c.a.type!=="spellfist"?`${fmtN(dmgPerHit(m))} per hit${mn}`:null)+
-   R("Magic damage","⌊(MATK × skill % × damage bonuses × (1000 + MDEF) / (1000 + 10 × MDEF) − monster soft MDEF) × element %⌋, at least 1",()=>m&&(c.a.type==="magic"||c.a.type==="spellfist")?`${fmtN(dmgPerHit(m))} per hit${mn}`:null)+
-   R("Damage bonuses","each category multiplies: (1 + race %) × (1 + size %) × (1 + element %) × (1 + boss/normal %) × (1 + all %); bonuses in the same category add",()=>m?`× ${bonusMul(m,c.a.type==="magic"||c.a.type==="spellfist").toFixed(2)}${mn}`:null)+
+   R("Physical damage","⌊((weapon ATK × size % × element % + (2 × status ATK + other gear ATK) × Neutral %) × skill % + mastery ATK × Neutral %) × damage bonuses × (1 + ranged/melee %) × (1 + skill damage %, skills only) × (4000 + DEF) / (4000 + 10 × DEF) − monster soft DEF⌋, at least 1",()=>m&&c.a.type!=="magic"&&c.a.type!=="spellfist"?`${fmtN(dmgPerHit(m))} per hit${mn}`:null)+
+   R("Magic damage","⌊(MATK × skill % × damage bonuses × (1 + skill damage %) × (1000 + MDEF) / (1000 + 10 × MDEF) − monster soft MDEF) × element %⌋, at least 1",()=>m&&(c.a.type==="magic"||c.a.type==="spellfist")?`${fmtN(dmgPerHit(m))} per hit${mn}`:null)+
+   R("Damage bonuses","each category multiplies: (1 + race %) × (1 + size %) × (1 + element %) × (1 + boss/normal %) × (1 + all %) × (1 + damage bonus %) × (1 + name bonus %, when the name matches) × (1 + vs normal monsters %, not bosses) × (1 + my attack element %) × (1 + skill passives and buffs %); for magic, also × (1 + gear magic % of your spell's element); bonuses in the same category add",()=>m?`× ${bonusMul(m,c.a.type==="magic"||c.a.type==="spellfist").toFixed(2)}${mn}`:null)+
    R("Ignore DEF / MDEF","DEF × (1 − ignore %) before the DEF factor",()=>num(c.ignDef)||num(c.ignMdef)?`${num(c.ignDef)}% / ${num(c.ignMdef)}%`:null)+
    R("Monster soft DEF","⌊(monster Lv + VIT) / 2⌋",()=>need(x=>`${mobSoftDef(x)}${mn}`))+
    R("Monster soft MDEF","⌊(monster Lv + INT) / 4⌋",()=>need(x=>`${mobSoftMdef(x)}${mn}`))+
@@ -1129,10 +1130,10 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Critical hit","chance = CRIT (basic attacks only), always hits, damage × 1.4 × (1 + crit damage %)",()=>c.a.type==="auto"?`${(critChance()*100).toFixed(1)}%`:null)+
    grp("Defence and SP")+
    R("Dodge","95 + FLEE − monster's 95%-flee value, 0–95%",()=>need(x=>dodge(x)==null?null:`${Math.round(dodge(x))}%${mn}`))+
-   R("Damage taken","monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`))+
+   R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + damage taken % from its race) × (1 + from its element) × (1 + from boss/normal), at least 1",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`))+
    R("SP regen","1 + ⌊Max SP/100⌋ + ⌊INT/6⌋ every 8 s",()=>`${fmtN(spRegen8())} / 8 s`)+
    grp("EXP")+
-   R("Your EXP per kill","monster EXP × (1 + EXP bonus %) × (1 + party bonus % × (members − 1)) / members",()=>need(x=>`${fmtN(x.exp*expRace(x)*expMul())}${mn}`))+
+   R("Your EXP per kill","monster EXP × (1 + gear EXP % + gear EXP % vs its race) × (1 + EXP bonus %) × (1 + party bonus % × (members − 1)) / members",()=>need(x=>`${fmtN(x.exp*expRace(x)*expMul())}${mn}`))+
    R("Even Share party","100% + 20% per member beyond the first, split evenly",()=>`× ${expMul().toFixed(2)} of a solo kill`)+
    R("EXP / hour","EXP per kill × 3600 / (fight seconds + walking seconds)",()=>null);
 }
