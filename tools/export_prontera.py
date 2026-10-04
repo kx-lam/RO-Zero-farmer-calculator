@@ -17,6 +17,35 @@ JOBS = ["Novice", "Swordsman", "Mage", "Archer", "Acolyte", "Merchant", "Thief",
 sys.setrecursionlimit(10000)
 # values roz.prontera.info is missing, from the official client (skillinfoz/skilldelaylist.lub): only fill in what it leaves blank
 CLIENT_FIX = {"falcon-assault": {"cooldown_ms": 500}}
+# gear checked against the official client's item descriptions (System/iteminfo_enUS.lub):
+# every option on these items is listed under "GvG-only options" / "Additional options in Siege areas", but roz.prontera.info
+# only flags the first line as GvG-only (e.g. Guild Fist's "Guillotine Fist fixed cast -30% in Siege" read as -30% for every skill)
+GVG_ONLY = {450012, 450013, 450014, 470011, 470012, 470013, 480007, 520001, 550004, 550005, 560003, 590004, 620001, 640001,
+            1859, 2052, 15216, 15217, 15218, 26146, 26147, 28133}
+# bonuses roz.prontera.info has wrong or missing, as the client describes them; each applies only while prontera still lacks it
+RACE_CRIT = {4297: ("brute", 7), 4310: ("brute", 7), 4192: ("fish", 7)}  # "When attacking Brute/Fish monsters, CRIT +7"
+TAKEN = {2254: ("demon", -3), 2255: ("angel", -3), 2327: ("demon", -15)}  # "Damage Taken from Demon/Angel Monsters -x%"
+
+
+def client_fix(row):
+    """Apply GVG_ONLY, RACE_CRIT, TAKEN and Fur Seal Card (CRIT +9 vs Demon/Undead, Acolyte Class only) to an item row."""
+    i, g = row.get("id"), row.get("g", [])
+    lines = lambda: [b for x in g for b in x.get("b", [])]
+    if i in GVG_ONLY:
+        g = []
+    if i in RACE_CRIT and not any(b[0] == "crit" and len(b) > 1 and b[1] for b in lines()):
+        race, v = RACE_CRIT[i]
+        g = [{**x, "b": [b for b in x["b"] if b[0] != "crit"]} if x.get("b") else x for x in g]
+        g = [x for x in g if x.get("b") or x.get("proc") or x.get("text")] + [{"b": [["crit", "race", race, v]]}]
+    if i == 4312 and not any(b[0] == "crit" and len(b) > 1 and b[1] for b in lines()):
+        g = [{**x, "b": [b for b in x["b"] if b[0] != "crit"]} if x.get("b") else x for x in g]
+        g += [{"cls": ["acolyte"], "b": [["crit", "race", "demon", 9], ["crit", "race", "undead", 9]]}]
+    if i in TAKEN and not any(b[0] == "damage_taken_percent" for b in lines()):
+        race, v = TAKEN[i]
+        g = g + [{"b": [["damage_taken_percent", "race", race, v]]}]
+    if g: row["g"] = g
+    else: row.pop("g", None)
+    return row
 
 
 def fetch(path, refresh=False):
@@ -117,7 +146,7 @@ def item_row(slug):
         row["g"].insert(0, {"b": flat})
     sets = [{"slug": s["slug"], "name": s["name"], "pieces": s["piece_slugs"], "g": groups(s.get("bonus_groups"))}
             for s in page.get("sets") or []]
-    return {k: v for k, v in row.items() if v not in (None, [], "")}, sets
+    return client_fix({k: v for k, v in row.items() if v not in (None, [], "")}), sets
 
 
 def write(name, header, body):

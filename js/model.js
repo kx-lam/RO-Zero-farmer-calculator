@@ -75,9 +75,11 @@ function dmgPerHit(m){
   // mastery ATK (flat, from passive skills) is added after the skill ratio, before cards and DEF
   const df=effDef(m);return Math.max(1,Math.floor((pool*pctEff()/100+masteryFor(m)*elemMult(m,"Neutral")/100)*bonusMul(m)*rng*(4000+df)/(4000+10*df)-mobSoftDef(m)))}
 // crits (basic attacks only): chance = CRIT (doubled with a katar), always hit, × 1.4 × (1 + crit damage %). Monster crit shield (its LUK) isn't in the data.
-const critChance=()=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,num(cf("crit"))*(c.weapon==="Katar"?2:1)))/100};
+// m: the monster, for gear CRIT that only counts against its race (Cruiser Card: CRIT +7 vs Brute)
+const critRace=m=>{const c=C();return m&&c.bx&&c.bx.critRace?num(c.bx.critRace[m.race]):0};
+const critChance=m=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,(num(cf("crit"))+critRace(m))*(c.weapon==="Katar"?2:1)))/100};
 // uses needed per kill: whole hits that land, spread over misses
-function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m),a=C().a,ss=ssDmg(m)*SS_CHANCE;if(d<=0&&ss<=0)return Infinity;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);const cr=critChance();
+function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m),a=C().a,ss=ssDmg(m)*SS_CHANCE;if(d<=0&&ss<=0)return Infinity;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);const cr=critChance(m);
   // Shadow Spell: the auto-cast is averaged into each attack and only procs on swings that connect (crits always do)
   if(cr>0||ss>0){const land=cr+(1-cr)*hitChance(m)/100;const exp=per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hitChance(m)/100)+ss*land;return Math.max(1,m.hp/exp)}
   return Math.ceil(m.hp/per)/(hitChance(m)/100)}
