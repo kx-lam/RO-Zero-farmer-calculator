@@ -33,7 +33,7 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 - `app.js`: the calculator and tracker code.
 - `build.js`: the build simulator. It turns base stats, job level, gear, refine and cards into the same ATK/MATK/HIT/FLEE/ASPD/DEF/HP/SP the status window shows.
 - `data/*.js`: tables exported from the sources below, one per file, so a re-export after a patch only touches that file. `mobs.js` (monsters), `spawn.js` (spawn maps), `loot.js` (drops), `items.js` (item names), `mstat.js` (DEF/MDEF/ATK), `elem.js` (element, HIT/FLEE), `sizes.js` (size and race) and `exp.js` (EXP tables). Each file's first line describes its fields. Gear and skill data (`equipment.js`, `cards.js`, `refine.js`, `jobs.js`, `skills.js`) is regenerated with `python tools/export_prontera.py`; it caches pages in `tools/cache/`. After a patch, run it with `--refresh` to pick up new items and skill, job and refine changes; delete the cache to also pick up changed stats on existing items. Items that fail to download are left out and listed at the end, so rerun it to retry them.
-- `tests/`: checks for the build simulator. `node tests/build.test.mjs` tests the engine; `node tests/ingame.test.mjs` checks real characters against their in-game status window.
+- `tests/`: `node tests/build.test.mjs` tests the build simulator; `node tests/ingame.test.mjs` checks real characters against their in-game status window; `node tests/model.test.mjs` loads `app.js` with a stand-in page and checks the damage and tracker maths (damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time and the monster table filters).
 
 ## Data sources
 
