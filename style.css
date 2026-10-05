@@ -29,8 +29,11 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.danger{color:var(--bad)}
 button.small{padding:3px 8px;font-size:12px}
 .pickLbl{flex:none;width:4.5em}
+/* account and session pickers stay on one line with their buttons, down to phone width */
+.bar .pickLbl~.grow{flex-basis:0}
 /* account and session ⋯ menus: the secondary account and session actions open in a small list under the button */
 .menu{position:relative;flex:none}
+.editBtn{flex:none;-webkit-tap-highlight-color:transparent;padding:7px 11px;line-height:1.5}
 .menuBtn{-webkit-tap-highlight-color:transparent;padding:7px 12px;font-weight:700;letter-spacing:.05em;line-height:1.5}
 .menuBtn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
 .menuList:not([hidden]){position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;min-width:11em;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.14)}

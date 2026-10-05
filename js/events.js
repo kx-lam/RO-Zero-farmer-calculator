@@ -122,8 +122,12 @@ $("sessionSel").addEventListener("change",e=>openSession(e.target.value));
 // rename: swap the session picker for a text box; Enter or leaving the box saves, Esc cancels
 // renameId pins the session being renamed, so a save that lands after a session switch still renames the right one
 let renameId=null;
-const endRename=keep=>{const i=$("sessName");if(i.hidden)return;if(keep){const v=i.value.trim(),s=state.sessions.find(x=>x.id===renameId);if(v&&s){s.name=v;save()}}renameId=null;i.hidden=true;$("sessionSel").hidden=false;$("renameSession").textContent="Rename";renderAll()};
-$("renameSession").addEventListener("click",()=>{const i=$("sessName");if(!i.hidden){endRename(true);return}renameId=cur().id;i.value=cur().name;i.hidden=false;$("sessionSel").hidden=true;$("renameSession").textContent="Save";i.focus();i.select()});
+// the ✎ button next to the picker does the same as Rename in the ⋯ menu, and turns into ✓ (save) while the box is open
+const setRenameBtns=on=>{$("renameSession").textContent=on?"Save":"Rename";const b=$("editSession");b.textContent=on?"✓":"✎";b.title=on?"Save session name":"Rename session";b.setAttribute("aria-label",b.title)};
+const endRename=keep=>{const i=$("sessName");if(i.hidden)return;if(keep){const v=i.value.trim(),s=state.sessions.find(x=>x.id===renameId);if(v&&s){s.name=v;save()}}renameId=null;i.hidden=true;$("sessionSel").hidden=false;setRenameBtns(false);renderAll()};
+const toggleRename=()=>{const i=$("sessName");if(!i.hidden){endRename(true);return}renameId=cur().id;i.value=cur().name;i.hidden=false;$("sessionSel").hidden=true;setRenameBtns(true);i.focus();i.select()};
+$("renameSession").addEventListener("click",toggleRename);
+$("editSession").addEventListener("click",toggleRename);
 $("sessName").addEventListener("keydown",e=>{if(e.key==="Enter")endRename(true);else if(e.key==="Escape")endRename(false)});
 $("sessName").addEventListener("blur",()=>setTimeout(()=>endRename(true),150));
 $("newSession").addEventListener("click",()=>{const id="s"+Date.now();state.sessions.push({id,name:"New session",mobIds:[],entries:[]});openSession(id);showTab("maps");$("mobInput").focus()});
