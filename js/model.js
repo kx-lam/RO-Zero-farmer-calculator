@@ -383,6 +383,11 @@ function sessTrip(s,w=walkSec()){if(!wOn())return null;const mix=sessMix(s,m=>is
 // a running timer is s.trip={from,due} (ms); time the session spends paused is added on, since you aren't picking anything up then
 const tripDue=s=>s.trip?s.trip.due+pausedMs(s,s.trip.from,Date.now()):null;
 const tripEarly=()=>Math.max(0,num(state.tripEarly))*6e4;
+// minutes one trip takes: the ones you typed (state.tripMin), else the ones worked out above; null when neither is there
+const tripMinutes=s=>{if(num(state.tripMin)>0)return num(state.tripMin);const t=sessTrip(s);return t&&t.wk>0&&t.kills>=1&&isFinite(t.min)?t.min:null};
+// Start / Back from town: you're out farming again, so a pause left open while you sold ends now (else the timer would sit on "Paused")
+function startTrip(s,now=Date.now()){const min=tripMinutes(s);if(!(min>0))return false;const p=openPause(s);if(p)p.to=now;
+  s.trip={from:now,due:now+min*6e4};return true}
 
 
 // ---- Zeny Hunter: maps and monsters ranked by net zeny per hour ----
