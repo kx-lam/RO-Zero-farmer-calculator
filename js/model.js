@@ -37,11 +37,13 @@ const targets=()=>Math.max(1,num(C().a.targets,1));
 // magic: true for magic damage (spells, Spell Fist, Shadow Spell auto-casts). Each race / size / element / name bonus is
 // physical-only, magic-only or both (race / size / element default to both, as before the setting existed)
 // In build mode gear adds per-race / size / element / boss-normal maps (build.js); the manual boxes add into the same category
+// monster groups ("against Boulder Dwarves +30%"): each group counts once against monsters whose name contains it
+const groupMul=(B,m)=>Object.entries(B.group||{}).reduce((k,[g,v])=>String(m.name||"").toLowerCase().includes(g.toLowerCase())?k*(1+v/100):k,1);
 const bonusMul=(m,magic=false)=>{const c=C();let k=1+num(c.dmgBonus)/100;
   const on=t=>t==="both"||(t==="magic")===magic;
   const nm=String(c.nameSel||"").trim().toLowerCase();if(nm&&on(c.nameType||"phys")&&String(m.name).toLowerCase().includes(nm))k*=1+num(c.namePct)/100;
   const B=c.bx?(magic?c.bx.magic:c.bx.phys):null,el=m.el||"Neutral";
-  if(B)k*=(1+(B.race[m.race]||0)/100)*(1+(B.size[m.size]||0)/100)*(1+(B.ele[el]||0)/100)*(1+(B.all||0)/100)*(1+(B.kind[m.boss?"boss":"normal"]||0)/100);
+  if(B)k*=(1+(B.race[m.race]||0)/100)*(1+(B.size[m.size]||0)/100)*(1+(B.ele[el]||0)/100)*(1+(B.all||0)/100)*(1+(B.kind[m.boss?"boss":"normal"]||0)/100)*groupMul(B,m);
   if(!m.boss)k*=1+num(c.normalPct)/100;
   k*=1+num(c.myElPct)/100;if(magic&&c.bx)k*=1+((c.bx.myEle||{})[atkEl()]||0)/100;
   // learned passives and buffs: physical damage % (Advanced Katar Mastery, Power Thrust), element % for spells (Endow, Volcano...)

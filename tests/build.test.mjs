@@ -17,6 +17,8 @@ Object.assign(globalThis, {
     { id: 11, slug: "proc", name: "Proc Card", slot: ["weapon"], g: [{ proc: "Chance to autocast Bash" }] },
     { id: 12, slug: "cruiser", name: "Cruiser Card", slot: ["weapon"], g: [{ b: [["crit_damage_percent", null, null, 10]] }, { b: [["crit", "race", "brute", 7]] }] },
     { id: 13, slug: "seal", name: "Seal Card", slot: ["weapon"], g: [{ cls: ["acolyte"], b: [["hit", null, null, 10]] }] },
+    { id: 14, slug: "captain", name: "Captain Card", slot: ["weapon"], g: [{ b: [["physical_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
+    { id: 15, slug: "leader", name: "Leader Card", slot: ["weapon"], g: [{ b: [["magic_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
   ],
   SETS: [{ slug: "s", name: "Coat Set", pieces: ["coat", "boots"], g: [{ rs: 10, b: [["hp", null, null, 500]] }, { b: [["vit", null, null, 3]] }] }],
   REFINE: { weapon_lv2: Array.from({ length: 20 }, (_, i) => [3 * (i + 1), 3 * (i + 1), 0]),
@@ -44,6 +46,15 @@ t("weapon stats, per-refine bonus, refine threshold and cards", () => {
   assert.equal(r.acc.magic.race["Demi-Human"], undefined);                 // damage_percent is physical only
   assert.equal(r.fields.weapon, "One-handed sword");
   assert.ok(r.unmodelled.some(x => x.includes("autocast")));               // procs are listed, not counted
+});
+
+t("damage against a monster group (Boulder Dwarf Captain / Squad Leader cards)", () => {
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, refine: 0, cards: [14, 15] } } }, "Knight", aspdBase);
+  assert.equal(r.acc.phys.group["Boulder Dwarf"], 30);                    // Captain: physical only
+  assert.equal(r.acc.magic.group["Boulder Dwarf"], 30);                   // Squad Leader: magic only
+  const one = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, refine: 0, cards: [14] } } }, "Knight", aspdBase);
+  assert.equal(one.acc.magic.group["Boulder Dwarf"], undefined);
+  assert.equal(one.unmodelled.length, 0);
 });
 
 t("refine threshold not reached", () => {

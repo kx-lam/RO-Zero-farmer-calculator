@@ -50,12 +50,14 @@ const BUILD=(()=>{
   // ---- bonus accumulation ----
   const blank=()=>({st:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},atk:0,matk:0,atkPct:0,matkPct:0,hit:0,flee:0,crit:0,critDmg:0,aspd:0,aspdPct:0,aspdMod:0,
     hp:0,hpPct:0,sp:0,spPct:0,def:0,mdef:0,ranged:0,melee:0,skill:0,skillOf:{},vct:0,fct:0,acd:0,vctOf:{},fctOf:{},ignDef:0,ignMdef:0,
-    phys:{all:0,race:{},size:{},ele:{},kind:{}},magic:{all:0,race:{},size:{},ele:{},kind:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},critRace:{},spCost:0,wEle:null,unmodelled:[]});
+    phys:{all:0,race:{},size:{},ele:{},kind:{},group:{}},magic:{all:0,race:{},size:{},ele:{},kind:{},group:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},critRace:{},spCost:0,wEle:null,unmodelled:[]});
   // lines that only matter for PvP survival, healing or status resistance: not part of the farming maths, so not reported either
   const QUIET=["resistance_percent","heal_amount_percent","item_heal_percent","sp_recovery_percent","hp_recovery_percent","perfect_dodge","perfect_hit","magic_damage_taken_percent","sp_per_hit","hp_per_hit"];
   const addTo=(o,k,v)=>{o[k]=(o[k]||0)+v};
-  const tgt=(kind,t)=>kind==="race"?RACE[t]||cap(t):kind==="size"?SIZE[t]||t:kind==="element"?cap(t):t;
-  const bucket=kind=>kind==="race"?"race":kind==="size"?"size":kind==="element"?"ele":kind==="monster_kind"?"kind":null;
+  // monster groups ("against Boulder Dwarves") are kept by the text a member's name contains
+  const GROUP={boulder_dwarf:"Boulder Dwarf"};
+  const tgt=(kind,t)=>kind==="race"?RACE[t]||cap(t):kind==="size"?SIZE[t]||t:kind==="element"?cap(t):kind==="monster_group"?GROUP[t]||String(t).split("_").map(cap).join(" "):t;
+  const bucket=kind=>kind==="race"?"race":kind==="size"?"size":kind==="element"?"ele":kind==="monster_kind"?"kind":kind==="monster_group"?"group":null;
   // one bonus line: [type, target kind, target, value, per N refines, skill, scaling skill]
   function apply(A,b,src){const [type,kind,target,value]=b;const v=+value||0;
     if(QUIET.includes(type))return true;

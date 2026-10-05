@@ -25,10 +25,12 @@ GVG_ONLY = {450012, 450013, 450014, 470011, 470012, 470013, 480007, 520001, 5500
 # bonuses roz.prontera.info has wrong or missing, as the client describes them; each applies only while prontera still lacks it
 RACE_CRIT = {4297: ("brute", 7), 4310: ("brute", 7), 4192: ("fish", 7)}  # "When attacking Brute/Fish monsters, CRIT +7"
 TAKEN = {2254: ("demon", -3), 2255: ("angel", -3), 2327: ("demon", -15)}  # "Damage Taken from Demon/Angel Monsters -x%"
+# "Physical / Magic damage against Boulder Dwarves +30%": prontera has only the description text, no bonus line
+GROUP_DMG = {300944: ("physical_damage_percent", "boulder_dwarf", 30), 300943: ("magic_damage_percent", "boulder_dwarf", 30)}
 
 
 def client_fix(row):
-    """Apply GVG_ONLY, RACE_CRIT, TAKEN and Fur Seal Card (CRIT +9 vs Demon/Undead, Acolyte Class only) to an item row."""
+    """Apply GVG_ONLY, RACE_CRIT, TAKEN, GROUP_DMG and Fur Seal Card (CRIT +9 vs Demon/Undead, Acolyte Class only) to an item row."""
     i, g = row.get("id"), row.get("g", [])
     lines = lambda: [b for x in g for b in x.get("b", [])]
     if i in GVG_ONLY:
@@ -43,6 +45,9 @@ def client_fix(row):
     if i in TAKEN and not any(b[0] == "damage_taken_percent" for b in lines()):
         race, v = TAKEN[i]
         g = g + [{"b": [["damage_taken_percent", "race", race, v]]}]
+    if i in GROUP_DMG and not any(len(b) > 1 and b[1] == "monster_group" for b in lines()):
+        t, grp, v = GROUP_DMG[i]
+        g = g + [{"b": [[t, "monster_group", grp, v]]}]
     if g: row["g"] = g
     else: row.pop("g", None)
     return row

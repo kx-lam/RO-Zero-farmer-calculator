@@ -90,19 +90,19 @@ $("consList").addEventListener("click",e=>{if(!e.target.closest("[data-del]"))re
 $("consList").addEventListener("input",e=>{const f=e.target.dataset.f;if(!f)return;const r=consOf(C())[+e.target.closest(".eqrow").dataset.i];
   r[f]=f==="on"?e.target.checked:f==="price"||f==="min"?(e.target.value===""?"":num(e.target.value)):e.target.value;save();renderAll();consNote()});
 // ---- equipment stats (status-window mode): the % lines from the game's Equipment Stats window, as rows {by, t, ch, v} ----
-const EQ_KINDS=[["race","Damage to race",true],["size","Damage to size",true],["ele","Damage to element",true],["kind","Damage to boss / normal",true],
+const EQ_KINDS=[["race","Damage to race",true],["size","Damage to size",true],["ele","Damage to element",true],["kind","Damage to boss / normal",true],["group","Damage to monster group",true],
   ["myEle","Magic damage of an element (your spells)"],["takenRace","Damage taken from race"],["takenEle","Damage taken from element"],["takenKind","Damage taken from boss / normal"],
   ["exp","EXP gained from monsters"],["expRace","EXP gained from race"],["spCost","Skill SP consumption"]];
-const EQ_TARGETS={race:()=>RACES,size:()=>[["S","Small"],["M","Medium"],["L","Large"]],ele:()=>AE,kind:()=>[["boss","Boss"],["normal","Normal"]],
+const EQ_TARGETS={race:()=>RACES,size:()=>[["S","Small"],["M","Medium"],["L","Large"]],ele:()=>AE,kind:()=>[["boss","Boss"],["normal","Normal"]],group:()=>[["Boulder Dwarf","Boulder Dwarves"]],
   myEle:()=>AE,takenRace:()=>RACES,takenEle:()=>AE,takenKind:()=>[["boss","Boss"],["normal","Normal"]],expRace:()=>RACES};
 // older saves had one race / size / element box each; turn them into rows once
 const eqOf=c=>{if(!Array.isArray(c.eq))c.eq=[];
   [["raceSel","racePct","raceType","race"],["sizeSel","sizePct","sizeType","size"],["elSel","elPct","elType","ele"]].forEach(([s,p,t,by])=>{
     if(c[s]&&num(c[p]))c.eq.push({by,t:c[s],ch:c[t]||"both",v:num(c[p])});delete c[s];delete c[p];delete c[t]});return c.eq};
-function eqToBx(c){const o={phys:{all:0,race:{},size:{},ele:{},kind:{}},magic:{all:0,race:{},size:{},ele:{},kind:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},spCost:0};
+function eqToBx(c){const o={phys:{all:0,race:{},size:{},ele:{},kind:{},group:{}},magic:{all:0,race:{},size:{},ele:{},kind:{},group:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},spCost:0};
   const add=(m,k,v)=>{m[k]=(m[k]||0)+v};
   eqOf(c).forEach(r=>{const v=num(r.v);if(!v)return;
-    if(["race","size","ele","kind"].includes(r.by)){if(r.ch!=="magic")add(o.phys[r.by],r.t,v);if(r.ch!=="phys")add(o.magic[r.by],r.t,v)}
+    if(["race","size","ele","kind","group"].includes(r.by)){if(r.ch!=="magic")add(o.phys[r.by],r.t,v);if(r.ch!=="phys")add(o.magic[r.by],r.t,v)}
     else if(r.by==="myEle")add(o.myEle,r.t,v);else if(r.by.startsWith("taken"))add(o.taken[{takenRace:"race",takenEle:"ele",takenKind:"kind"}[r.by]],r.t,v);
     else if(r.by==="exp")o.exp.all+=v;else if(r.by==="expRace")add(o.exp.race,r.t,v);else if(r.by==="spCost")o.spCost+=v});return o}
 function renderEq(){const c=C();$("eqPanel").hidden=c.mode==="build";

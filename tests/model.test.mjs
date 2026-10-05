@@ -551,6 +551,18 @@ t("gear CRIT against a race only counts against that race", () => {
   run(`delete C().bx`);
 });
 
+t("damage against Boulder Dwarves counts only against Boulder Dwarves, from cards and Equipment stats lines", () => {
+  const g = id => run(`JSON.stringify((CARDS.find(e=>e.id===${id})||{}).g||null)`);
+  assert.equal(g(300944), JSON.stringify([{ b: [["physical_damage_percent", "monster_group", "boulder_dwarf", 30]] }]));  // Captain
+  assert.equal(g(300943), JSON.stringify([{ b: [["magic_damage_percent", "monster_group", "boulder_dwarf", 30]] }]));     // Squad Leader
+  setup("Knight", { mode: "status", eq: [{ by: "group", t: "Boulder Dwarf", ch: "phys", v: 30 }] });
+  const cap = "({name:'Boulder Dwarf Captain',el:'Earth',size:'M',race:'Demi-Human'})", other = "({name:'Poring',el:'Earth',size:'M',race:'Demi-Human'})";
+  near(run(`bonusMul(${cap})/bonusMul(${other})`), 1.3);
+  near(run(`bonusMul(${cap},true)/bonusMul(${other},true)`), 1);         // physical line: spells don't get it
+  near(run(`bonusMul({...${cap},name:'Cannon Boulder Dwarf'})/bonusMul(${other})`), 1.3);
+  setup("Knight", { mode: "status", eq: [] });
+});
+
 t("gear from the client check: Guild options are GvG-only, race CRIT and damage taken are in", () => {
   const g = id => run(`JSON.stringify((EQUIP.concat(CARDS).find(e=>e.id===${id})||{}).g||null)`);
   assert.equal(g(560003), "null");                     // Advanced Guild Fist: Guillotine Fist cast -30% in Siege only
