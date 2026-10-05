@@ -28,7 +28,7 @@ const load = save => {
 const run = load();
 
 let n = 0;
-const t = (name, fn) => { run("state.sessions=[{id:'s1',name:'t',mobIds:[],entries:[]}];state.current='s1';state.chars={};state.bonus=0;state.dropBonus=0"); fn(); n++; console.log("ok", name); };
+const t = (name, fn) => { run("state.sessions=[{id:'s1',name:'t',mobIds:[],entries:[]}];state.current='s1';state.chars={};state.bonus=0;state.jobBonus=0;state.dropBonus=0"); fn(); n++; console.log("ok", name); };
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ""} ${a} != ${b}`);
 // a made-up monster, so the expected numbers don't depend on the exported tables
 const MOB = "({id:-1,name:'Dummy',lv:50,hp:10000,exp:2000,el:'Water',elv:1,size:'L',race:'Brute',def:20,mdef:10,vit:30,int:20,hit100:200,flee95:250,atkMin:100,atkMax:200,drops:[]})";
@@ -83,10 +83,29 @@ t("cast time: variable part shrinks with DEX and INT, fixed part doesn't", () =>
 });
 
 t("party Even Share and EXP bonus", () => {
-  run(`state.bonus=50;cur().partyN=3;cur().partyBonus=20`);
-  near(run(`expMul()`), 1.5 * (1 + 0.2 * 2) / 3);
+  // in-game kills with +10% EXP item and +10% EXP gear
+  run(`state.bonus=10;C().bx={exp:{all:10,race:{}}};cur().partyN=3`);
+  assert.equal(run(`killExp({exp:32822})`), 15753);                             // Boulder Dwarf Captain, party of 3
+  run(`cur().partyN=4`);
+  assert.equal(run(`killExp({exp:32822})`), 12800);                   // Boulder Dwarf Captain, party of 4
+  run(`cur().partyN=2`);
+  assert.equal(run(`killExp({exp:33361})`), 22017);                             // Boulder Dwarf Squad Leader, party of 2
   run(`cur().partyN=1`);
-  near(run(`expMul()`), 1.5);
+  assert.equal(run(`killExp({exp:32822})`), 39386);                             // solo: 32,822 × 1.20, rounded down
+  [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110].forEach((p, i) => { run(`cur().partyN=${i + 1}`); assert.equal(run(`partyBonus()`), p); });
+});
+
+t("job EXP per kill: gear counts for job EXP, an item's base-only EXP % doesn't", () => {
+  // in game, party of 3: Captain (job 6,564) with 10% gear gave 14,441 / 2,888, Squad Leader (job 6,672) with an "EXP +10%" item
+  // gave 14,679 / 2,669; the game shares by damage dealt, so these come out 1 EXP above the model
+  run(`state.bonus=0;state.jobBonus=0;C().bx={exp:{all:10,race:{}}};cur().partyN=3`);
+  assert.equal(run(`killExp({exp:32822,job:6564})`), 14440);
+  assert.equal(run(`killJobExp({exp:32822,job:6564})`), 2887);
+  run(`state.bonus=10;delete C().bx`);
+  assert.equal(run(`killExp({exp:33361,job:6672})`), 14678);
+  assert.equal(run(`killJobExp({exp:33361,job:6672})`), 2668);
+  run(`state.jobBonus=10`);                                            // [Event] Account EXP Buff: EXP +10%, Job EXP +10%
+  assert.equal(run(`killJobExp({exp:33361,job:6672})`), 2934);
 });
 
 t("tracker: EXP rate across a level-up, with paused time left out", () => {

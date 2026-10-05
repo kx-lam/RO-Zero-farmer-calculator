@@ -37,8 +37,9 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Overcharge / Discount","NPC sell price × (1 + Overcharge %), rounded down; NPC buy price × (1 − Discount %). Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%",()=>{const o=skRate("overcharge"),d=skRate("discount");return o||d?`+${o}% / −${d}%`:null})+
    R("Weight","at 70% of Max Weight HP and SP stop regenerating; at 90% you can't attack or use skills. Kills per trip = (Max Weight × sell point − weight now) / weight per kill; seconds per kill + town trip / kills per trip",()=>{if(!wOn())return "type your Max Weight";const t=m&&tripInfo(m,walkSec());return t&&t.wk>0?(isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills a trip${mn}`:"sell first"):`${fmtN(num(c.curW))} / ${fmtN(num(c.maxW))}`})+
    grp("EXP")+
-   R("Your EXP per kill","monster EXP × (1 + gear EXP % + gear EXP % vs its race) × (1 + EXP bonus %) × (1 + party bonus % × (members − 1)) / members",()=>need(x=>`${fmtN(x.exp*expRace(x)*expMul())}${mn}`))+
-   R("Even Share party","100% + 20% per member beyond the first, split evenly",()=>`× ${expMul().toFixed(2)} of a solo kill`)+
+   R("Even Share party","your share = ⌊monster EXP × (100% + 10% × (members − 1)) / members⌋: 2 members 110% (55% each), 3: 120% (40%), 4: 130% (32%) … 12: 210% (17%); same map, within 15 base levels",()=>`${100+partyBonus()}% ÷ ${partyN()} = ${partyPct()}% each`)+
+   R("Your base EXP per kill","⌊your share of its base EXP × (1 + gear EXP % + gear EXP % vs its race + EXP bonus %)⌋: bonuses add up, they don't multiply. EXP bonus % is items and buffs that say \"EXP +X%\"",()=>need(x=>`${fmtN(killExp(x))}${mn}`))+
+   R("Your job EXP per kill","⌊your share of its job EXP × (1 + gear EXP % + gear EXP % vs its race + Job EXP bonus %)⌋: gear EXP counts for job EXP too, but an item's \"EXP +X%\" doesn't; only \"Job EXP +X%\" does",()=>need(x=>`${fmtN(killJobExp(x))}${mn}`))+
    R("EXP / hour","EXP per kill × 3600 / (fight seconds + walking seconds)",()=>null)+
    grp("Loot")+
    R("Drop level penalty","level gap = monster Lv − your base Lv: −19 or more, no penalty; −40 or less, drops −50%; −20 to −39 isn't in the official guide, so no penalty is counted",()=>need(x=>dropGap(x)==null?null:`gap ${String(dropGap(x)).replace("-","−")}: ${penNote(x)||"no penalty"}${mn}`))+
@@ -46,16 +47,21 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Zeny Hunter walking","walking per kill × √(spawns of monsters you can hurt on the map / spawns of the ones you hunt): the nearest target is about 1 / √density away",()=>`${walkSec().toFixed(1)}s with every monster hunted`)+
    R("Zeny Hunter teleporting","extra teleports per kill = spawns you can hurt / spawns you hunt − 1; each adds the Fly Wing price and seconds per teleport. Maps marked \"no teleport\" only walk",()=>`${fmtN(flyPrice())} z and ${teleSec()}s per teleport`);
 }
-function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?m.exp*expRace(m)*expMul():0;
-  const kills=e=>per>0?fmtN(Math.ceil(e/per)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";
-  $("refExpNote").textContent=m?(m.expUnknown?`rozerodb has no EXP for ${m.name} yet`:`${fmtN(per)} base EXP per ${m.name}`):"Pick a monster to see kills per level";
+// Even Share by party size, with your base and job EXP per kill of the picked monster for each size
+function renderPartyTable(m){const s=cur(),n0=partyN(s),known=m&&!m.expUnknown,sz=n=>({...s,partyN:n});
+  $("refPartyNote").textContent=known?`per ${m.name} with your EXP bonuses`:"pick a monster to see your EXP per kill";
+  $("refPartyTable").tHead.innerHTML=`<tr><th>Members</th><th>Party total</th><th>Each</th>${known?"<th>Your base EXP</th><th>Your job EXP</th>":""}</tr>`;
+  $("refPartyTable").tBodies[0].innerHTML=Array.from({length:12},(_,i)=>i+1).map(n=>`<tr${n===n0?' class="sel"':""}><td>${n===1?"Solo":n}</td><td>${100+partyBonus(sz(n))}%</td><td>${partyPct(sz(n))}%</td>${known?`<td>${fmtN(killExp(m,sz(n)))}</td><td>${fmtN(killJobExp(m,sz(n)))}</td>`:""}</tr>`).join("")}
+function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?killExp(m):0,jper=m?killJobExp(m):0;
+  const kills=(e,p=per)=>p>0?fmtN(Math.ceil(e/p)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";
+  $("refExpNote").textContent=m?(m.expUnknown?`rozerodb has no EXP for ${m.name} yet`:`${fmtN(per)} base / ${fmtN(jper)} job EXP per ${m.name}`):"Pick a monster to see kills per level";
   let tot=0;const base=Object.keys(EXP_TABLE).map(Number).sort((a,b)=>a-b).map(l=>{const e=EXP_TABLE[l],row=`<tr${l===blv?' class="sel"':""}><td>${l}</td><td>${fmtN(e)}</td><td>${fmtN(tot)}</td>${m?`<td>${kills(e)}</td>`:""}</tr>`;tot+=e;return row}).join("");
   $("refBaseTable").tHead.innerHTML=`<tr><th>Lv</th><th>EXP to next</th><th>Total</th>${kh}</tr>`;$("refBaseTable").tBodies[0].innerHTML=base;
   const tier=Object.hasOwn(JOB_EXP,state.refTier)?state.refTier:jobTier(),t=JOB_EXP[tier],mine=tier===jobTier();tot=0;
   ROOTQ("[data-reftier]").forEach(b=>b.setAttribute("aria-checked",String(b.dataset.reftier===tier)));
-  // job EXP per kill isn't in the monster data, so the job table has no kills column
-  $("refJobTable").tHead.innerHTML=`<tr><th>Job Lv</th><th>Job EXP to next</th><th>Total</th></tr>`;
-  $("refJobTable").tBodies[0].innerHTML=t.map((e,i)=>{const row=`<tr${mine&&i+1===jl?' class="sel"':""}><td>${i+1}</td><td>${i+1<t.length?fmtN(e):"max"}</td><td>${fmtN(tot)}</td></tr>`;tot+=e;return row}).join("");
+  $("refJobTable").tHead.innerHTML=`<tr><th>Job Lv</th><th>Job EXP to next</th><th>Total</th>${kh}</tr>`;
+  $("refJobTable").tBodies[0].innerHTML=t.map((e,i)=>{const row=`<tr${mine&&i+1===jl?' class="sel"':""}><td>${i+1}</td><td>${i+1<t.length?fmtN(e):"max"}</td><td>${fmtN(tot)}</td>${m?`<td>${i+1<t.length?kills(e,jper):"–"}</td>`:""}</tr>`;tot+=e;return row}).join("");
+  renderPartyTable(m);
   $("refFormulas").tBodies[0].innerHTML=refFormulas();
   const elv=Math.min(4,Math.max(1,num(state.refElv,1)));$("refElv").value=String(elv);const defs=Object.keys(ET),my=atkEl();
   $("refElemTable").tHead.innerHTML=`<tr><th>Attack ↓ / monster →</th>${defs.map(d=>`<th>${d} ${elv}</th>`).join("")}</tr>`;

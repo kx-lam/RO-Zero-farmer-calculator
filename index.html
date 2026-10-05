@@ -63,12 +63,13 @@
 
   <section class="card" data-tab="char">
     <div class="bar"><h2 class="grow">Your character</h2><span class="note" id="jobNote"></span></div>
-    <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+    <div class="form" style="grid-template-columns:repeat(7,minmax(0,1fr))">
       <label>Job<select id="job"></select></label>
       <label>Attack<select id="preset"></select></label>
       <label>Base level<input id="baseLv" type="number" min="1" max="99"></label>
       <label>Job level<input id="jobLv" type="number" min="1" max="70"></label>
-      <label>EXP bonus %<input id="bonus" type="number" step="1"></label>
+      <label title="Items and buffs that say &quot;EXP +X%&quot; (base EXP), plus EXP gear if you aren't building from gear">EXP bonus %<input id="bonus" type="number" step="1"></label>
+      <label title="Only items and buffs that say &quot;Job EXP +X%&quot;, plus EXP gear if you aren't building from gear">Job EXP bonus %<input id="jobBonus" type="number" step="1"></label>
       <label>Drop rate bonus %<input id="dropBonus" type="number" step="1"></label>
     </div>
     <div class="bar">
@@ -272,7 +273,7 @@
         <label>Time<input id="fTime" type="time" required></label>
         <label>Date<input id="fDate" type="date"></label>
         <label>Party members<input id="partyN" type="number" min="1" max="12" value="1"></label>
-        <label>Party bonus % per extra member<input id="partyBonus" type="number" step="1" min="0" value="20"></label>
+        <label>Party EXP bonus %<input id="partyBonus" type="number" value="0" readonly tabindex="-1" title="Worked out from the party size"></label>
         <div class="note" id="partyNote" style="grid-column:1/-1"></div>
         <label style="grid-column:1/-1">Job EXP % (optional)<input id="fJob" type="number" step="0.01" min="0" max="100"></label>
         <button class="primary" type="submit" style="grid-column:1/-1">Add entry</button>
@@ -424,6 +425,11 @@
       </div>
     </div>
     <div class="note">EXP is what each level needs to reach the next one; "Total" is EXP from level 1. Your levels from the Character tab are highlighted. Kills use the monster picked on the Monsters &amp; maps tab with your EXP and party bonuses. Source: <a href="https://roz.mygnjoy.com/en/intro/guide/21" target="_blank" rel="noopener">official game guide</a>.</div>
+  </section>
+  <section class="card" data-tab="ref">
+    <div class="bar"><h2 class="grow">Party EXP (Even Share)</h2><span class="note" id="refPartyNote"></span></div>
+    <div class="scroll"><table id="refPartyTable"><thead></thead><tbody></tbody></table></div>
+    <div class="note">Your share = ⌊monster EXP × (100% + 10% × (members − 1)) ÷ members⌋; then base EXP = share × (1 + gear EXP % + EXP bonus %) and job EXP = job share × (1 + gear EXP % + Job EXP bonus %), rounded down. Bonuses add up and come after the split. Only members on the same map within 15 base levels count, and the game shares by damage dealt, so a kill can be 1 EXP off. Checked against in-game kills.</div>
   </section>
   <section class="card" data-tab="ref">
     <div class="bar"><h2 class="grow">Game formulas</h2><span class="note">"Yours" uses your Character tab</span></div>
