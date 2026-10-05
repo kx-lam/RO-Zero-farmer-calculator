@@ -131,7 +131,7 @@ Each table lives in its own file, so a re-export after a patch only touches that
 | File | Contents |
 | --- | --- |
 | `mobs.js` | Monsters (EXP is `null` where there's no data yet) |
-| `spawn.js` | Spawn maps and counts, normal and PvP channels. Written by `tools/export_spawns.py`; maps the client doesn't list yet keep their estimates. |
+| `spawn.js` | Spawn maps and counts, normal and PvP channels. Written by `tools/export_spawns.py`. |
 | `maps.js` | In-game map code and name for each spawn map. Names written by `tools/export_mapnames.py`. |
 | `loot.js` | Drops |
 | `items.js` | Item names |
