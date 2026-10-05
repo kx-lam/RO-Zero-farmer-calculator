@@ -126,8 +126,9 @@ const BUILD=(()=>{
     const hpBase=+b.hpBase>0?+b.hpBase:curve(job,"hp",lv),spBase=+b.spBase>0?+b.spBase:curve(job,"sp",lv);
     const maxHp=hpBase!=null?f((f(hpBase*(1+tot.vit/100))+A.hp)*(1+A.hpPct/100)):null,maxSp=spBase!=null?f((f(spBase*(1+tot.int/100))+A.sp)*(1+A.spPct/100)):null;
     const ab=aspdBase?aspdBase(job,weapon):null;let aspd=null;
-    // Zero (Landgris "paradise"): ASPD1 = floor(base − shield penalty + stat term); ASPD1 + floor((195 − ASPD1) × ASPD %) + flat gear ASPD
-    if(ab!=null){const a1=f(ab-(shield?SHIELD_ASPD[job]||0:0)+S.aspdTerm);aspd=Math.min(190,a1+f((195-a1)*A.aspdPct/100)+A.aspd)}
+    // Zero (Landgris "paradise", checked against its /compute-aspd): ASPD1 = floor(base − shield penalty + stat term);
+    // ASPD = ASPD1 + (195 − ASPD1) × ASPD % + flat gear ASPD, not rounded (the status window shows it rounded down)
+    if(ab!=null){const a1=f(ab-(shield?SHIELD_ASPD[job]||0:0)+S.aspdTerm);aspd=Math.min(190,Math.round((a1+(195-a1)*A.aspdPct/100+A.aspd)*10)/10)}
     const ammo=worn.find(w=>w.slot==="ammo"),arrowEl=weapon==="Bow"&&ammo&&ammo.it.el?cap(ammo.it.el):null; // bows shoot the arrow's element
     const fields={baseLv:lv,jobLv,weapon,wElem:arrowEl||A.wEle||(wpn&&wpn.el?cap(wpn.el):null)||"Neutral",
       st:{str:`${base.str}+${tot.str-base.str}`,agi:`${base.agi}+${tot.agi-base.agi}`,vit:`${base.vit}+${tot.vit-base.vit}`,dex:`${base.dex}+${tot.dex-base.dex}`,luk:`${base.luk}+${tot.luk-base.luk}`},
