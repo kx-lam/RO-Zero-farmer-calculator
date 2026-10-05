@@ -100,8 +100,8 @@ function entryTime(h,m,day){const d=day?new Date(day+"T00:00"):new Date();d.setH
 // pasted lines on a picked date run on into the next day when a time goes back (23:50 then 00:10)
 function pasteTimes(lines,day){let off=0,prev=-1;return lines.map(([h,m])=>{if(!day)return entryTime(h,m);if(h*60+m<prev)off++;prev=h*60+m;const d=new Date(day+"T00:00");d.setDate(d.getDate()+off);d.setHours(h,m,0,0);return d.getTime()})}
 // one pasted line → [hour, minute, base %, job % or null]; with no time ("17.9% 63%") hour and minute are null, for the current time.
-// a time is 15:05 or 1505 standing on its own, so "100%" or "45.123%" read as percentages, not 1:00 or 1:23
-function pasteLine(line){const pct="(\\d+(?:\\.\\d+)?)\\s*%?(?:[^\\d\\n]+?(\\d+(?:\\.\\d+)?)\\s*%?)?";
+// the % signs are optional ("15:05 17.9 63"); a time is 15:05 or 1505 standing on its own, so "100%" or "45.123%" read as percentages, not 1:00 or 1:23
+function pasteLine(line){const pct="(\\d+(?:\\.\\d+)?)\\s*%?(?:[^\\d\\n]*?(\\d+(?:\\.\\d+)?)\\s*%?)?";
   let m=line.match(new RegExp("(?<![\\d.])(\\d{1,2}):?(\\d{2})(?![\\d.%])[^\\d\\n]+?"+pct));
   if(m)return +m[1]>23||+m[2]>59?null:[+m[1],+m[2],+m[3],m[4]!=null?+m[4]:null];
   if(/\d:\d/.test(line))return null;m=line.match(new RegExp("^[^\\d\\n]*?"+pct));return m?[null,null,+m[1],m[2]!=null?+m[2]:null]:null}
@@ -110,12 +110,13 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();cons
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
   $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
   const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=Math.min(jobMax(),num(C().jobLv)+1)}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
+  if(s.job===state.job&&num(C().jobLv)>0&&s.entries.every(x=>x.t<=t))ent.jlv=num(C().jobLv);
   if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm(true);$("fPct").focus()});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
   const [h0,m0]=nowTime().split(":").map(Number),lines=$("pasteBox").value.split(/\n/).map(pasteLine).filter(Boolean).map(([h,m,...r])=>h==null?[h0,m0,...r]:[h,m,...r]);
   const ts=pasteTimes(lines,pickedDay()),parsed=[...new Map(lines.map(([,,pct,jpct],i)=>[ts[i],{t:ts[i],pct,jpct}])).values()].sort((a,b)=>a.t-b.t);
   parsed.forEach(x=>{const g=guessLevel(s,x.t,lv,x.pct);if(g!==lv){ups++;lv=g}const ent={t:x.t,lv,pct:x.pct};if(x.jpct!=null)ent.jpct=x.jpct;s.entries=s.entries.filter(e=>e.t!==x.t);s.entries.push(ent);n++});
-  $("pasteMsg").textContent=n?`Added ${n} entr${n===1?"y":"ies"}${ups?` with ${ups} level-up${ups>1?"s":""} (now Lv ${lv})`:` at Lv ${lv}`}.`:"No lines matched. Use the format 15:05 17.9% 63% (time and job % optional; no time means now)";
+  $("pasteMsg").textContent=n?`Added ${n} entr${n===1?"y":"ies"}${ups?` with ${ups} level-up${ups>1?"s":""} (now Lv ${lv})`:` at Lv ${lv}`}.`:"No lines matched. Use the format 15:05 17.9% 63% or 15:05 17.9 63 (time and job % optional; no time means now)";
   if(n){autoResume(s,parsed[parsed.length-1].t);if(!s.job)s.job=state.job;$("pasteBox").value="";save();renderAll()}});
 $("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.pauses)s.pauses=[];
   if(p){p.to=Date.now();save();renderAll();showTab("track");$("fPct").focus()}else{s.pauses.push({from:Date.now()});save();renderAll()}});
@@ -239,8 +240,8 @@ $("mobInfoMaps").addEventListener("click",e=>{const tr=e.target.closest("tr[data
 // Item info: search and filter; click an item for its droppers, a dropper for its Monster info
 $("itemGroup").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<option value="${g}">${n}</option>`).join(""));
 $("itemSearch").addEventListener("input",renderItems);$("itemGroup").addEventListener("change",renderItems);
-// Monster info, Item info, Market and the Hunter tables: click a header to sort (again to flip it), type under it to filter; saved per table
-[["bestTable",renderBest],["huntTable",renderHunt],["mobInfoDrops",renderMobInfo],["mobInfoMaps",renderMobInfo],["itemTable",renderItems],["itemDropTable",renderItems],["priceTable",renderPrices]].forEach(([id,render])=>{const t=$(id);
+// Compare sessions, Monster info, Item info, Market and the Hunter tables: click a header to sort (again to flip it), type under it to filter; saved per table
+[["cmpTable",renderCompare],["bestTable",renderBest],["huntTable",renderHunt],["mobInfoDrops",renderMobInfo],["mobInfoMaps",renderMobInfo],["itemTable",renderItems],["itemDropTable",renderItems],["priceTable",renderPrices]].forEach(([id,render])=>{const t=$(id);
   t.tHead.addEventListener("click",e=>{const th=e.target.closest("th[data-sk]");if(!th)return;const k=th.dataset.sk,[k0,d0]=tblSort(id);
     const c=TABLES[id].cols[k];state.tsort[id]=[k,k===k0?-d0:c.n&&!c.asc?-1:1];save();render()});
   t.querySelectorAll("[data-tf]").forEach(inp=>{inp.value=(state.tfilt[id]||{})[inp.dataset.tf]||"";
@@ -254,11 +255,10 @@ $("mapInput").addEventListener("change",e=>{state.map=mapKey(e.target.value);sav
 $("mapFromMob").addEventListener("click",()=>{state.map="";save();renderMap()});
 $("mapTable").querySelector("tbody").addEventListener("click",e=>{const sm=e.target.closest("[data-sessmob]");if(sm){toggleSessMob(+sm.dataset.sessmob);save();renderAll();return}const sk=e.target.closest("[data-skip]");if(sk){const id=+sk.dataset.skip;if(!state.skipMobs)state.skipMobs=[];state.skipMobs=state.skipMobs.includes(id)?state.skipMobs.filter(x=>x!==id):[...state.skipMobs,id];save();renderAll();return}const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
 // goal
-$("goalLv").value=state.goalLv||"";$("walkOverride").value=state.walkOverride||"";
-$("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;save();renderTracker()});
-$("goalJobLv").value=state.goalJobLv||"";
-$("goalJobLv").addEventListener("input",e=>{state.goalJobLv=num(e.target.value)||null;save();renderTracker()});
-$("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
+// goal levels default to the max (base Lv 70, your job's max job level); typing past it stops at it, and a blank or too-low goal goes back to it
+[["goalLv","goalLv"],["goalJobLv","goalJobLv"]].forEach(([id,k])=>{const el=$(id);
+  el.addEventListener("input",()=>{const v=num(el.value),mx=+el.max;if(v>mx)el.value=mx;state[k]=v>=+el.min?Math.min(v,mx):null;save();renderTracker()});
+  el.addEventListener("change",()=>{if(!(num(el.value)>=+el.min)){state[k]=null;save();renderTracker()}})});
 // backup
 const bkText=()=>JSON.stringify(state);
 // combined backup: every account's save plus the account list

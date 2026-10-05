@@ -16,7 +16,7 @@ if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s
 state.sessions.forEach(s=>{if(!Array.isArray(s.mobIds))s.mobIds=s.mobId!=null?[s.mobId]:[];delete s.mobId});
 // saves can come from a pasted backup: keep ids and names as text and log entries as numbers, dropping entries that aren't
 state.sessions.forEach(s=>{s.id=String(s.id);s.name=String(s.name??"Session");s.mobIds=s.mobIds.map(Number).filter(Number.isFinite);if(s.job!=null)s.job=String(s.job);
-  s.entries=(Array.isArray(s.entries)?s.entries:[]).map(e=>{const o={t:+(e&&e.t),lv:+(e&&e.lv),pct:+(e&&e.pct)};if(e&&e.jpct!=null&&e.jpct!==""&&isFinite(+e.jpct))o.jpct=+e.jpct;return o})
+  s.entries=(Array.isArray(s.entries)?s.entries:[]).map(e=>{const o={t:+(e&&e.t),lv:+(e&&e.lv),pct:+(e&&e.pct)};if(e&&e.jpct!=null&&e.jpct!==""&&isFinite(+e.jpct))o.jpct=+e.jpct;if(e&&+e.jlv>0)o.jlv=+e.jlv;return o})
     .filter(e=>Number.isFinite(e.t)&&Number.isFinite(e.lv)&&Number.isFinite(e.pct));
   if(s.trip!=null)s.trip=s.trip&&Number.isFinite(+s.trip.from)&&Number.isFinite(+s.trip.due)?{from:+s.trip.from,due:+s.trip.due,...(s.trip.rang===true?{rang:true}:{})}:undefined;
   if(s.pauses!=null)s.pauses=(Array.isArray(s.pauses)?s.pauses:[]).filter(p=>p&&Number.isFinite(+p.from)&&(p.to==null||Number.isFinite(+p.to))).map(p=>p.to==null?{from:+p.from}:{from:+p.from,to:+p.to})});
