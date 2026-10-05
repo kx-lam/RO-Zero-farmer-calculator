@@ -184,6 +184,9 @@ t("tracker: pasted lines, with or without a time", () => {
   assert.deepEqual(p("17.9"), [null, null, 17.9, null]);
   assert.deepEqual(p("100% 50%"), [null, null, 100, 50]);
   assert.deepEqual(p("45.123% 12%"), [null, null, 45.123, 12]);
+  // the % signs can be left out
+  assert.deepEqual(p("15:05 17.9 63"), [15, 5, 17.9, 63]);
+  assert.deepEqual(p("20.4 65"), [null, null, 20.4, 65]);
   assert.equal(p("25:00 17%"), null);
   assert.equal(p("15:05"), null);
   assert.equal(p(""), null);
