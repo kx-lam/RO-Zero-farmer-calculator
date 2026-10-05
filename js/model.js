@@ -299,15 +299,17 @@ let REGEN_OFF=false;
 const withRegenOff=fn=>{const k=REGEN_OFF;REGEN_OFF=true;try{return fn()}finally{REGEN_OFF=k}};
 // weight picked up per kill: each drop's weight (data/weights.js) × its chance, with your drop bonus and the level-gap penalty
 const weightKill=m=>(m.drops||[]).reduce((a,[id,ch])=>a+(ITEMW[id]||0)*Math.min(100,ch*dropMul()*penMul(m))/100,0);
-const wOn=()=>num(C().maxW)>0;
-const wRoom=lim=>Math.max(0,num(C().maxW)*lim-num(C().curW));
 // Max Weight (roz.prontera.info stat planner): 2000 + job bonus + 30 per STR point you put in (job, gear and buff STR don't count)
-// + 200 per Enlarge Weight Limit level; KP shop weight items are on top and aren't known here
+// + 200 per level of Enlarge Weight Limit (Merchant) and of Increase Capacity (taught by the KP shop's Gym Membership, kept forever)
 const JOB_WEIGHT={Novice:0,Swordsman:800,Mage:200,Archer:600,Acolyte:400,Merchant:800,Thief:400,Knight:800,Crusader:800,Wizard:400,Sage:400,
   Hunter:700,Bard:600,Dancer:600,Priest:600,Monk:600,Blacksmith:1000,Alchemist:400,Assassin:400,Rogue:400};
 const baseStr=c=>c.mode==="build"?num(buildOf(c).base.str):parseFloat(String((c.st||{}).str??"").split("+")[0]);
-function maxWCalc(c=C()){const s=baseStr(c),jb=JOB_WEIGHT[state.job],ewl=skLv(c,"enlarge-weight-limit");
-  return s>0&&jb!=null?{jb,ewl,total:2000+jb+30*s+200*ewl}:null}
+function maxWCalc(c=C()){const s=baseStr(c),jb=JOB_WEIGHT[state.job],lv=skLv(c,"enlarge-weight-limit")+Math.min(10,Math.max(0,num(c.gymLv)));
+  return s>0&&jb!=null?{jb,total:2000+jb+30*s+200*lv}:null}
+// the Max Weight in use: what you typed, else the one worked out above (0 = weight off)
+const maxWt=(c=C())=>num(c.maxW)>0?num(c.maxW):(maxWCalc(c)||{total:0}).total;
+const wOn=()=>maxWt()>0;
+const wRoom=lim=>Math.max(0,maxWt()*lim-num(C().curW));
 const townSec=()=>Math.max(0,num(C().townMin,3))*60;
 // selling past 70% only pays when you can keep fighting with no regen (no SP needed, or SP items on)
 // the sell point is any % up to 90 (65% stops a loop before regen stops); blank or 0 means 70%

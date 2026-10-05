@@ -3,7 +3,7 @@ const syncChar=()=>{
   const c=C();$("job").value=state.job;renderEq();renderCons();
   $("preset").innerHTML=JOBS[state.job].p.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("")+'<option value="-1">Custom</option>';
   $("preset").value=String(c.preset??0);renderSkills();
-  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");["curW","maxW"].forEach(k=>$(k).value=num(c[k])>0?c[k]:"");$("townMin").value=c.townMin??3;$("sellAt").value=num(c.sellAt)>0?c.sellAt:"";$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
+  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");["curW","maxW","gymLv"].forEach(k=>$(k).value=num(c[k])>0?c[k]:"");$("townMin").value=c.townMin??3;$("sellAt").value=num(c.sellAt)>0?c.sellAt:"";$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
   $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";
   $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("nameType").value=c.nameType||"phys";$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;potInfo();$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
   const a=c.a;$("aType").value=a.type;$("aPct").value=a.pct;$("aHits").value=a.hits;$("aElem").value=a.el;$("aCast").value=a.cast;$("aDelay").value=a.delay;$("aSp").value=a.sp;$("aTargets").value=a.targets;$("aZeny").value=a.zeny||"";$("cartW").value=c.cartW||"";$("cartWrap").hidden=!num(a.cart);
@@ -70,6 +70,7 @@ const BASE_TITLE=String(document.title||"Rozero Farm Planner");
 const tripPhase=(s,now=Date.now())=>!s.trip?"none":openPause(s)?"paused":now>=tripDue(s)-tripEarly()?"due":"run";
 function renderTrip(s=cur()){const c=C(),act=document.activeElement;
   [["tripW","curW"],["tripMax","maxW"]].forEach(([id,k])=>{if(act!==$(id))$(id).value=num(c[k])>0?c[k]:""});
+  {const w=maxWCalc(c);["maxW","tripMax"].forEach(id=>$(id).placeholder=w?String(w.total):"off")}
   if(act!==$("tripAt"))$("tripAt").value=num(c.sellAt)>0?c.sellAt:"";if(act!==$("tripTownMin"))$("tripTownMin").value=c.townMin??3;
   if(act!==$("tripEarly"))$("tripEarly").value=num(state.tripEarly)>0?state.tripEarly:"";
   $("tripSound").checked=state.tripSound!==false;$("tripNotify").checked=state.tripNotify===true;
@@ -78,7 +79,7 @@ function renderTrip(s=cur()){const c=C(),act=document.activeElement;
   else if(!t)lenS=sessMobs(s).length?"You can't hurt the session's monsters with this attack":"Pick what you're farming (Monsters & maps → Farming … now)";
   else if(!(t.wk>0))lenS="Their drops weigh nothing, so you never fill up";
   else if(!(t.kills>=1))lenS=`<span class="bad">Your starting weight is already at your sell point (${fmtP(sellPct())}%)</span>`;
-  else{len=fmtDur(t.min/60);lenS=`~${fmtN(Math.floor(t.kills))} kills · ${t.wk.toFixed(1)} weight a kill · ${fmtN(Math.max(0,num(c.maxW)*t.at/100-num(c.curW)))} weight of room: ${fmtN(num(c.curW))} you start with → ${fmtN(num(c.maxW)*t.at/100)} (${fmtP(t.at)}%)${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}`;
+  else{len=fmtDur(t.min/60);lenS=`~${fmtN(Math.floor(t.kills))} kills · ${t.wk.toFixed(1)} weight a kill · ${fmtN(Math.max(0,maxWt(c)*t.at/100-num(c.curW)))} weight of room: ${fmtN(num(c.curW))} you start with → ${fmtN(maxWt(c)*t.at/100)} (${fmtP(t.at)}%)${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}`;
     const cyc=t.min+town;runs=`${(60/cyc).toFixed(1)}/hr`;runsS=`${fmtP(town)} min each · ${Math.round(town/cyc*100)}% of your time in town`}
   $("tripLen").textContent=len;$("tripLenS").innerHTML=lenS;$("tripRuns").textContent=runs;$("tripRunsS").textContent=runsS;
   TRIP_OK=!!(t&&t.wk>0&&t.kills>=1&&isFinite(t.min));renderTripBtns(s);tickTrip();
@@ -260,7 +261,7 @@ function renderMobs(){
 // selling trips spread over each kill (weight); hidden when it rounds to nothing
 const sellTxt=(s,pre,post="")=>s>=0.05&&isFinite(s)?`${pre}${s.toFixed(1)}s${post}`:s===Infinity?`${pre}<span class="bad">over your sell point</span>`:"";
 function weightTile(m){const t=tripInfo(m,walkSec());if(!t)return "";const c=C(),at=sellPct();
-  const pctNow=num(c.maxW)?Math.round(num(c.curW)/num(c.maxW)*100):0;
+  const pctNow=maxWt(c)?Math.round(num(c.curW)/maxWt(c)*100):0;
   const v=!(t.wk>0)?"–":isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills`:'<span class="bad">sell first</span>';
   return `<div class="tile"><div class="k">Weight · sell at ${t.fell?70:fmtP(at)}%</div><div class="v mono">${v}</div><div class="s">${t.wk>0?`${t.wk.toFixed(1)} weight per kill`:"its drops weigh nothing"}${isFinite(t.kills)&&t.wk>0?` · ${fmtDur(t.min/60)} a trip + ${fmtN(num(c.townMin,3))} min to town`:""} · start at ${pctNow}%${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}</div></div>`}
 function renderMobTiles(){
