@@ -350,14 +350,16 @@ function jobRate(s){
   let gain=0;for(let i=1;i<es.length;i++){let d=es[i].jpct-es[i-1].jpct;if(d<0)d+=100;gain+=d}
   const h=activeH(s,es[0].t,es[es.length-1].t);return h>0?{rate:gain/h,last:es[es.length-1].jpct,h}:null;
 }
-// each entry's job level (Map t -> level): entries logged from the form keep the one you had; the rest follow from the nearest known one,
-// a Job EXP % drop of 50+ being a level-up. With none saved, the current session's newest entry is your current job level.
+// each entry's job level (Map entry -> level), read across every session of the same job in time order, as they're one character:
+// entries logged from the form keep the one you had; the rest follow from the nearest known one, a Job EXP % drop of 50+ being a level-up.
+// With none saved at all, the newest entry of your current job is your current job level.
 function entryJobLvs(s){
-  const es=[...s.entries].sort((a,b)=>a.t-b.t),jl=es.map(e=>e.jlv>0?e.jlv:null),up=(a,b)=>a&&b&&a.jpct-b.jpct>=50;
-  if(es.length&&!jl.some(Boolean)&&s===cur()&&(s.job||state.job)===state.job&&num(C().jobLv)>0)jl[es.length-1]=num(C().jobLv);
+  const job=s.job||state.job,es=state.sessions.filter(x=>(x.job||state.job)===job).flatMap(x=>x.entries).sort((a,b)=>a.t-b.t);
+  const jl=es.map(e=>e.jlv>0?e.jlv:null),up=(a,b)=>a&&b&&a.jpct-b.jpct>=50;
+  if(es.length&&!jl.some(Boolean)&&job===state.job&&num(C().jobLv)>0)jl[es.length-1]=num(C().jobLv);
   let k=null,pj=null;es.forEach((e,i)=>{if(jl[i]==null&&k!=null)jl[i]=k+(e.jpct!=null&&up(pj,e)?1:0);if(jl[i]!=null)k=jl[i];if(e.jpct!=null)pj=e});
   k=null;let nj=null;for(let i=es.length-1;i>=0;i--){const e=es[i];if(jl[i]==null&&k!=null)jl[i]=Math.max(1,k-(e.jpct!=null&&up(e,nj)?1:0));if(jl[i]!=null)k=jl[i];if(e.jpct!=null)nj=e}
-  return new Map(es.map((e,i)=>[e.t,jl[i]]))}
+  return new Map(es.map((e,i)=>[e,jl[i]]))}
 // ---- weight: at 70% of Max Weight HP and SP stop regenerating, at 90% you can't attack or use skills (official guide) ----
 // a trip ends at your sell point (up to 70% keeps regen, past it carries more but fights with no regen); then you go to town and back
 const W_NOREGEN=0.7,W_STOP=0.9;

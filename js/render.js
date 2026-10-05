@@ -163,7 +163,7 @@ function fmtP(v){return Number.isInteger(v)?String(v):v.toFixed(1)}
 function renderLog(s){
   const es=[...s.entries].sort((a,b)=>a.t-b.t);const base=es.length?es[0].lv:0,md=multiDay(es),jl=entryJobLvs(s);
   $("logTable").querySelector("tbody").innerHTML=es.map((e,i)=>{let rate="";if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>=1/60?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):`<span title="under a minute of unpaused time since the last entry">–</span>`}
-    return `<tr data-t="${esc(e.t)}" style="cursor:default"><td>${md?fmtD(e.t)+" ":""}${fmtT(e.t)}</td><td>B${esc(e.lv)}${jl.get(e.t)?`/J${esc(jl.get(e.t))}`:""}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td><td><button class="small danger" data-del="${esc(e.t)}" aria-label="Delete entry">✕</button></td></tr>`}).reverse().join("")
+    return `<tr data-t="${esc(e.t)}" style="cursor:default"><td>${md?fmtD(e.t)+" ":""}${fmtT(e.t)}</td><td>B${esc(e.lv)}${jl.get(e)?`/J${esc(jl.get(e))}`:""}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td><td><button class="small danger" data-del="${esc(e.t)}" aria-label="Delete entry">✕</button></td></tr>`}).reverse().join("")
     ||`<tr><td colspan="6" class="name muted">No entries yet. Add your current level and EXP %.</td></tr>`;
   $("setupNote").textContent=s.job&&s.job!==state.job?`This session was logged as ${s.job}. Switch Job to ${s.job} to see its pace and walking time.`:"";
 }

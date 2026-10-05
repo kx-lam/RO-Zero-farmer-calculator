@@ -200,6 +200,19 @@ t("tracker: job EXP % wraps at a job level-up", () => {
   assert.equal(j.last, 10);
 });
 
+t("tracker: entry job levels run across sessions of the same job", () => {
+  const t0 = 1e12, h = 36e5;
+  // an older session (a) and the current one (b); Job % drops 95 → 5 in b, a job level-up
+  run(`C().jobLv=10;state.sessions=[{id:'a',name:'a',mobIds:[],entries:[{t:${t0},lv:5,pct:1,jpct:80},{t:${t0 + h},lv:5,pct:2,jpct:90}]},
+    {id:'b',name:'b',mobIds:[],entries:[{t:${t0 + 2 * h},lv:5,pct:3,jpct:95},{t:${t0 + 3 * h},lv:5,pct:4,jpct:5}]}];state.current='b'`);
+  const lv = id => run(`(()=>{const s=state.sessions.find(x=>x.id==='${id}'),m=entryJobLvs(s);return s.entries.map(e=>m.get(e))})()`);
+  assert.deepEqual([...lv("b")], [9, 10]);                            // only the newest entry is your current job level
+  assert.deepEqual([...lv("a")], [9, 9]);                             // opening the older session doesn't make it Job Lv 10
+  // a job level saved on an entry wins over working it out
+  run(`state.sessions[0].entries[0].jlv=8`);
+  assert.deepEqual([...lv("a")], [8, 8]);
+});
+
 t("job EXP: the last job level is the max and needs no EXP", () => {
   run(`state.job="Novice";state.chars={};state.goalJobLv=null`);
   const t = run("JOB_EXP.novice");
