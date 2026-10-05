@@ -53,6 +53,10 @@ $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potIn
 ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
   if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));
+// auto-cast spell (card / weapon / scroll), any job
+$("acOn").addEventListener("change",e=>{AC().on=e.target.checked;save();renderAll()});
+$("acSpell").addEventListener("change",e=>{AC().spell=e.target.value;save();renderAll()});
+["acLv","acPct"].forEach(id=>$(id).addEventListener("input",e=>{AC()[id==="acLv"?"lv":"pct"]=num(e.target.value);save();renderAll()}));
 $("converters").addEventListener("change",e=>{C().converters=e.target.checked;save();renderAll()});
 // attack detail fields: editing makes the attack "Custom"
 $("cartW").addEventListener("input",e=>{C().cartW=Math.min(8000,Math.max(0,num(e.target.value)));save();renderAll()});

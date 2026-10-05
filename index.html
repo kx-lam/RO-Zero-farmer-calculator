@@ -153,6 +153,13 @@
         <label>CRIT<input id="crit" type="number" step="0.1" placeholder="0"></label>
         <label>Crit dmg %<input id="critDmg" type="number" step="1" placeholder="0"></label>
       </div>
+      <div class="bar note" id="acRow"><span title="Cards, weapons and scrolls that cast a spell on attack: every job can use them, Mages too">Auto-cast spell (card / weapon / scroll):</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="acOn" style="width:auto"> on</label>
+        <select id="acSpell" aria-label="Auto-cast spell" style="width:auto"></select>
+        <label class="bar" style="flex-direction:row;gap:4px">Lv <input id="acLv" type="number" min="1" max="10" style="width:56px"></label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input id="acPct" type="number" step="0.5" min="0" max="100" style="width:64px">% per basic attack</label>
+        <span id="acInfo"></span>
+      </div>
       <div class="form" style="grid-template-columns:repeat(4,minmax(0,1fr))">
         <label>Fixed share of cast %<input id="fixedShare" type="number" step="1" min="0" max="100" placeholder="0"></label>
         <label>Variable cast −%<input id="vctPct" type="number" step="1" placeholder="0"></label>
@@ -192,7 +199,7 @@
         <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="vitata" style="width:auto" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking"> Vitata (+<input data-sg="spBonus" type="number" style="width:50px">% SP cost; you cast Heal Lv1: <input data-sg="healSp" type="number" style="width:50px"> SP → <input data-sg="healHp" type="number" style="width:64px"> HP each)</label>
         <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="ecOn" style="width:auto"> Energy Coat</label>
         <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="hfOn" style="width:auto"> Hunter Fly (<input data-sg="hfPct" type="number" style="width:50px">% · <input data-sg="hfHp" type="number" style="width:60px"> HP/s)</label>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="daSF" style="width:auto"> Side Winder double attack <input data-sg="daPct" type="number" style="width:50px">% (2nd hit procs Spell Fist)</label>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="daSF" style="width:auto"> Side Winder double attack <input data-sg="daPct" type="number" style="width:50px">% (the 2nd hit also procs Spell Fist)</label>
         <label class="bar" style="flex-direction:row;gap:4px">SP items at <input data-sg="autoSpPct" type="number" style="width:56px">% SP</label>
       </div>
       <div class="note" id="sageInfo"></div>
