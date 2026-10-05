@@ -155,6 +155,7 @@ details.sub{padding:12px 14px;gap:8px;background:var(--bg)}
 #refBaseTable tbody tr,#refJobTable tbody tr,#refFormulas tbody tr,#refElemTable tbody tr,#refSizeTable tbody tr{cursor:default}
 #refFormulas td.f{white-space:normal;text-align:left;font-size:12.5px;min-width:260px}
 #refFormulas th:nth-child(2){text-align:left}
+#refFormulas .fn{font-family:var(--body);font-size:12px;color:var(--muted);margin-top:2px}
 #refFormulas tr.grp td{font-family:var(--display);font-weight:600;color:var(--muted);font-size:12px;padding-top:14px;text-align:left}
 #refElemTable td,#refSizeTable td{text-align:center}#refElemTable th,#refSizeTable th{text-align:center}
 #refElemTable th:first-child,#refSizeTable th:first-child,#refElemTable td:first-child,#refSizeTable td:first-child{text-align:left}

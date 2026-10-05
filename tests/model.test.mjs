@@ -595,4 +595,22 @@ t("auto-cast spells from cards work on any job's basic attacks", () => {
   assert.ok(run(`dmgPerHit(${MOB})`) > 1 && run(`acDmg(${MOB})`) > 0);
 });
 
+t("ASPD potion and buffs from others (RO樂園攻速計算機 values)", () => {
+  setup("Knight", { atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
+    potOn: true, potType: "conc", cons: [], pbuffs: {}, buffs: {}, skills: {}, a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  assert.equal(run(`aspdEff()`), Math.floor(160 + 4 * 80 / 200));          // Concentration: 4 × AGI/200 on top of the typed ASPD
+  run(`C().potType="bers";SKFX=skillEffects(C());applyBuild();applyConsumables()`);
+  assert.equal(run(`aspdEff()`), Math.floor(160 + 9 * 80 / 200));          // Berserk is 9 and Knights can drink it
+  assert.equal(run(`potOk("bers","Priest")`), false);
+  run(`C().potOn=false;C().pbuffs={incAgi:{on:true,lv:10},canto:{on:true}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
+  const lines = run(`JSON.stringify(aspdBuffLines())`);
+  assert.ok(lines.includes('"agi",null,null,19') && !lines.includes('"agi",null,null,12'));   // Canto Candidus replaces Increase AGI
+  run(`C().pbuffs={adren:{on:true}}`);
+  assert.equal(run(`aspdBuffLines().length`), 0);                           // Adrenaline Rush needs an axe or mace
+  run(`C().pbuffs={};C().skills={"two-hand-quicken":10};C().buffs={"two-hand-quicken":true};SKFX=skillEffects(C())`);
+  assert.ok(run(`JSON.stringify(SKFX.buffStat)`).includes('"aspd_mod",null,null,7'));      // Two-Hand Quicken: value 7, +10%
+  run(`state.job="Hunter";state.chars={};Object.assign(C(),{weapon:"Bow",skills:{"falcon-eyes":10},buffs:{"falcon-eyes":true}});SKFX=skillEffects(C())`);
+  assert.equal(run(`SKFX.buffStat.filter(b=>["agi","dex"].includes(b[0])).reduce((a,b)=>a+b[3],0)`), 10);   // Falcon Eyes (True Sight): AGI, DEX +5
+});
+
 console.log(`${n} tests passed`);

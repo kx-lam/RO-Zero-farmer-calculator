@@ -6,6 +6,10 @@ const BUILD=(()=>{
   // 2nd job -> 1st job
   const FIRST_OF={Knight:"Swordsman",Crusader:"Swordsman",Wizard:"Mage",Sage:"Mage",Hunter:"Archer",Bard:"Archer",Dancer:"Archer",Priest:"Acolyte",Monk:"Acolyte",Blacksmith:"Merchant",Alchemist:"Merchant",Assassin:"Thief",Rogue:"Thief"};
   const STAT6=["str","agi","vit","int","dex","luk"];
+  // ASPD lost while a shield is worn, per job (RO樂園攻速計算機 2026-09-07, sheet "攻速懲罰表"; Landgris ROCalculator's Zero
+  // table has the same). Assassins use their left-hand row
+  const SHIELD_ASPD={Swordsman:5,Mage:10,Archer:9,Acolyte:7,Merchant:5,Thief:6,Knight:5,Crusader:5,Wizard:8,Sage:3,
+    Hunter:9,Bard:5,Dancer:5,Priest:3,Monk:3,Blacksmith:5,Alchemist:4,Assassin:6,Rogue:3};
   // the gear grid; "takes" lists the item slots (prontera equip_slot) that may go in it
   const SLOTS=[
     {k:"weapon",label:"Weapon",takes:["weapon"]},{k:"shield",label:"Shield",takes:["shield"]},
@@ -44,7 +48,7 @@ const BUILD=(()=>{
       softMdef:Math.max(0,f(s.int+lv/4+(s.dex+s.vit)/5)),crit:1+s.luk*0.3+lv/100,aspdTerm:Math.sqrt(s.agi*s.agi/2+s.dex*s.dex/(ranged?7:5))/4}}
 
   // ---- bonus accumulation ----
-  const blank=()=>({st:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},atk:0,matk:0,atkPct:0,matkPct:0,hit:0,flee:0,crit:0,critDmg:0,aspd:0,aspdPct:0,
+  const blank=()=>({st:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},atk:0,matk:0,atkPct:0,matkPct:0,hit:0,flee:0,crit:0,critDmg:0,aspd:0,aspdPct:0,aspdMod:0,
     hp:0,hpPct:0,sp:0,spPct:0,def:0,mdef:0,ranged:0,melee:0,skill:0,skillOf:{},vct:0,fct:0,acd:0,vctOf:{},fctOf:{},ignDef:0,ignMdef:0,
     phys:{all:0,race:{},size:{},ele:{},kind:{}},magic:{all:0,race:{},size:{},ele:{},kind:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},critRace:{},spCost:0,wEle:null,unmodelled:[]});
   // lines that only matter for PvP survival, healing or status resistance: not part of the farming maths, so not reported either
@@ -66,7 +70,7 @@ const BUILD=(()=>{
     // "When attacking Brute monsters, CRIT +7": counted only against that race
     if(type==="crit"&&kind==="race"){addTo(A.critRace,tgt(kind,target),v);return true}
     const flat={atk:"atk",matk:"matk",atk_percent:"atkPct",matk_percent:"matkPct",hit:"hit",flee:"flee",crit:"crit",crit_damage_percent:"critDmg",
-      aspd:"aspd",aspd_percent:"aspdPct",hp:"hp",hp_percent:"hpPct",sp:"sp",sp_percent:"spPct",def:"def",mdef:"mdef",
+      aspd:"aspd",aspd_percent:"aspdPct",aspd_mod:"aspdMod",hp:"hp",hp_percent:"hpPct",sp:"sp",sp_percent:"spPct",def:"def",mdef:"mdef",
       ranged_damage_percent:"ranged",melee_damage_percent:"melee"}[type];
     if(flat&&!kind){A[flat]+=v;return true}
     if(type==="attack_delay_percent"&&!kind){A.aspdPct-=v;return true} // −10% delay counts as +10% ASPD
@@ -122,7 +126,10 @@ const BUILD=(()=>{
     const hpBase=+b.hpBase>0?+b.hpBase:curve(job,"hp",lv),spBase=+b.spBase>0?+b.spBase:curve(job,"sp",lv);
     const maxHp=hpBase!=null?f((f(hpBase*(1+tot.vit/100))+A.hp)*(1+A.hpPct/100)):null,maxSp=spBase!=null?f((f(spBase*(1+tot.int/100))+A.sp)*(1+A.spPct/100)):null;
     const ab=aspdBase?aspdBase(job,weapon):null;let aspd=null;
-    if(ab!=null){const a0=ab+S.aspdTerm;aspd=Math.min(190,Math.round((a0+(195-a0)*A.aspdPct/100+A.aspd)*10)/10)}
+    // Zero (RO樂園攻速計算機 2026-09-07, checked against a Lv 105 Sage in game; Landgris's /compute-aspd agrees up to the last step):
+    // ASPD1 = floor(base − shield penalty + stat term + potion/skill value × AGI/200); ASPD = floor(ASPD1 + (195 − ASPD1) × ASPD % + flat
+    // gear ASPD), cap 190. "aspd_mod" lines carry the potion/skill values (Concentration Potion 4, Two-Hand Quicken 7...)
+    if(ab!=null){const a1=f(ab-(shield?SHIELD_ASPD[job]||0:0)+S.aspdTerm+A.aspdMod*tot.agi/200);aspd=Math.min(190,f(a1+(195-a1)*A.aspdPct/100+A.aspd))}
     const ammo=worn.find(w=>w.slot==="ammo"),arrowEl=weapon==="Bow"&&ammo&&ammo.it.el?cap(ammo.it.el):null; // bows shoot the arrow's element
     const fields={baseLv:lv,jobLv,weapon,wElem:arrowEl||A.wEle||(wpn&&wpn.el?cap(wpn.el):null)||"Neutral",
       st:{str:`${base.str}+${tot.str-base.str}`,agi:`${base.agi}+${tot.agi-base.agi}`,vit:`${base.vit}+${tot.vit-base.vit}`,dex:`${base.dex}+${tot.dex-base.dex}`,luk:`${base.luk}+${tot.luk-base.luk}`},
@@ -132,5 +139,5 @@ const BUILD=(()=>{
       vctPct:A.vct,fctPct:A.fct,acdPct:A.acd,ignDef:A.ignDef,ignMdef:A.ignMdef};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
 if(typeof module!=="undefined")module.exports=BUILD;

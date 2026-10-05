@@ -9,7 +9,8 @@ const elTag=el=>el&&(convOn()||C().a.type==="spellfist")?` <span class="el ${el}
 // ASPD potion adds a flat bonus to your status window ASPD (Zero cap 190); its cost counts against zeny/hr
 // damage maths read cf(k): the typed (or built) stat plus consumables, see applyConsumables
 let EFF=null;const cf=k=>EFF&&EFF[k]!==undefined?EFF[k]:C()[k];
-const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)+(C().potOn?num(C().potAspd):0)));
+// the potion and buffs reach ASPD through their bonus lines (build-ui.js aspdBuffLines), so cf("aspd") already has them
+const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)));
 // Merchant line: Overcharge raises what NPCs pay you, Discount cuts what NPCs charge you; Lv 1–10 give 7, 9, … 23, 24% in Zero,
 // read from the learned level's description in data/skills.js ("Markup rate: 24%", "Discount rate: 24%")
 const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILLS[state.job]||[])for(const s of t.skills)if(s.slug===slug){const r=String((s.lv[lv-1]||[])[7]||"").match(/(\d+)%/);return r?+r[1]:0}return 0};
@@ -80,20 +81,21 @@ function dmgPerHit(m){
   const c=C(),skill=a.type!=="auto";const rng=(1+num(c.rangePct)/100)*(skill?1+num(c.skillPct)/100:1);
   // mastery ATK (flat, from passive skills) is added after the skill ratio, before cards and DEF
   const df=effDef(m);return Math.max(1,Math.floor((pool*pctEff()/100+masteryFor(m)*elemMult(m,"Neutral")/100)*bonusMul(m)*rng*(4000+df)/(4000+10*df)-mobSoftDef(m)))}
-// crits (basic attacks only): chance = CRIT (doubled with a katar), always hit, × 1.4 × (1 + crit damage %). Monster crit shield (its LUK) isn't in the data.
+// crits (basic attacks only): chance = CRIT (doubled with a katar) − monster LUK × 0.2, always hit, × 1.4 × (1 + crit damage %)
 // m: the monster, for gear CRIT that only counts against its race (Cruiser Card: CRIT +7 vs Brute)
 const critRace=m=>{const c=C();return m&&c.bx&&c.bx.critRace?num(c.bx.critRace[m.race]):0};
-const critChance=m=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,(num(cf("crit"))+critRace(m))*(c.weapon==="Katar"?2:1)))/100};
+const critChance=m=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,(num(cf("crit"))+critRace(m))*(c.weapon==="Katar"?2:1)-(m&&m.luk||0)*0.2))/100};
 // uses needed per kill: whole hits that land, spread over misses
 // average damage of one use: hits that land (crits always do, × 1.4 × (1 + crit damage %)) plus auto-casts, which only proc on swings that connect
 const procPerUse=m=>ssDmg(m)*SS_CHANCE+acDmg(m)*acChance();
 const useAvg=(m,per,proc)=>{const cr=critChance(m),hc=hitChance(m)/100;return per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hc)+proc*(cr+(1-cr)*hc)};
+const dpsOf=m=>{if(isSF())return null;const d=dmgPerHit(m),a=C().a,h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);return useAvg(m,d*Math.max(0.01,h),procPerUse(m))*targets()/useSec()};
 function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m),a=C().a,proc=procPerUse(m);if(d<=0&&proc<=0)return Infinity;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);
   // Shadow Spell and card auto-casts are averaged into each attack
   if(critChance(m)>0||proc>0)return Math.max(1,m.hp/useAvg(m,per,proc));
   return Math.ceil(m.hp/per)/(hitChance(m)/100)}
-// SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s unless typed
-const spRegen8=()=>num(C().spRegen)>0?num(C().spRegen):1+Math.floor(num(cf("maxSp"))/100)+Math.floor(statVal(C(),"int")/6);
+// SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s, + (INT − 120)/2 + 4 from INT 120 (roz.prontera.info), unless typed
+const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVal(C(),"int");return 1+Math.floor(num(cf("maxSp"))/100)+Math.floor(i/6)+(i>=120?Math.floor((i-120)/2)+4:0)};
 // gear "SP consumption +x%" (build mode) scales the SP each use costs
 const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100)};
 const spNeedPerSec=()=>isSF()?sgUpkeep()+sgDefSP()+hsFullSP()*hsSustain():num(C().a.sp)*spCostMul()/useSec();
@@ -299,8 +301,17 @@ let REGEN_OFF=false;
 const withRegenOff=fn=>{const k=REGEN_OFF;REGEN_OFF=true;try{return fn()}finally{REGEN_OFF=k}};
 // weight picked up per kill: each drop's weight (data/weights.js) × its chance, with your drop bonus and the level-gap penalty
 const weightKill=m=>(m.drops||[]).reduce((a,[id,ch])=>a+(ITEMW[id]||0)*Math.min(100,ch*dropMul()*penMul(m))/100,0);
-const wOn=()=>num(C().maxW)>0;
-const wRoom=lim=>Math.max(0,num(C().maxW)*lim-num(C().curW));
+// Max Weight (roz.prontera.info stat planner): 2000 + job bonus + 30 per STR point you put in (job, gear and buff STR don't count)
+// + 200 per level of Enlarge Weight Limit (Merchant) and of Increase Capacity (taught by the KP shop's Gym Membership, kept forever)
+const JOB_WEIGHT={Novice:0,Swordsman:800,Mage:200,Archer:600,Acolyte:400,Merchant:800,Thief:400,Knight:800,Crusader:800,Wizard:400,Sage:400,
+  Hunter:700,Bard:600,Dancer:600,Priest:600,Monk:600,Blacksmith:1000,Alchemist:400,Assassin:400,Rogue:400};
+const baseStr=c=>c.mode==="build"?num(buildOf(c).base.str):parseFloat(String((c.st||{}).str??"").split("+")[0]);
+function maxWCalc(c=C()){const s=baseStr(c),jb=JOB_WEIGHT[state.job],lv=skLv(c,"enlarge-weight-limit")+Math.min(10,Math.max(0,num(c.gymLv)));
+  return s>0&&jb!=null?{jb,total:2000+jb+30*s+200*lv}:null}
+// the Max Weight in use: what you typed, else the one worked out above (0 = weight off)
+const maxWt=(c=C())=>num(c.maxW)>0?num(c.maxW):(maxWCalc(c)||{total:0}).total;
+const wOn=()=>maxWt()>0;
+const wRoom=lim=>Math.max(0,maxWt()*lim-num(C().curW));
 const townSec=()=>Math.max(0,num(C().townMin,3))*60;
 // selling past 70% only pays when you can keep fighting with no regen (no SP needed, or SP items on)
 // the sell point is any % up to 90 (65% stops a loop before regen stops); blank or 0 means 70%

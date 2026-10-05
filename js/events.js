@@ -13,13 +13,14 @@ function derived(c){const g=k=>statVal(c,k)??0;const lv=num(c.baseLv),str=g("str
   return {atk:Math.floor(lv/4+(r?dex+str/5:str+dex/5)+luk/3),matk:Math.floor(lv/4)+Math.floor(int*1.5)+Math.floor(dex/5)+Math.floor(luk/3),
     hit:175+lv+dex+Math.floor(luk/3),flee:100+lv+agi+Math.floor(luk/5),def:Math.floor(lv/2)+Math.floor(vit/2)+Math.floor(agi/5),
     crit:1+luk*0.3+lv/100,aspdTerm:Math.sqrt(agi*agi/2+dex*dex/(r?7:5))/4,vit,int}}
-// ASPD base + weapon penalty for 1st and 2nd jobs on Zero (Landgris ROCalculator "paradise" table); missing = unknown
+// ASPD base + weapon penalty for 1st and 2nd jobs on Zero (RO樂園攻速計算機 2026-09-07, sheet "攻速懲罰表"; the Landgris
+// ROCalculator "paradise" table is the same apart from Knight two-handed sword, where it uses Lord Knight's −3); missing = unknown
 const ASPD_T={Swordsman:{"Bare hands":156,"One-handed mace":-10,"Two-handed mace":-10,"Dagger":-7,"One-handed sword":-7,"Two-handed sword":-14,"One-handed axe":-15,"Two-handed axe":-20,"One-handed spear":-17,"Two-handed spear":-25},
  Mage:{"Bare hands":146,"One-handed staff":-5,"Two-handed staff":-5,"Dagger":0},Archer:{"Bare hands":156,"Dagger":-15,"Bow":-10},
  Acolyte:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"One-handed staff":-20,"Two-handed staff":-20},
  Merchant:{"Bare hands":156,"One-handed mace":-10,"Two-handed mace":-10,"Dagger":-12,"One-handed sword":-12,"One-handed axe":-8,"Two-handed axe":-15},
  Thief:{"Bare hands":156,"Dagger":-8,"Bow":-13,"One-handed sword":-10,"One-handed axe":-20},
- Knight:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-9,"One-handed sword":-5,"Two-handed sword":-3,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-15,"Two-handed spear":-20},
+ Knight:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-9,"One-handed sword":-5,"Two-handed sword":-2,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-15,"Two-handed spear":-20},
  Crusader:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-8,"One-handed sword":-3,"Two-handed sword":-15,"One-handed axe":-10,"Two-handed axe":-15,"One-handed spear":-13,"Two-handed spear":-10},
  Wizard:{"Bare hands":146,"One-handed staff":-3,"Two-handed staff":-3,"Dagger":-4},Sage:{"Bare hands":151,"One-handed staff":-10,"Two-handed staff":-10,"Dagger":-8,"Book":2},
  Hunter:{"Bare hands":156,"Dagger":-13,"Bow":-7},Bard:{"Bare hands":156,"Dagger":-13,"Bow":-8,"Musical instrument":-5},Dancer:{"Bare hands":156,"Dagger":-13,"Bow":-8,"Whip":-5},
@@ -38,8 +39,8 @@ const renderStatNote=()=>{const c=C();const miss=STATS.filter(k=>statVal(c,k)==n
   const d=derived(c);const ab=aspdBase(state.job,c.weapon);$("statNote").textContent=`From your stats: status ATK ${d.atk} · status MATK ${d.matk} · HIT ${d.hit} · FLEE ${d.flee} · soft DEF ${d.def} · CRIT ${d.crit.toFixed(1)}${ab!=null?` · ASPD ${(ab+d.aspdTerm).toFixed(1)} before potions/skills`:""} (${RANGED.includes(c.weapon)?"ranged: DEX":"melee: STR"} is your main ATK stat). Changing a stat moves your typed values by the difference.`};
 STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c.st={};const wasSet=STATS.every(x=>statVal(c,x)!=null);const before=derived(c);c.st[k]=e.target.value;if(wasSet)shiftByStats(c,before);save();syncChar();renderAll()}));
 // character number/text fields
-const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","townMin"];
-["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","townMin"].forEach(k=>
+const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"];
+["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"].forEach(k=>
   $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
 $("npcBuy").addEventListener("change",e=>{C().npcBuy=e.target.checked;save();renderAll()});
 $("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?Math.min(90,v):70;save();renderAll()});
@@ -47,9 +48,9 @@ $("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?
   if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
   c[k]=e.target.value;save();renderAll();if(k==="weapon")renderSkills()}));
 $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
-const potInfo=()=>{const c=C();$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`:""};
+const potInfo=()=>{const c=C();$("potInfo").textContent=!c.potOn?"":c.mode!=="build"&&statVal(c,"agi")==null?"type your AGI above to count it (value × AGI/200)":`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`};
 $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});
-["potAspd","potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
+["potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
 ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
   if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));

@@ -1,6 +1,6 @@
 // ---- merge the per-monster tables from data/*.js into MOBS ----
 MOBS.forEach(m=>{const e=ELEM[m.id];if(e){m.el=e[0];m.elv=e[1];m.hit100=e[2];m.flee95=e[3]}
-  const st=MSTAT[m.id];if(st){m.def=st[0];m.mdef=st[1];m.atkMin=st[2];m.atkMax=st[3];m.vit=st[4];m.int=st[5];m.agg=!!st[6]}
+  const st=MSTAT[m.id];if(st){m.def=st[0];m.mdef=st[1];m.atkMin=st[2];m.atkMax=st[3];m.vit=st[4];m.int=st[5];m.agg=!!st[6];m.luk=st[7]||0}
   const lt=LOOT[m.id];if(lt){m.loot=lt[0];m.priced=lt[1];m.dropsN=lt[2];m.drops=lt[3]}else m.drops=[];
   const sz=SIZES[m.id];if(sz){m.size=sz[0];m.race=RACES[sz[1]]}});
 
@@ -110,7 +110,7 @@ const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="
   const c={baseLv:60,atkTxt:mag?"60+50":"120+200",matkTxt:mag?"100+200":"40+30",hitTxt:"300",fleeTxt:"250",aspd:170,defTxt:"40+60",maxHp:6000,maxSp:600,intTxt:mag?"60+10":"10",spRegen:0,weapon:J.w,wElem:"Neutral",
     preset:0,a:{...J.p[0]},dmgBonus:0,eq:[],
     nameType:MAGIC_JOBS.includes(job)?"magic":"phys", // name bonus defaults to the job's damage type
-    autoSp:false,itemSp:37,itemPrice:200,potOn:false,potAspd:3,potPrice:2200,potMin:30,mobInterval:1.5,hitScale:0.3,hpRegen:0,curW:0,maxW:0,sellAt:70,townMin:3};
+    autoSp:false,itemSp:37,itemPrice:200,potOn:false,potType:"",potPrice:2200,potMin:30,mobInterval:1.5,hitScale:0.3,hpRegen:0,curW:0,maxW:0,sellAt:70,townMin:3};
   if(job==="Sage")Object.assign(c,{matkTxt:"100+200",intTxt:"40+10",maxSp:800,maxHp:4000,sage:{hsAuto:true,hsWorth:50000,hsLv:10}});
   return c};
 

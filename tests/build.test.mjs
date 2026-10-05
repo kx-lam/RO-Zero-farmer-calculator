@@ -9,6 +9,7 @@ Object.assign(globalThis, {
       g: [{ b: [["str", null, null, 2]] }, { b: [["atk", null, null, 5, 1]] }, { r: 7, b: [["damage_percent", "race", "demi_human", 10]] }] },
     { id: 2, slug: "coat", name: "Coat", slot: ["armor"], refine: "armor", def: 10, g: [] },
     { id: 3, slug: "boots", name: "Boots", slot: ["footgear"], refine: "armor", def: 2, g: [] },
+    { id: 5, slug: "guard", name: "Guard", slot: ["shield"], refine: "armor", def: 3, g: [] },
     { id: 4, slug: "hat", name: "Hat", slot: ["head_upper", "head_middle"], refine: "armor", def: 1, g: [{ b: [["aspd_percent", null, null, 10]] }] },
   ],
   CARDS: [
@@ -62,10 +63,17 @@ t("armor refine DEF, sets with combined refine, HP from the job curve", () => {
 
 t("ASPD % pivots on 195 and caps at 190; multi-slot headgear counts once", () => {
   const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { headTop: { id: 4 }, headMid: { id: 4 } } }, "Knight", aspdBase);
-  const a0 = 150 + r.status.aspdTerm;
-  assert.equal(r.fields.aspd, Math.round((a0 + (195 - a0) * 0.10) * 10) / 10);
+  const a1 = Math.floor(150 + r.status.aspdTerm);
+  assert.equal(r.fields.aspd, Math.floor(a1 + (195 - a1) * 0.10));
   const fast = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {} }, "Knight", () => 189);
   assert.equal(fast.fields.aspd <= 190, true);
+});
+
+t("a shield takes the job's shield penalty off base ASPD", () => {
+  const off = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {} }, "Knight", aspdBase);
+  const on = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { shield: { id: 5 } } }, "Knight", aspdBase);
+  assert.equal(BUILD.SHIELD_ASPD.Knight, 5);
+  assert.equal(off.fields.aspd - on.fields.aspd, 5);
 });
 
 t("status formulas match the verified Zero formulas", () => {
@@ -90,6 +98,17 @@ t("a 1st-job condition (\"Acolyte Class\") also applies to its 2nd jobs", () => 
   assert.equal(hit("Priest"), 10);
   assert.equal(hit("Monk"), 10);
   assert.equal(hit("Knight"), 0);
+});
+
+t("potion/skill values add value × AGI/200 to ASPD1 (RO樂園攻速計算機's own Priest example)", () => {
+  // Priest, mace + shield: 156 − 3 − 3; AGI 128 (109 + Canto Candidus 19), DEX 85; gear ASPD +45% and +2,
+  // Canto Candidus +17%, Concentration Potion 4: ASPD1 floor(150 + 24.54 + 2.56) = 177, ASPD floor(177 + 18 × 0.62 + 2) = 190
+  const r = BUILD.compute({ baseLv: 1, jobLv: 1, base: { str: 1, agi: 109, vit: 1, int: 1, dex: 85, luk: 1 }, gear: { shield: { id: 5 } },
+    extra: [["agi", null, null, 19], ["aspd_percent", null, null, 45], ["aspd", null, null, 2], ["aspd_percent", null, null, 17], ["aspd_mod", null, null, 4]] },
+    "Priest", () => 156 - 3);
+  assert.equal(r.fields.aspd, 190);
+  const a1 = Math.floor(156 - 3 - 3 + r.status.aspdTerm + 4 * 128 / 200);
+  assert.equal(a1, 177);
 });
 
 console.log(`${n} tests passed`);
