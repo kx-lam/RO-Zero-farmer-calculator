@@ -111,6 +111,21 @@ t("tracker: entries on a picked date, and pasted times running past midnight", (
   assert.equal(run(`multiDay([{t:${a}},{t:${b}}])`), true);
 });
 
+t("tracker: pasted lines, with or without a time", () => {
+  const p = line => { const r = run(`pasteLine(${JSON.stringify(line)})`); return r && [...r] };
+  assert.deepEqual(p("15:05 17.9% 63%"), [15, 5, 17.9, 63]);
+  assert.deepEqual(p("1505 17.9%"), [15, 5, 17.9, null]);
+  assert.deepEqual(p("[09:40] 2.5% / 80%"), [9, 40, 2.5, 80]);
+  // no time: the current time is filled in later
+  assert.deepEqual(p("17.9% 63%"), [null, null, 17.9, 63]);
+  assert.deepEqual(p("17.9"), [null, null, 17.9, null]);
+  assert.deepEqual(p("100% 50%"), [null, null, 100, 50]);
+  assert.deepEqual(p("45.123% 12%"), [null, null, 45.123, 12]);
+  assert.equal(p("25:00 17%"), null);
+  assert.equal(p("15:05"), null);
+  assert.equal(p(""), null);
+});
+
 t("tracker: job EXP % wraps at a job level-up", () => {
   const t0 = 1e12;
   run(`cur().entries=[{t:${t0},lv:10,pct:1,jpct:80},{t:${t0 + 18e5},lv:10,pct:2,jpct:95},{t:${t0 + 36e5},lv:10,pct:3,jpct:10}];cur().pauses=[]`);
