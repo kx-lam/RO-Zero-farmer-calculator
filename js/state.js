@@ -54,6 +54,10 @@ const cur=()=>state.sessions.find(s=>s.id===state.current)||state.sessions[0];
 const sumStat=v=>String(v??"").split("+").reduce((a,x)=>a+(parseFloat(x)||0),0);
 const fmtN=n=>isFinite(n)?Math.round(n).toLocaleString("en-GB"):"–";
 const fmtT=t=>new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+const fmtD=t=>new Date(t).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+const dayKey=t=>new Date(t).toDateString();
+// entries sorted by time that run over more than one calendar day show their date as well as the time
+const multiDay=es=>es.length>1&&dayKey(es[0].t)!==dayKey(es[es.length-1].t);
 const pct=(n,d=2)=>isFinite(n)?n.toFixed(d)+"%":"–";
 function fmtDur(h){if(!isFinite(h)||h<0)return "–";const m=Math.round(h*60),hh=Math.floor(m/60),mm=m%60;if(hh>=24){const d=Math.floor(hh/24);return `~${d}d ${hh%24}h ${mm}m\n~${hh}h ${mm}m`}return hh?`~${hh}h ${mm}m`:`~${mm}m`}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}

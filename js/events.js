@@ -66,16 +66,26 @@ $("dropBonus").value=state.dropBonus||0;$("dropBonus").addEventListener("input",
 $("bonus").addEventListener("input",e=>{state.bonus=num(e.target.value);save();renderAll()});
 // log
 function nowTime(){return new Date().toTimeString().slice(0,5)}
-function resetForm(){const es=[...cur().entries].sort((a,b)=>a.t-b.t),last=es[es.length-1];$("fLevel").value=last?last.lv:num(C().baseLv,60);$("fPct").value="";$("fJob").value="";$("fTime").value=nowTime()}
-function entryTime(h,m){const d=new Date();d.setHours(h,m,0,0);if(d.getTime()-Date.now()>3600e3)d.setDate(d.getDate()-1);return d.getTime()}
+const today=()=>{const d=new Date(),p=x=>String(x).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`};
+// the Date box follows today until you change it, so a page left open past midnight doesn't log on yesterday's date
+const pickedDay=()=>$("fDate").dataset.auto==="1"?"":$("fDate").value;
+// keepDay leaves a date you picked in place for the next entry
+function resetForm(keepDay){const es=[...cur().entries].sort((a,b)=>a.t-b.t),last=es[es.length-1];$("fLevel").value=last?last.lv:num(C().baseLv,60);$("fPct").value="";$("fJob").value="";$("fTime").value=nowTime();if(!keepDay||!pickedDay()){$("fDate").value=today();$("fDate").dataset.auto="1"}}
+$("fDate").addEventListener("input",e=>{e.target.dataset.auto=e.target.value?"":"1"});
+$("addForm").addEventListener("focusin",e=>{if(e.target.id!=="fDate"&&$("fDate").dataset.auto==="1")$("fDate").value=today()});
+// day ("YYYY-MM-DD") puts the entry on that date; without one it's today, or yesterday for a time more than an hour ahead
+function entryTime(h,m,day){const d=day?new Date(day+"T00:00"):new Date();d.setHours(h,m,0,0);if(!day&&d.getTime()-Date.now()>3600e3)d.setDate(d.getDate()-1);return d.getTime()}
+// pasted lines on a picked date run on into the next day when a time goes back (23:50 then 00:10)
+function pasteTimes(lines,day){let off=0,prev=-1;return lines.map(([h,m])=>{if(!day)return entryTime(h,m);if(h*60+m<prev)off++;prev=h*60+m;const d=new Date(day+"T00:00");d.setDate(d.getDate()+off);d.setHours(h,m,0,0);return d.getTime()})}
 function guessLevel(s,t,lv,p){const prev=[...s.entries].filter(e=>e.t<t).sort((a,b)=>b.t-a.t)[0];return prev&&prev.lv===lv&&prev.pct-p>=50?lv+1:lv}
-$("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m);
+$("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m,pickedDay());
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
   $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
   const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=Math.min(jobMax(),num(C().jobLv)+1)}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
-  if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm();$("fPct").focus()});
+  if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm(true);$("fPct").focus()});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
-  const parsed=$("pasteBox").value.split(/\n/).map(line=>{const m=line.match(/(\d{1,2}):?(\d{2})[^\d\n]+?(\d+(?:\.\d+)?)\s*%?(?:[^\d\n]+?(\d+(?:\.\d+)?)\s*%?)?/);if(!m||+m[1]>23||+m[2]>59)return null;return {t:entryTime(+m[1],+m[2]),pct:+m[3],jpct:m[4]!=null?+m[4]:null}}).filter(Boolean).sort((a,b)=>a.t-b.t);
+  const lines=$("pasteBox").value.split(/\n/).map(line=>{const m=line.match(/(\d{1,2}):?(\d{2})[^\d\n]+?(\d+(?:\.\d+)?)\s*%?(?:[^\d\n]+?(\d+(?:\.\d+)?)\s*%?)?/);if(!m||+m[1]>23||+m[2]>59)return null;return [+m[1],+m[2],+m[3],m[4]!=null?+m[4]:null]}).filter(Boolean);
+  const ts=pasteTimes(lines,pickedDay()),parsed=lines.map(([,,pct,jpct],i)=>({t:ts[i],pct,jpct})).sort((a,b)=>a.t-b.t);
   parsed.forEach(x=>{const g=guessLevel(s,x.t,lv,x.pct);if(g!==lv){ups++;lv=g}const ent={t:x.t,lv,pct:x.pct};if(x.jpct!=null)ent.jpct=x.jpct;s.entries=s.entries.filter(e=>e.t!==x.t);s.entries.push(ent);n++});
   $("pasteMsg").textContent=n?`Added ${n} entr${n===1?"y":"ies"}${ups?` with ${ups} level-up${ups>1?"s":""} (now Lv ${lv})`:` at Lv ${lv}`}.`:"No lines matched. Use the format 15:05 17.9% (job % optional)";
   if(n){autoResume(s,parsed[parsed.length-1].t);if(!s.job)s.job=state.job;$("pasteBox").value="";save();renderAll()}});
