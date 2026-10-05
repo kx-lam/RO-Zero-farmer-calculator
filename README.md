@@ -60,7 +60,7 @@ It's a single page that runs entirely in your browser. There's no server, no log
 
 ### Monster info
 
-One monster's stats, how you do against it, and every map it spawns on. Its drops list shows the auto-loot group, chance, your chance, NPC and player price, and zeny per kill.
+One monster's stats, how you do against it, and every map it spawns on. Its drops list shows the auto-loot group, chance, your chance, NPC and player price, and zeny per kill. Drops with no published rate yet (the Boulder Dwarves in Nordfeld Cave) show chance `?` and add nothing to zeny or weight figures.
 
 ### Item info
 
@@ -134,7 +134,7 @@ Each table lives in its own file, so a re-export after a patch only touches that
 | `mobs.js` | Monsters (EXP is `null` where there's no data yet) |
 | `spawn.js` | Spawn maps and counts, normal and PvP channels. Written by `tools/export_spawns.py`. |
 | `maps.js` | In-game map code and name for each spawn map. Names written by `tools/export_mapnames.py`. |
-| `loot.js` | Drops |
+| `loot.js` | Drops (chance `null` where no rate is published yet) |
 | `items.js` | Item names |
 | `prices.js` | NPC sell price for every drop. Written by `tools/export_prices.py`. |
 | `weights.js` | Item weight for every drop; items with no weight count as weightless. Written by `tools/export_prices.py`. |

@@ -2,7 +2,8 @@
 
 Lists, per monster, drops ragnarokzero.net has that data/loot.js doesn't (or the other way round), drop rates that
 differ, and item names that are missing from or differ in data/items.js. Drops with no known rate ("???") are left out,
-as data/loot.js leaves them out too. Loot value per kill isn't compared: the two sites price items differently.
+as data/loot.js leaves them out too, unless a monster has no rate for any drop (the Boulder Dwarves): then data/loot.js
+lists them with chance null, and this flags any that ragnarokzero.net has a rate for since. Loot value per kill isn't compared: the two sites price items differently.
 It fetches one page per monster (about 250), so it takes a few minutes.
 Run: python tools/check_drops.py
 """
@@ -51,13 +52,15 @@ def main():
                 continue
             if it not in ours:
                 lines.append(f"  missing {x['name']} #{it} {x['rate']}%")
+            elif ours[it] is None:
+                lines.append(f"  {x['name']} #{it}: ours ?, theirs {x['rate']}% (now has a rate)")
             elif abs(ours[it] - x["rate"]) > 1e-9:
                 lines.append(f"  {x['name']} #{it}: ours {ours[it]}%, theirs {x['rate']}%")
             if names.get(str(it)) != x["name"]:
                 lines.append(f"  item name #{it}: ours {names.get(str(it))!r}, theirs {x['name']!r}")
         for it, rate in ours.items():
             if it not in theirs:
-                lines.append(f"  extra {names.get(str(it), '?')} #{it} {rate}% (not on ragnarokzero.net)")
+                lines.append(f"  extra {names.get(str(it), '?')} #{it} {'?' if rate is None else f'{rate}%'} (not on ragnarokzero.net)")
         if lines:
             print(f"#{mob_id}")
             print("\n".join(lines))

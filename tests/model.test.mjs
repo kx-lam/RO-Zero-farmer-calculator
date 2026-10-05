@@ -457,6 +457,18 @@ t("drop level penalty scales zeny per kill and the Zeny Hunter", () => {
   near(b.zk, a.zk / 2);
 });
 
+t("drops with no published rate (Nordfeld Cave Boulder Dwarves) are listed as ? and earn nothing", () => {
+  const m = "MOBS.find(m=>m.id===25327)";
+  assert.equal(run(`JSON.stringify(${m}.drops.map(([id])=>itemName(id)))`), JSON.stringify(["Coal", "Boulder Dwarf Siege Trooper Card", "Archeologist's Shoes", "Advanced Boulder Dwarf Token"]));
+  assert.ok(run(`[25327,25328,25329].every(id=>{const x=MOBS.find(m=>m.id===id);return x.drops.length&&x.drops.every(([,ch])=>ch==null)&&x.loot==null})`));
+  assert.equal(run(`chTxt(null)`), "?"); assert.equal(run(`chTxt(5)`), "5%"); assert.equal(run(`yourCh(${m},null)`), null);
+  assert.ok(run(`dropNames(${m})`).startsWith("Coal ? (NPC 250 z)"));
+  run(`state.prices={300942:5000000}`);                                // even a market price adds nothing without a rate
+  assert.equal(run(`hasLoot(${m})`), false); assert.equal(run(`zenyKill(${m})`), 0); assert.equal(run(`weightKill(${m})`), 0);
+  assert.equal(run(`dropZ(${m},300942,null)`), 0);
+  run(`state.prices={}`);
+});
+
 t("auto loot: drops of a group you don't loot earn nothing", () => {
   run(`C().baseLv=1;state.dropBonus=0;state.prices={};state.npcPrices={};state.autoLoot={}`);
   assert.equal(run(`ITEMTYPE[909]`), "e"); assert.equal(run(`ITEMTYPE[4001]`), "c"); assert.equal(run(`ITEMTYPE[1202]`), "w");
