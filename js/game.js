@@ -72,7 +72,9 @@ const JOBS={
  "Assassin":{w:"Katar",p:[A2("Sonic Blow Lv10","phys",1100,1,"W",28,1,"Katar only. +50% below half HP. 1100% on Zero Global",Z(0,0,1,0)),A2("Meteor Assault Lv10","phys",1400,1,"W",40,3,"5x5 around you. (1400 + 5×AGI)% × base level / 100",Z(0,0,0.7,0.3,{blv:true,sadd:[["agi",5]]})),
    A2("Soul Destroyer Lv10","phys",1500,1,"W",60,1,"(1500 + STR + INT)% × base level / 100",Z(0.1,0.4,0.5,0.3,{blv:true,sadd:[["str",1],["int",1]]})),A2("Venom Splasher Lv10","phys",1400,1,"W",30,2,"Explodes after 2s, 5x5",Z(0.2,0.8,1,0)),
    A2("Grimtooth Lv5","phys",200,1,"W",8,2,"Katar, from Hiding. (200 + AGI)%",Z(0,0,1,0,{sadd:[["agi",1]]})),
-   A2("Venom Knife","phys",500,1,"W",35,1,"Costs a Venom Knife",Z(0,0,0,0)),A("Basic attack (katar)","auto",100,1.2,"W",0,0,0,1,"Katar extra hit averaged in"),...THIEF]},
+   A2("Venom Knife","phys",500,1,"W",35,1,"Costs a Venom Knife",Z(0,0,0,0)),A("Basic attack (katar)","auto",100,1.2,"W",0,0,0,1,"Katar extra hit averaged in"),...THIEF,
+   // appended so saved preset indexes stay put: dual wield with a one-handed sword or axe in the right hand (no Double Attack)
+   A("Basic attack","auto",100,1,"W",0,0,0,1,"No Double Attack: for a one-handed sword or axe in the right hand")]},
  "Rogue":{w:"Dagger",p:[A2("Back Stab Lv10","phys",700,2,"W",12,1,"Hits twice with a dagger, half damage with a bow",Z(0,0,0.7,0.3)),A2("Triangle Shot Lv10","phys",2300,1,"W",20,1,"Bow, costs 3 arrows. (2300 + 3×AGI)% × base level / 100",Z(0.2,0.8,0,0.2,{blv:true,sadd:[["agi",3]]})),
    A2("Sightless Mind Lv5","phys",850,1,"W",15,3,"From Hiding, 7x7. +3×AGI% +DEX/2%",Z(0,0,0.7,0.3,{sadd:[["agi",3],["dex",0.5]]})),A2("Double Strafe Lv10","phys",190,2,"W",12,1,"Bow",Z(0,0,0,0.1)),...THIEF]}
 };

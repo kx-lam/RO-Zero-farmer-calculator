@@ -114,6 +114,12 @@
       <label>Weapon<select id="weapon"></select></label>
       <label>Weapon / arrow element<select id="wElem"></select></label>
     </div>
+    <div class="form" id="dualRow" hidden style="grid-template-columns:repeat(6,minmax(0,1fr))">
+      <label title="Assassin dual wield: a dagger, one-handed sword or one-handed axe in each hand">Left hand<select id="lw"></select></label>
+      <label title="The left weapon's ATK with refine. Type the right one's in Weapon ATK too">Left weapon ATK<input id="lwAtk" type="number" min="0"></label>
+      <label>Left weapon element<select id="lwElem"></select></label>
+      <div class="note" style="grid-column:span 3;align-self:end">Dual wield: basic attacks hit with both hands (right × Righthand Mastery, left × Lefthand Mastery); skills use the right hand. Type Weapon ATK for the right hand.</div>
+    </div>
     <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
       <label>STR<input id="st_str" inputmode="numeric" placeholder="60+8"></label>
       <label>AGI<input id="st_agi" inputmode="numeric"></label>

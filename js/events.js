@@ -1,7 +1,8 @@
 // ---- events ----
 $("job").innerHTML=Object.keys(JOBS).map(j=>`<option>${j}</option>`).join("");
 $("weapon").innerHTML=Object.keys(WEAPONS).map(w=>`<option>${w}</option>`).join("");
-$("wElem").innerHTML=AE.map(e=>`<option>${e}</option>`).join("");
+$("wElem").innerHTML=AE.map(e=>`<option>${e}</option>`).join("");$("lwElem").innerHTML=$("wElem").innerHTML;
+$("lw").innerHTML='<option value="">None</option>'+BUILD.DUAL_W.map(w=>`<option>${w}</option>`).join("");
 $("aElem").innerHTML='<option value="W">Weapon / arrow</option>'+AE.map(e=>`<option>${e}</option>`).join("");
 $("job").addEventListener("change",e=>{state.job=e.target.value;C();save();syncChar();renderAll()});
 $("preset").addEventListener("change",e=>{const c=C();const i=+e.target.value;c.preset=i;if(i>=0){c.a=levelPreset(JOBS[state.job].p[i],c).a}save();syncChar();renderAll()});
@@ -28,6 +29,8 @@ const ASPD_T={Swordsman:{"Bare hands":156,"One-handed mace":-10,"Two-handed mace
  Blacksmith:{"Bare hands":156,"One-handed mace":-8,"Two-handed mace":-8,"Dagger":-10,"One-handed sword":-10,"One-handed axe":-6,"Two-handed axe":-10},Alchemist:{"Bare hands":156,"One-handed mace":-5,"Two-handed mace":-5,"Dagger":-10,"One-handed sword":-5,"One-handed axe":-5,"Two-handed axe":-12},
  Assassin:{"Bare hands":156,"Dagger":-2,"One-handed sword":-10,"One-handed axe":-11,"Katar":-2},Rogue:{"Bare hands":156,"Dagger":-5,"Bow":-10,"One-handed sword":-10}};
 const aspdBase=(job,w)=>{const t=ASPD_T[job];if(!t||t[w]==null)return null;return t["Bare hands"]+(w==="Bare hands"?0:t[w])};
+// with an Assassin's left-hand weapon, its delay comes off too (BUILD.LEFT_ASPD)
+const aspdBaseOf=(c,w=c.weapon,lw=c.lw)=>{const ab=aspdBase(state.job,w);return ab==null?null:ab-(BUILD.dualOk(state.job,w,lw)?BUILD.LEFT_ASPD[lw]:0)};
 const bumpFirst=(txt,d)=>{if(!d)return txt;const p=String(txt??"0").split("+");p[0]=String(Math.round((parseFloat(p[0])||0)+d));return p.join("+")};
 // a stat change moves the status part of ATK/MATK/HIT/FLEE/DEF by the same amount the formula moves, so gear bonuses you typed stay
 function shiftByStats(c,before){const a=derived(c);const ok=k=>STATS.every(x=>statVal(c,x)!=null);if(!ok())return;
@@ -36,16 +39,16 @@ function shiftByStats(c,before){const a=derived(c);const ok=k=>STATS.every(x=>st
   if(a.vit!==before.vit&&num(c.maxHp)>0)c.maxHp=Math.round(num(c.maxHp)*(100+a.vit)/(100+before.vit));if(a.int!==before.int&&num(c.maxSp)>0)c.maxSp=Math.round(num(c.maxSp)*(100+a.int)/(100+before.int))}
 const renderStatNote=()=>{const c=C();const miss=STATS.filter(k=>statVal(c,k)==null);
   if(miss.length){$("statNote").textContent=`Type all six stats (base+bonus, e.g. 60+8) so changing a stat updates the rest. Missing: ${miss.map(x=>x.toUpperCase()).join(", ")}.`;return}
-  const d=derived(c);const ab=aspdBase(state.job,c.weapon);$("statNote").textContent=`From your stats: status ATK ${d.atk} · status MATK ${d.matk} · HIT ${d.hit} · FLEE ${d.flee} · soft DEF ${d.def} · CRIT ${d.crit.toFixed(1)}${ab!=null?` · ASPD ${(ab+d.aspdTerm).toFixed(1)} before potions/skills`:""} (${RANGED.includes(c.weapon)?"ranged: DEX":"melee: STR"} is your main ATK stat). Changing a stat moves your typed values by the difference.`};
+  const d=derived(c);const ab=aspdBaseOf(c);$("statNote").textContent=`From your stats: status ATK ${d.atk} · status MATK ${d.matk} · HIT ${d.hit} · FLEE ${d.flee} · soft DEF ${d.def} · CRIT ${d.crit.toFixed(1)}${ab!=null?` · ASPD ${(ab+d.aspdTerm).toFixed(1)} before potions/skills`:""} (${RANGED.includes(c.weapon)?"ranged: DEX":"melee: STR"} is your main ATK stat). Changing a stat moves your typed values by the difference.`};
 STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c.st={};const wasSet=STATS.every(x=>statVal(c,x)!=null);const before=derived(c);c.st[k]=e.target.value;if(wasSet)shiftByStats(c,before);save();syncChar();renderAll()}));
 // character number/text fields
-const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"];
-["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"].forEach(k=>
+const numK=["lwAtk","jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"];
+["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","lwAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"].forEach(k=>
   $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
 $("npcBuy").addEventListener("change",e=>{C().npcBuy=e.target.checked;save();renderAll()});
 $("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?Math.min(90,v):70;save();renderAll()});
-["weapon","wElem","nameType"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
-  if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
+["weapon","wElem","nameType","lw","lwElem"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
+  if(k==="weapon"||k==="lw"){const a0=aspdBaseOf(c),a1=aspdBaseOf({...c,[k]:e.target.value});if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
   c[k]=e.target.value;save();renderAll();if(k==="weapon")renderSkills()}));
 $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
 const potInfo=()=>{const c=C();$("potInfo").textContent=!c.potOn?"":c.mode!=="build"&&statVal(c,"agi")==null?"type your AGI above to count it (value × AGI/200)":`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`};
