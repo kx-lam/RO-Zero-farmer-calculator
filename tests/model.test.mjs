@@ -90,6 +90,11 @@ t("Assassin left weapon slows base ASPD by a quarter of its delay", () => {
   assert.equal(run(`aspdBaseOf({weapon:"Dagger",lw:"Dagger"})`), 144);
   assert.equal(run(`aspdBaseOf({weapon:"Dagger",lw:"One-handed sword"})`), 142);
   assert.equal(run(`aspdBaseOf({weapon:"Katar",lw:"Dagger"})`), 154);
+  // a shield costs the job's shield penalty (Assassin 6), but never alongside a left-hand weapon
+  assert.equal(run(`aspdStart({weapon:"Dagger",lw:"",shield:true})`), 148);
+  assert.equal(run(`aspdStart({weapon:"Dagger",lw:"Dagger",shield:true})`), 144);
+  run(`state.job="Knight"`);
+  assert.equal(run(`aspdStart({weapon:"One-handed sword",shield:true})`), 156 - 5 - 5);
 });
 
 t("magic damage per hit: MATK × skill %, MDEF factor, soft MDEF, element", () => {

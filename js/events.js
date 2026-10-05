@@ -31,6 +31,12 @@ const ASPD_T={Swordsman:{"Bare hands":156,"One-handed mace":-10,"Two-handed mace
 const aspdBase=(job,w)=>{const t=ASPD_T[job];if(!t||t[w]==null)return null;return t["Bare hands"]+(w==="Bare hands"?0:t[w])};
 // with an Assassin's left-hand weapon, its delay comes off too (BUILD.LEFT_ASPD)
 const aspdBaseOf=(c,w=c.weapon,lw=c.lw)=>{const ab=aspdBase(state.job,w);return ab==null?null:ab-(BUILD.dualOk(state.job,w,lw)?BUILD.LEFT_ASPD[lw]:0)};
+// a shield (the tick box in status-window mode, the gear table in build mode) costs the job's shield penalty. It takes the left
+// hand, so it's never worn with an Assassin's second weapon
+const shieldPen=(c,w=c.weapon,lw=c.lw,sh=c.shield)=>sh&&!BUILD.dualOk(state.job,w,lw)?BUILD.SHIELD_ASPD[state.job]||0:0;
+const aspdStart=c=>{const ab=aspdBaseOf(c);return ab==null?null:ab-shieldPen(c)};
+// status-window mode: a change of weapon, left hand or shield moves the typed ASPD by what the base moves
+const aspdMove=(c,next)=>{const a0=aspdStart(c),a1=aspdStart(next);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}};
 const bumpFirst=(txt,d)=>{if(!d)return txt;const p=String(txt??"0").split("+");p[0]=String(Math.round((parseFloat(p[0])||0)+d));return p.join("+")};
 // a stat change moves the status part of ATK/MATK/HIT/FLEE/DEF by the same amount the formula moves, so gear bonuses you typed stay
 function shiftByStats(c,before){const a=derived(c);const ok=k=>STATS.every(x=>statVal(c,x)!=null);if(!ok())return;
@@ -39,7 +45,7 @@ function shiftByStats(c,before){const a=derived(c);const ok=k=>STATS.every(x=>st
   if(a.vit!==before.vit&&num(c.maxHp)>0)c.maxHp=Math.round(num(c.maxHp)*(100+a.vit)/(100+before.vit));if(a.int!==before.int&&num(c.maxSp)>0)c.maxSp=Math.round(num(c.maxSp)*(100+a.int)/(100+before.int))}
 const renderStatNote=()=>{const c=C();const miss=STATS.filter(k=>statVal(c,k)==null);
   if(miss.length){$("statNote").textContent=`Type all six stats (base+bonus, e.g. 60+8) so changing a stat updates the rest. Missing: ${miss.map(x=>x.toUpperCase()).join(", ")}.`;return}
-  const d=derived(c);const ab=aspdBaseOf(c);$("statNote").textContent=`From your stats: status ATK ${d.atk} · status MATK ${d.matk} · HIT ${d.hit} · FLEE ${d.flee} · soft DEF ${d.def} · CRIT ${d.crit.toFixed(1)}${ab!=null?` · ASPD ${(ab+d.aspdTerm).toFixed(1)} before potions/skills`:""} (${RANGED.includes(c.weapon)?"ranged: DEX":"melee: STR"} is your main ATK stat). Changing a stat moves your typed values by the difference.`};
+  const d=derived(c);const ab=aspdStart(c);$("statNote").textContent=`From your stats: status ATK ${d.atk} · status MATK ${d.matk} · HIT ${d.hit} · FLEE ${d.flee} · soft DEF ${d.def} · CRIT ${d.crit.toFixed(1)}${ab!=null?` · ASPD ${(ab+d.aspdTerm).toFixed(1)} before potions/skills`:""} (${RANGED.includes(c.weapon)?"ranged: DEX":"melee: STR"} is your main ATK stat). Changing a stat moves your typed values by the difference.`};
 STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c.st={};const wasSet=STATS.every(x=>statVal(c,x)!=null);const before=derived(c);c.st[k]=e.target.value;if(wasSet)shiftByStats(c,before);save();syncChar();renderAll()}));
 // character number/text fields
 const numK=["lwAtk","jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"];
@@ -48,8 +54,10 @@ const numK=["lwAtk","jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","m
 $("npcBuy").addEventListener("change",e=>{C().npcBuy=e.target.checked;save();renderAll()});
 $("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?Math.min(90,v):70;save();renderAll()});
 ["weapon","wElem","nameType","lw","lwElem"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
-  if(k==="weapon"||k==="lw"){const a0=aspdBaseOf(c),a1=aspdBaseOf({...c,[k]:e.target.value});if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
+  if(k==="weapon"||k==="lw"){const next={...c,[k]:e.target.value};if(k==="lw"&&BUILD.dualOk(state.job,next.weapon,next.lw))next.shield=false;aspdMove(c,next);c.shield=next.shield;$("shield").checked=!!c.shield}
   c[k]=e.target.value;save();renderAll();if(k==="weapon")renderSkills()}));
+$("shield").addEventListener("change",e=>{const c=C(),next={...c,shield:e.target.checked};if(next.shield)next.lw="";aspdMove(c,next);
+  c.shield=next.shield;c.lw=next.lw;$("lw").value=c.lw||"";save();renderAll()});
 $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
 const potInfo=()=>{const c=C();$("potInfo").textContent=!c.potOn?"":c.mode!=="build"&&statVal(c,"agi")==null?"type your AGI above to count it (value × AGI/200)":`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`};
 $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});

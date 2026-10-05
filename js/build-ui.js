@@ -13,7 +13,7 @@ function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqTo
   Object.assign(c,{atkTxt:F.atkTxt,matkTxt:F.matkTxt,hitTxt:F.hitTxt,fleeTxt:F.fleeTxt,defTxt:F.defTxt,intTxt:F.intTxt,wAtk:F.wAtk,crit:F.crit,critDmg:F.critDmg,
     rangePct:F.rangePct,skillPct:A.skill+match(A.skillOf),vctPct:F.vctPct+match(A.vctOf),fctPct:F.fctPct+match(A.fctOf),acdPct:F.acdPct,ignDef:F.ignDef,ignMdef:F.ignMdef,
     weapon:F.weapon,wElem:F.wElem,lw:F.lw,lwAtk:F.lwAtk,lwElem:F.lwElem,st:{...(c.st||{}),...F.st},bx:{phys:A.phys,magic:A.magic,myEle:A.myEle,taken:A.taken,exp:A.exp,critRace:A.critRace,spCost:A.spCost}});
-  if(F.aspd!=null)c.aspd=F.aspd;if(F.maxHp!=null)c.maxHp=F.maxHp;if(F.maxSp!=null)c.maxSp=F.maxSp;
+  c.shield=r.shield;if(F.aspd!=null)c.aspd=F.aspd;if(F.maxHp!=null)c.maxHp=F.maxHp;if(F.maxSp!=null)c.maxSp=F.maxSp;
   // the exported base HP/SP tables don't match Zero yet, so in-game Max HP / SP typed under "Check against the game" win
   const ck=buildOf(c).check||{};if(num(ck.hp)>0)c.maxHp=num(ck.hp);if(num(ck.sp)>0)c.maxSp=num(ck.sp)}
 // ---- consumables & buffs: rows {on, name, eff, price, min}; effects are typed like random options ("STR +10, ATK +20, ASPD +10%") ----
@@ -144,7 +144,7 @@ function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
 function renderBuild(){const c=C(),on=c.mode==="build";
   if(on&&renderBuild.job!==state.job){renderBuild.job=state.job;renderGearTable()}if(!on)renderBuild.job=null;
   ROOTQ("[data-cmode]").forEach(x=>x.setAttribute("aria-checked",String(x.dataset.cmode===(on?"build":"status"))));
-  $("buildPanel").hidden=!on;$("statNote").hidden=on;BUILT_IDS.forEach(id=>{const el=$(id);el.disabled=on;if(on&&document.activeElement!==el)el.value=id.startsWith("st_")?(c.st||{})[id.slice(3)]??"":c[id]??""});
+  $("buildPanel").hidden=!on;$("statNote").hidden=on;$("shieldRow").hidden=on;BUILT_IDS.forEach(id=>{const el=$(id);el.disabled=on;if(on&&document.activeElement!==el)el.value=id.startsWith("st_")?(c.st||{})[id.slice(3)]??"":c[id]??""});
   $("modeNote").textContent=on?"Stats below are worked out from your base stats, job level and gear.":"Type the numbers from your in-game status window.";
   if(!on)return;const b=buildOf(c);ROOTQ("[data-bs]").forEach(x=>{if(document.activeElement!==x)x.value=b.base[x.dataset.bs]??""});
   const r=BUILD_LAST;if(!r)return;const jb=r.jobBonus;
@@ -155,7 +155,7 @@ function renderBuild(){const c=C(),on=c.mode==="build";
   if(!$("checkGrid").contains(document.activeElement))$("checkGrid").innerHTML=rows;
   $("buildNote").innerHTML=r.unmodelled.length?`<b>Not counted</b> (procs, conditional or unsupported lines):<br>${r.unmodelled.map(esc).join("<br>")}`:""}
 // switching to build keeps a copy of the typed status-window values, and switching back restores them
-const SNAP_KEYS=["atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","lw","lwAtk","lwElem","crit","critDmg","rangePct","skillPct","vctPct","fctPct","acdPct","ignDef","ignMdef","weapon","wElem","st"];
+const SNAP_KEYS=["shield","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","lw","lwAtk","lwElem","crit","critDmg","rangePct","skillPct","vctPct","fctPct","acdPct","ignDef","ignMdef","weapon","wElem","st"];
 ROOTQ("[data-cmode]").forEach(x=>x.addEventListener("click",()=>{const c=C(),to=x.dataset.cmode,from=c.mode==="build"?"build":"status";if(to===from)return;
   if(to==="build")c.statusSnap=JSON.parse(JSON.stringify(Object.fromEntries(SNAP_KEYS.map(k=>[k,c[k]??null]))));
   else if(c.statusSnap){SNAP_KEYS.forEach(k=>{const v=c.statusSnap[k];if(v==null)delete c[k];else c[k]=v});delete c.statusSnap}
