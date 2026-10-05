@@ -10,6 +10,7 @@ Object.assign(globalThis, {
     { id: 2, slug: "coat", name: "Coat", slot: ["armor"], refine: "armor", def: 10, g: [] },
     { id: 3, slug: "boots", name: "Boots", slot: ["footgear"], refine: "armor", def: 2, g: [] },
     { id: 5, slug: "guard", name: "Guard", slot: ["shield"], refine: "armor", def: 3, g: [] },
+    { id: 6, slug: "knife", name: "Knife", slot: ["weapon"], type: "dagger", wlv: 2, refine: "weapon", atk: 40, el: "fire", slots: 1, g: [] },
     { id: 4, slug: "hat", name: "Hat", slot: ["head_upper", "head_middle"], refine: "armor", def: 1, g: [{ b: [["aspd_percent", null, null, 10]] }] },
   ],
   CARDS: [
@@ -120,6 +121,27 @@ t("potion/skill values add value × AGI/200 to ASPD1 (RO樂園攻速計算機's 
   assert.equal(r.fields.aspd, 190);
   const a1 = Math.floor(156 - 3 - 3 + r.status.aspdTerm + 4 * 128 / 200);
   assert.equal(a1, 177);
+});
+
+t("Assassin left-hand weapon in the Shield row: dual wield ATK, element and ASPD", () => {
+  const ab = (job, w) => ({ "One-handed sword": 146, Dagger: 154 })[w] ?? 156;
+  const gear = { weapon: { id: 1, refine: 0, cards: [] }, shield: { id: 6, refine: 2, cards: [10] } };
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear }, "Assassin", ab);
+  assert.equal(r.fields.lw, "Dagger");
+  assert.equal(r.fields.lwAtk, 40 + 6);                                     // left weapon ATK incl. its refine (3 per refine)
+  assert.equal(r.fields.lwElem, "Fire");
+  assert.equal(r.fields.atkTxt, `${r.status.atk}+${100 + 40 + 6}`);          // both weapons on the gear side, like the status window
+  assert.equal(r.shield, false);                                            // not a shield: no shield ASPD penalty
+  assert.equal(r.fields.aspd, Math.floor(146 - 10 + r.status.aspdTerm));    // dagger in the left hand: −10
+  assert.equal(r.acc.phys.race["Demi-Human"], 20);                          // its card counts
+  // the same dagger in both hands is two items
+  const two = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 6, refine: 0 }, shield: { id: 6, refine: 0 } } }, "Assassin", ab);
+  assert.equal(two.fields.lw, "Dagger");
+  assert.equal(two.fields.atkTxt, `${two.status.atk}+${40 + 40}`);
+  // not an Assassin: the left weapon isn't dual wield
+  const k = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear }, "Knight", ab);
+  assert.equal(k.fields.lw, "");
+  assert.ok(k.unmodelled.some(x => x.includes("left-hand weapon")));
 });
 
 console.log(`${n} tests passed`);

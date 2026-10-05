@@ -63,11 +63,20 @@ const effDef=m=>(m.def||0)*(1-Math.min(100,Math.max(0,num(C().ignDef)))/100);
 const effMdef=m=>(m.mdef||0)*(1-Math.min(100,Math.max(0,num(C().ignMdef)))/100);
 // Formulas from roz.prontera.info/mechanics (Ragnarok Zero, renewal core)
 // ATK is "status + gear". The weapon share takes size and element; status ATK counts twice and, with other gear, stays Neutral.
+// Dual wield: the gear side holds both weapons, so the left one's ATK comes out of the Neutral share too
 const atkParts=()=>{const p=String(cf("atkTxt")||"0").split("+").map(x=>parseFloat(x)||0);const st=p[0]||0,gear=p.slice(1).reduce((x,y)=>x+y,0);
-  const w=num(C().wAtk)>0?Math.min(num(C().wAtk),gear):gear;
+  const w=num(C().wAtk)>0?Math.min(num(C().wAtk),gear):gear,lw=dualOn()?Math.min(num(C().lwAtk),Math.max(0,gear-w)):0;
   // weapon ATK +0.5% per STR (melee) or DEX (bow, instrument, whip); checked against Landgris ROCalculator
   const c=C(),main=statVal(c,RANGED.includes(c.weapon)?"dex":"str");const wb=main!=null?1+main/200:1;
-  return {st,gear,weapon:w*wb,neutral:Math.max(0,gear-w)+2*st}};
+  return {st,gear,weapon:w*wb,left:lw*wb,neutral:Math.max(0,gear-w-lw)+2*st}};
+// ---- Assassin dual wield (rAthena renewal battle.cpp; its ASPD table is the Zero one, see BUILD.LEFT_ASPD) ----
+// a basic attack hits with both hands: the right × Righthand Mastery (50 + 10 × Lv)%, the left × Lefthand Mastery (30 + 10 × Lv)%,
+// after DEF. The left hand's status ATK isn't doubled, Double Attack repeats only the right hand, and skills use the right hand only.
+// Without a skill tree both masteries count as Lv 5 (100% / 80%)
+const dualOn=(c=C())=>BUILD.dualOk(state.job,c.weapon,c.lw);
+const handPct=()=>{const c=C(),t=hasTree(c),lv=k=>t?skLv(c,k):5;return {right:50+10*lv("righthand-mastery"),left:30+10*lv("lefthand-mastery")}};
+const dualHit=()=>dualOn()&&C().a.type==="auto";
+const leftEl=()=>EL_OVR||C().lwElem||"Neutral";
 const mobSoftDef=m=>Math.max(0,Math.floor(((m.lv||0)+(m.vit||0))/2));
 const mobSoftMdef=m=>Math.max(0,Math.floor(((m.lv||0)+(m.int||0))/4));
 // "Your hit %": skill % after element, size and your bonuses, as a share of your full ATK (before monster DEF/MDEF)
@@ -79,10 +88,18 @@ const hitChance=m=>{if(C().a.type==="magic"||C().a.type==="spellfist")return 100
 function dmgPerHit(m){
   const a=C().a;if(a.type==="spellfist")return magicDmg(m,sfPct(),atkEl());
   if(a.type==="magic"){const el=elemMult(m,atkEl())/100;if(el<=0)return 0;const md=effMdef(m);return Math.max(1,Math.floor((sumStat(cf("matkTxt"))*pctEff()/100*bonusMul(m,true)*(1+num(C().skillPct)/100)*(1000+md)/(1000+10*md)-mobSoftMdef(m))*el))}
-  const P=atkParts();const pool=P.weapon*sizeMod(m,C().weapon)/100*elemMult(m,atkEl())/100+P.neutral*elemMult(m,"Neutral")/100;if(pool<=0)return 0;
-  const c=C(),skill=a.type!=="auto";const rng=(1+num(c.rangePct)/100)*(skill?1+num(c.skillPct)/100:1);
+  const P=atkParts(),d=physDmg(m,P.weapon*sizeMod(m,C().weapon)/100*elemMult(m,atkEl())/100+P.neutral*elemMult(m,"Neutral")/100);
+  return dualHit()&&d>0?Math.max(1,Math.floor(d*handPct().right/100)):d}
+// one physical hit from an ATK pool (weapon share after size and element, plus the Neutral share)
+function physDmg(m,pool){if(pool<=0)return 0;
+  const c=C(),a=c.a,skill=a.type!=="auto";const rng=(1+num(c.rangePct)/100)*(skill?1+num(c.skillPct)/100:1);
   // mastery ATK (flat, from passive skills) is added after the skill ratio, before cards and DEF
   const df=effDef(m);return Math.max(1,Math.floor((pool*pctEff()/100+masteryFor(m)*elemMult(m,"Neutral")/100)*bonusMul(m)*rng*(4000+df)/(4000+10*df)-mobSoftDef(m)))}
+// the left hand's hit on a dual-wield basic attack (0 otherwise): its own weapon, size and element, status ATK once
+function leftDmg(m){if(!dualHit())return 0;const P=atkParts(),d=physDmg(m,P.left*sizeMod(m,C().lw)/100*elemMult(m,leftEl())/100+(P.neutral-P.st)*elemMult(m,"Neutral")/100);
+  return d>0?Math.max(1,Math.floor(d*handPct().left/100)):0}
+// damage of one use before hit and crit: every hit of the attack, plus the left hand once
+const perUse=m=>{const a=C().a,h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);return dmgPerHit(m)*Math.max(0.01,h)+leftDmg(m)};
 // crits (basic attacks only): chance = CRIT (doubled with a katar) − monster LUK × 0.2, always hit, × 1.4 × (1 + crit damage %)
 // m: the monster, for gear CRIT that only counts against its race (Cruiser Card: CRIT +7 vs Brute)
 const critRace=m=>{const c=C();return m&&c.bx&&c.bx.critRace?num(c.bx.critRace[m.race]):0};
@@ -91,8 +108,8 @@ const critChance=m=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(1
 // average damage of one use: hits that land (crits always do, × 1.4 × (1 + crit damage %)) plus auto-casts, which only proc on swings that connect
 const procPerUse=m=>ssDmg(m)*SS_CHANCE+acDmg(m)*acChance();
 const useAvg=(m,per,proc)=>{const cr=critChance(m),hc=hitChance(m)/100;return per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hc)+proc*(cr+(1-cr)*hc)};
-const dpsOf=m=>{if(isSF())return null;const d=dmgPerHit(m),a=C().a,h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);return useAvg(m,d*Math.max(0.01,h),procPerUse(m))*targets()/useSec()};
-function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m),a=C().a,proc=procPerUse(m);if(d<=0&&proc<=0)return Infinity;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);
+const dpsOf=m=>{if(isSF())return null;return useAvg(m,perUse(m),procPerUse(m))*targets()/useSec()};
+function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const per=perUse(m),proc=procPerUse(m);if(per<=0&&proc<=0)return Infinity;
   // Shadow Spell and card auto-casts are averaged into each attack
   if(critChance(m)>0||proc>0)return Math.max(1,m.hp/useAvg(m,per,proc));
   return Math.ceil(m.hp/per)/(hitChance(m)/100)}

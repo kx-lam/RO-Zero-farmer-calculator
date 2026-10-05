@@ -1,6 +1,6 @@
 // ---- EXP & formulas tab: EXP tables, the formulas the calculator uses (with your numbers), element and size tables ----
 const yours=f=>{try{const v=f();return v==null||v===""||(typeof v==="number"&&!isFinite(v))?"–":v}catch(e){return "–"}};
-function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=null),d=ok?derived(c):null,lv=num(c.baseLv),ab=aspdBase(state.job,c.weapon);
+function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=null),d=ok?derived(c):null,lv=num(c.baseLv),ab=aspdBaseOf(c);
   const sv=k=>statVal(c,k),ranged=RANGED.includes(c.weapon),mn=m?` (${esc(m.name)})`:"",need=f=>m?f(m):null;
   const grp=t=>`<tr class="grp"><td colspan="3">${t}</td></tr>`;
   // f is the formula, n an optional short note shown under it
@@ -13,7 +13,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Soft DEF","floor(BaseLv/2) + floor(VIT/2) + floor(AGI/5)",()=>d&&d.def)+
    R("Soft MDEF","floor(INT + BaseLv/4 + (DEX + VIT)/5)",()=>ok&&sv("int")!=null?Math.floor(sv("int")+lv/4+(sv("dex")+sv("vit"))/5):null)+
    R("CRIT","1 + LUK × 0.3 + BaseLv/100",()=>d&&d.crit.toFixed(1),"doubled with a katar")+
-   R("ASPD",`ASPD1 = floor(job + weapon base − shield penalty + √(AGI²/2 + DEX²/${ranged?7:5}) / 4 + potion/skill value × AGI/200); ASPD = floor(ASPD1 + (195 − ASPD1) × ASPD % + gear ASPD)`,()=>{if(!d||ab==null)return null;const sp=c.mode==="build"&&BUILD_LAST&&BUILD_LAST.shield?BUILD.SHIELD_ASPD[state.job]||0:0;return `ASPD1 = ${ab}${sp?` − ${sp}`:""} + ${d.aspdTerm.toFixed(1)} → ${Math.floor(ab-sp+d.aspdTerm)}`},`cap 190; shield penalty for ${esc(state.job)}: ${BUILD.SHIELD_ASPD[state.job]??"?"}; potion/skill values: Concentration 4, Awakening 6, Berserk 9, Two-Hand / Spear Quicken and Adrenaline Rush 7 (6 from a party Blacksmith), Study 0.5 per level`)+
+   R("ASPD",`ASPD1 = floor(job + weapon base − shield penalty − left weapon penalty + √(AGI²/2 + DEX²/${ranged?7:5}) / 4 + potion/skill value × AGI/200); ASPD = floor(ASPD1 + (195 − ASPD1) × ASPD % + gear ASPD)`,()=>{if(!d||ab==null)return null;const sp=shieldPen(c);return `ASPD1 = ${ab}${sp?` − ${sp}`:""} + ${d.aspdTerm.toFixed(1)} → ${Math.floor(ab-sp+d.aspdTerm)}`},`cap 190; shield penalty for ${esc(state.job)}: ${BUILD.SHIELD_ASPD[state.job]??"?"}; Assassin left weapon: dagger 10, one-handed sword or axe 12 (in the weapon base shown); potion/skill values: Concentration 4, Awakening 6, Berserk 9, Two-Hand / Spear Quicken and Adrenaline Rush 7 (6 from a party Blacksmith), Study 0.5 per level`)+
    R("Max HP","floor((floor(job HP(BaseLv) × (1 + VIT/100)) + gear HP) × (1 + HP %))",()=>num(cf("maxHp"))>0?fmtN(num(cf("maxHp"))):null)+
    R("Max SP","floor((floor(job SP(BaseLv) × (1 + INT/100)) + gear SP) × (1 + SP %))",()=>num(cf("maxSp"))>0?fmtN(num(cf("maxSp"))):null)+
    grp("Speed")+
@@ -24,6 +24,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    grp("Damage")+
    R("Weapon ATK",`weapon ATK × (1 + ${ranged?"DEX":"STR"}/200)`,()=>{const P=atkParts();return P.weapon?fmtN(P.weapon):null},"weapon ATK includes refine")+
    R("Physical damage","floor(((weapon ATK × size % × element % + (2 × status ATK + other gear ATK) × Neutral %) × skill % + mastery ATK × Neutral %) × damage bonuses × (1 + ranged/melee %) × (1 + skill damage %) × (4000 + DEF) / (4000 + 10 × DEF) − monster soft DEF)",()=>m&&c.a.type!=="magic"&&c.a.type!=="spellfist"?`${fmtN(dmgPerHit(m))} per hit${mn}`:null,"at least 1; skill damage % counts for skills only")+
+   R("Dual wield (Assassin)","right hand × (50 + 10 × Righthand Mastery Lv)% + left hand × (30 + 10 × Lefthand Mastery Lv)%, each after DEF; the left hand uses its own weapon ATK, size and element with status ATK once",()=>m&&dualHit()?`${fmtN(dmgPerHit(m))} + ${fmtN(leftDmg(m))}${mn}`:null,"basic attacks only, skills use the right hand; Double Attack repeats the right hand; masteries count as Lv 5 without a skill tree")+
    R("Magic damage","floor((MATK × skill % × damage bonuses × (1 + skill damage %) × (1000 + MDEF) / (1000 + 10 × MDEF) − monster soft MDEF) × element %)",()=>m&&(c.a.type==="magic"||c.a.type==="spellfist")?`${fmtN(dmgPerHit(m))} per hit${mn}`:null,"at least 1")+
    R("Damage bonuses","(1 + race %) × (1 + size %) × (1 + element %) × (1 + boss/normal %) × (1 + all %) × (1 + damage bonus %) × (1 + name bonus %) × (1 + vs normal monsters %) × (1 + my attack element %) × (1 + skill passives and buffs %)",()=>m?`× ${bonusMul(m,c.a.type==="magic"||c.a.type==="spellfist").toFixed(2)}${mn}`:null,"bonuses in the same category add; name bonus only when the name matches; vs normal monsters not on bosses; magic also × (1 + gear magic % of the spell's element)")+
    R("Ignore DEF / MDEF","DEF × (1 − ignore %)",()=>num(c.ignDef)||num(c.ignMdef)?`${num(c.ignDef)}% / ${num(c.ignMdef)}%`:null,"before the DEF factor")+

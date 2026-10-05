@@ -53,6 +53,50 @@ t("physical damage per hit: weapon share takes size and element, status ATK stay
   assert.equal(run(`dmgPerHit(${MOB})`), Math.floor(pool * (4000 + 10) / (4000 + 100) - soft));
 });
 
+t("Assassin dual wield: both hands on basic attacks, hand masteries, left weapon's own size and element", () => {
+  const basic = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  // gear side 300 = right weapon 200 + left weapon 80 + 20 other gear; no STR typed, so weapon ATK isn't scaled
+  setup("Assassin", { atkTxt: "100+300", wAtk: 200, weapon: "One-handed sword", wElem: "Wind", lw: "Dagger", lwAtk: 80, lwElem: "Neutral", st: {}, a: basic });
+  const df = 20, soft = Math.floor((50 + 30) / 2), hit = pool => Math.floor(pool * (4000 + df) / (4000 + 10 * df) - soft);
+  // right: 1h sword vs Large 75%, Wind vs Water 150%; status ATK doubled + other gear, Neutral. No skill tree: masteries Lv 5
+  const right = Math.floor(hit(200 * 0.75 * 1.5 + 2 * 100 + 20) * 100 / 100);
+  // left: dagger vs Large 50%, Neutral; status ATK once
+  const left = Math.floor(hit(80 * 0.5 + 100 + 20) * 80 / 100);
+  assert.equal(run(`dmgPerHit(${MOB})`), right);
+  assert.equal(run(`leftDmg(${MOB})`), left);
+  near(run(`perUse(${MOB})`), right + left);
+  run(`C().skills={"righthand-mastery":2,"lefthand-mastery":1}`);   // learned levels: 70% and 40%
+  assert.equal(run(`dmgPerHit(${MOB})`), Math.floor(hit(200 * 0.75 * 1.5 + 220) * 70 / 100));
+  assert.equal(run(`leftDmg(${MOB})`), Math.floor(hit(80 * 0.5 + 120) * 40 / 100));
+  run(`C().skills={}`);
+  // Double Attack repeats only the right hand
+  run(`C().a.hits=1.5`);
+  near(run(`perUse(${MOB})`), right * 1.5 + left);
+  // skills use the right hand only, at full damage
+  run(`C().a={...C().a,type:"phys",hits:1}`);
+  assert.equal(run(`leftDmg(${MOB})`), 0);
+  assert.equal(run(`dmgPerHit(${MOB})`), hit(200 * 0.75 * 1.5 + 220));
+  // a katar (or any other job) is never dual wield, and the left weapon's ATK stays in the Neutral share
+  setup("Assassin", { atkTxt: "100+300", wAtk: 200, weapon: "Katar", wElem: "Neutral", lw: "Dagger", lwAtk: 80, st: {}, a: basic });
+  assert.equal(run(`dualOn()`), false);
+  assert.equal(run(`leftDmg(${MOB})`), 0);
+  setup("Rogue", { atkTxt: "100+300", wAtk: 200, weapon: "Dagger", lw: "Dagger", lwAtk: 80, st: {}, a: basic });
+  assert.equal(run(`dualOn()`), false);
+});
+
+t("Assassin left weapon slows base ASPD by a quarter of its delay", () => {
+  run(`state.job="Assassin";state.chars={}`);
+  assert.equal(run(`aspdBaseOf({weapon:"Dagger",lw:""})`), 154);
+  assert.equal(run(`aspdBaseOf({weapon:"Dagger",lw:"Dagger"})`), 144);
+  assert.equal(run(`aspdBaseOf({weapon:"Dagger",lw:"One-handed sword"})`), 142);
+  assert.equal(run(`aspdBaseOf({weapon:"Katar",lw:"Dagger"})`), 154);
+  // a shield costs the job's shield penalty (Assassin 6), but never alongside a left-hand weapon
+  assert.equal(run(`aspdStart({weapon:"Dagger",lw:"",shield:true})`), 148);
+  assert.equal(run(`aspdStart({weapon:"Dagger",lw:"Dagger",shield:true})`), 144);
+  run(`state.job="Knight"`);
+  assert.equal(run(`aspdStart({weapon:"One-handed sword",shield:true})`), 156 - 5 - 5);
+});
+
 t("magic damage per hit: MATK × skill %, MDEF factor, soft MDEF, element", () => {
   setup("Wizard", { matkTxt: "200+100", st: {}, intTxt: "", a: { name: "x", type: "magic", pct: 100, hits: 3, el: "Wind", cast: 0, delay: 0, sp: 10, targets: 1 } });
   const md = 10, soft = Math.floor((50 + 20) / 4);

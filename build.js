@@ -10,6 +10,12 @@ const BUILD=(()=>{
   // table has the same). Assassins use their left-hand row
   const SHIELD_ASPD={Swordsman:5,Mage:10,Archer:9,Acolyte:7,Merchant:5,Thief:6,Knight:5,Crusader:5,Wizard:8,Sage:3,
     Hunter:9,Bard:5,Dancer:5,Priest:3,Monk:3,Blacksmith:5,Alchemist:4,Assassin:6,Rogue:3};
+  // Assassin dual wield: a dagger, one-handed sword or one-handed axe in each hand (the left one goes in the Shield row). The left
+  // weapon adds a quarter of its own delay: base ASPD drops by floor(aspd_base / 4) with aspd_base Dagger 42, 1h sword 50, 1h axe 51
+  // (rAthena renewal job_aspd.yml and status_base_amotion_pc; its Assassin row is the Zero table's 156 base and penalties)
+  const DUAL_W=["Dagger","One-handed sword","One-handed axe"];
+  const LEFT_ASPD={"Dagger":10,"One-handed sword":12,"One-handed axe":12};
+  const dualOk=(job,right,left)=>job==="Assassin"&&DUAL_W.includes(right)&&DUAL_W.includes(left);
   // the gear grid; "takes" lists the item slots (prontera equip_slot) that may go in it
   const SLOTS=[
     {k:"weapon",label:"Weapon",takes:["weapon"]},{k:"shield",label:"Shield",takes:["shield"]},
@@ -107,13 +113,14 @@ const BUILD=(()=>{
   // b = {baseLv, jobLv, base:{str..luk}, gear:{slot:{id, refine, cards:[ids]}}, hpBase?, spBase?}; job = "Knight"
   function compute(b,job,aspdBase){
     const A=blank(),lv=Math.max(1,+b.baseLv||1),jobLv=Math.max(1,+b.jobLv||1),ctxBase={baseLv:lv,jobSlug:String(job).toLowerCase(),firstSlug:String(FIRST_OF[job]||job).toLowerCase(),refineSum:0};
-    const gear=b.gear||{},worn=[];let wpn=null,shield=false,weaponAtk=0,gearAtk=0,gearMatk=0,refAtk=0,refMatk=0,refDef=0,gearDef=0,gearMdef=0;
+    const gear=b.gear||{},worn=[];let wpn=null,wpnL=null,shield=false,weaponAtk=0,gearAtk=0,gearMatk=0,refAtk=0,refMatk=0,refDef=0,gearDef=0,gearMdef=0;
     SLOTS.forEach(s=>{const g=gear[s.k];const it=g&&item(g.id);if(!it)return;const r=Math.max(0,+g.refine||0);
-      if(worn.some(w=>w.it===it&&s.k!=="acc2"&&s.k!=="acc1"))return; // a multi-slot headgear counts once
+      if(s.k.startsWith("head")&&worn.some(w=>w.it===it&&w.slot.startsWith("head")))return; // a multi-slot headgear counts once (two of the same dagger or accessory are two items)
       worn.push({it,r,slot:s.k,cards:(g.cards||[]).map(item).filter(Boolean)});
       const [ra,rm,rd]=refineAt(it,r);
       if(s.k==="weapon"){wpn=it;weaponAtk=it.atk||0;refAtk+=ra;refMatk+=rm}else{gearAtk+=it.atk||0;refAtk+=ra;refMatk+=rm}
-      if(s.k==="shield")shield=true;gearMatk+=it.matk||0;gearDef+=it.def||0;gearMdef+=it.mdef||0;refDef+=rd});
+      // a weapon in the Shield row is the left hand (Assassin); its ATK shows on the gear side of the status window like the right one's
+      if(s.k==="shield"){if((it.slot||[]).includes("weapon"))wpnL=it;else shield=true}gearMatk+=it.matk||0;gearDef+=it.def||0;gearMdef+=it.mdef||0;refDef+=rd});
     worn.forEach(w=>{const ctx={...ctxBase,refine:w.r};applyGroups(A,w.it.g,ctx,w.it.name);w.cards.forEach(c=>applyGroups(A,c.g,ctx,c.name));
       const o=parseOptions((gear[w.slot]||{}).opts);o.lines.forEach(b=>apply(A,b,w.it.name+" option"));o.bad.forEach(x=>A.unmodelled.push(`${w.it.name} option not understood: ${x}`))});
     // consumables and buffs picked on the Character tab: plain bonus lines on top of the gear
@@ -123,6 +130,8 @@ const BUILD=(()=>{
       applyGroups(A,st.g,{...ctxBase,refine:0,refineSum:ps.reduce((a,p)=>a+p.r,0)},st.name)});
     const jb=jobBonus(job,jobLv),base={},tot={};STAT6.forEach(k=>{base[k]=Math.max(1,+((b.base||{})[k])||1);tot[k]=base[k]+jb[k]+A.st[k]});
     const weapon=wpn?WTYPE[wpn.type]||"Bare hands":"Bare hands",ranged=RANGED_W.includes(weapon),S=status(lv,tot,ranged),f=Math.floor;
+    const lw=wpnL?WTYPE[wpnL.type]||null:null,dual=dualOk(job,weapon,lw);
+    if(wpnL&&!dual)A.unmodelled.push(`${wpnL.name}: a left-hand weapon needs an Assassin with a dagger, one-handed sword or one-handed axe in each hand`);
     const gearSide=f((weaponAtk+gearAtk+refAtk+A.atk)*(1+A.atkPct/100));
     const matkTot=f((S.matk+gearMatk+refMatk+A.matk)*(1+A.matkPct/100));
     const hpBase=+b.hpBase>0?+b.hpBase:curve(job,"hp",lv),spBase=+b.spBase>0?+b.spBase:curve(job,"sp",lv);
@@ -131,15 +140,16 @@ const BUILD=(()=>{
     // Zero (RO樂園攻速計算機 2026-09-07, checked against a Lv 105 Sage in game; Landgris's /compute-aspd agrees up to the last step):
     // ASPD1 = floor(base − shield penalty + stat term + potion/skill value × AGI/200); ASPD = floor(ASPD1 + (195 − ASPD1) × ASPD % + flat
     // gear ASPD), cap 190. "aspd_mod" lines carry the potion/skill values (Concentration Potion 4, Two-Hand Quicken 7...)
-    if(ab!=null){const a1=f(ab-(shield?SHIELD_ASPD[job]||0:0)+S.aspdTerm+A.aspdMod*tot.agi/200);aspd=Math.min(190,f(a1+(195-a1)*A.aspdPct/100+A.aspd))}
+    if(ab!=null){const a1=f(ab-(shield?SHIELD_ASPD[job]||0:0)-(dual?LEFT_ASPD[lw]:0)+S.aspdTerm+A.aspdMod*tot.agi/200);aspd=Math.min(190,f(a1+(195-a1)*A.aspdPct/100+A.aspd))}
     const ammo=worn.find(w=>w.slot==="ammo"),arrowEl=weapon==="Bow"&&ammo&&ammo.it.el?cap(ammo.it.el):null; // bows shoot the arrow's element
     const fields={baseLv:lv,jobLv,weapon,wElem:arrowEl||A.wEle||(wpn&&wpn.el?cap(wpn.el):null)||"Neutral",
       st:{str:`${base.str}+${tot.str-base.str}`,agi:`${base.agi}+${tot.agi-base.agi}`,vit:`${base.vit}+${tot.vit-base.vit}`,dex:`${base.dex}+${tot.dex-base.dex}`,luk:`${base.luk}+${tot.luk-base.luk}`},
       intTxt:`${base.int}+${tot.int-base.int}`,atkTxt:`${S.atk}+${gearSide}`,wAtk:f((weaponAtk+(wpn?refineAt(wpn,(gear.weapon||{}).refine)[0]:0))*(1+A.atkPct/100)),
       matkTxt:`${S.matk}+${matkTot-S.matk}`,hitTxt:`${S.hit}+${A.hit}`,fleeTxt:`${S.flee}+${A.flee}`,defTxt:`${S.softDef}+${gearDef+refDef+A.def}`,
       maxHp,maxSp,aspd,crit:Math.round((S.crit+A.crit)*10)/10,critDmg:A.critDmg,rangePct:ranged?A.ranged:A.melee,
-      vctPct:A.vct,fctPct:A.fct,acdPct:A.acd,ignDef:A.ignDef,ignMdef:A.ignMdef};
+      vctPct:A.vct,fctPct:A.fct,acdPct:A.acd,ignDef:A.ignDef,ignMdef:A.ignMdef,
+      lw:dual?lw:"",lwAtk:dual?f(((wpnL.atk||0)+refineAt(wpnL,(gear.shield||{}).refine)[0])*(1+A.atkPct/100)):0,lwElem:dual&&wpnL.el?cap(wpnL.el):"Neutral"};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
 if(typeof module!=="undefined")module.exports=BUILD;
