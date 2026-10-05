@@ -64,7 +64,7 @@ t("armor refine DEF, sets with combined refine, HP from the job curve", () => {
 t("ASPD % pivots on 195 and caps at 190; multi-slot headgear counts once", () => {
   const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { headTop: { id: 4 }, headMid: { id: 4 } } }, "Knight", aspdBase);
   const a1 = Math.floor(150 + r.status.aspdTerm);
-  assert.equal(r.fields.aspd, Math.round((a1 + (195 - a1) * 0.10) * 10) / 10);
+  assert.equal(r.fields.aspd, Math.floor(a1 + (195 - a1) * 0.10));
   const fast = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {} }, "Knight", () => 189);
   assert.equal(fast.fields.aspd <= 190, true);
 });

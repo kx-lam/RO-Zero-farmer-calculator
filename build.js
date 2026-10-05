@@ -6,8 +6,8 @@ const BUILD=(()=>{
   // 2nd job -> 1st job
   const FIRST_OF={Knight:"Swordsman",Crusader:"Swordsman",Wizard:"Mage",Sage:"Mage",Hunter:"Archer",Bard:"Archer",Dancer:"Archer",Priest:"Acolyte",Monk:"Acolyte",Blacksmith:"Merchant",Alchemist:"Merchant",Assassin:"Thief",Rogue:"Thief"};
   const STAT6=["str","agi","vit","int","dex","luk"];
-  // ASPD lost while a shield is worn, per job: the Landgris ROCalculator Zero ("paradise") table, the same one ASPD_T's weapon
-  // penalties come from (js/aspd_calculator.js). Assassins use their left-hand row
+  // ASPD lost while a shield is worn, per job (RO樂園攻速計算機 2026-09-07, sheet "攻速懲罰表"; Landgris ROCalculator's Zero
+  // table has the same). Assassins use their left-hand row
   const SHIELD_ASPD={Swordsman:5,Mage:10,Archer:9,Acolyte:7,Merchant:5,Thief:6,Knight:5,Crusader:5,Wizard:8,Sage:3,
     Hunter:9,Bard:5,Dancer:5,Priest:3,Monk:3,Blacksmith:5,Alchemist:4,Assassin:6,Rogue:3};
   // the gear grid; "takes" lists the item slots (prontera equip_slot) that may go in it
@@ -126,9 +126,9 @@ const BUILD=(()=>{
     const hpBase=+b.hpBase>0?+b.hpBase:curve(job,"hp",lv),spBase=+b.spBase>0?+b.spBase:curve(job,"sp",lv);
     const maxHp=hpBase!=null?f((f(hpBase*(1+tot.vit/100))+A.hp)*(1+A.hpPct/100)):null,maxSp=spBase!=null?f((f(spBase*(1+tot.int/100))+A.sp)*(1+A.spPct/100)):null;
     const ab=aspdBase?aspdBase(job,weapon):null;let aspd=null;
-    // Zero (Landgris "paradise", checked against its /compute-aspd): ASPD1 = floor(base − shield penalty + stat term);
-    // ASPD = ASPD1 + (195 − ASPD1) × ASPD % + flat gear ASPD, not rounded (the status window shows it rounded down)
-    if(ab!=null){const a1=f(ab-(shield?SHIELD_ASPD[job]||0:0)+S.aspdTerm);aspd=Math.min(190,Math.round((a1+(195-a1)*A.aspdPct/100+A.aspd)*10)/10)}
+    // Zero (RO樂園攻速計算機 2026-09-07, checked against a Lv 105 Sage in game; Landgris's /compute-aspd agrees up to the last step):
+    // ASPD1 = floor(base − shield penalty + stat term); ASPD = floor(ASPD1 + (195 − ASPD1) × ASPD % + flat gear ASPD), cap 190
+    if(ab!=null){const a1=f(ab-(shield?SHIELD_ASPD[job]||0:0)+S.aspdTerm);aspd=Math.min(190,f(a1+(195-a1)*A.aspdPct/100+A.aspd))}
     const ammo=worn.find(w=>w.slot==="ammo"),arrowEl=weapon==="Bow"&&ammo&&ammo.it.el?cap(ammo.it.el):null; // bows shoot the arrow's element
     const fields={baseLv:lv,jobLv,weapon,wElem:arrowEl||A.wEle||(wpn&&wpn.el?cap(wpn.el):null)||"Neutral",
       st:{str:`${base.str}+${tot.str-base.str}`,agi:`${base.agi}+${tot.agi-base.agi}`,vit:`${base.vit}+${tot.vit-base.vit}`,dex:`${base.dex}+${tot.dex-base.dex}`,luk:`${base.luk}+${tot.luk-base.luk}`},
