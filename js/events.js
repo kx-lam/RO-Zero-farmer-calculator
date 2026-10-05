@@ -149,8 +149,6 @@ $("minLv").value=state.minLv;$("maxLv").value=state.maxLv;
 $("hideClosed").checked=state.hideClosed;$("hideClosed").addEventListener("change",e=>{state.hideClosed=e.target.checked;save();renderMobs()});
 // EXP Hunter + closed regions
 $("bestMin").addEventListener("input",renderBest);$("bestN").addEventListener("change",renderBest);
-$("bestTable").querySelector("thead").addEventListener("click",e=>{const th=e.target.closest("th[data-bk]");if(!th)return;const k=th.dataset.bk;
-  if((state.bestSort||"epm")===k)state.bestDir=-(state.bestDir||-1);else state.bestDir=(k==="mp"||k==="secT"||k==="hpm"||k==="skip")?1:-1;state.bestSort=k;save();renderBest()});
 $("bestTable").querySelector("tbody").addEventListener("click",e=>{const tr=e.target.closest("tr[data-map]");if(!tr)return;state.map=tr.dataset.map;save();renderMap();$("mapCard").scrollIntoView({behavior:"smooth",block:"start"})});
 $("regions").addEventListener("click",e=>{const b=e.target.closest("[data-region]");if(!b)return;const id=b.dataset.region;state.regions[id]=state.regions[id]===false;syncClosed();save();renderAll()});
 $("closedMaps").addEventListener("change",e=>{state.closed=[...new Set(e.target.value.split(/[\s,]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];syncClosed();save();renderAll()});
@@ -167,8 +165,6 @@ $("autoLoot").addEventListener("change",e=>{const i=e.target.closest("[data-loot
 // you always hunt at least one. "reset" goes back to all / best-paying
 const huntPick=(mp,id)=>{const r=huntMap(mp,walkSec(),num($("huntMin").value));if(!r)return;const off=new Set(r.mobs.filter(x=>!x.on).map(x=>x.m.id));
   off.has(id)?off.delete(id):off.add(id);if(r.mobs.every(x=>off.has(x.m.id)))return;state.huntOff[mp]=[...off];save();renderAll()};
-$("huntTable").querySelector("thead").addEventListener("click",e=>{const th=e.target.closest("th[data-hk]");if(!th)return;const k=th.dataset.hk;
-  if((state.huntSort||"net")===k)state.huntDir=-(state.huntDir||-1);else state.huntDir=(k==="name"||k==="cost"||k==="hpm")?1:-1;state.huntSort=k;save();renderHunt()});
 // market prices: add by name ("Name #id" from the list, or a unique name), edit, remove, or click a drop in the table
 const DROP_IDS=[...new Set(MOBS.flatMap(m=>(m.drops||[]).map(d=>String(d[0]))))].filter(id=>ITEMN[id]);
 $("priceList").innerHTML=DROP_IDS.map(id=>`<option value="${esc(ITEMN[id])} #${id}"></option>`).join("");
@@ -195,10 +191,10 @@ $("mobInfoMaps").addEventListener("click",e=>{const tr=e.target.closest("tr[data
 // Item info: search and filter; click an item for its droppers, a dropper for its Monster info
 $("itemGroup").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<option value="${g}">${n}</option>`).join(""));
 $("itemSearch").addEventListener("input",renderItems);$("itemGroup").addEventListener("change",renderItems);
-// Monster info, Item info and Market tables: click a header to sort (again to flip it), type under it to filter; saved per table
-[["mobInfoDrops",renderMobInfo],["mobInfoMaps",renderMobInfo],["itemTable",renderItems],["itemDropTable",renderItems],["priceTable",renderPrices]].forEach(([id,render])=>{const t=$(id);
+// Monster info, Item info, Market and the Hunter tables: click a header to sort (again to flip it), type under it to filter; saved per table
+[["bestTable",renderBest],["huntTable",renderHunt],["mobInfoDrops",renderMobInfo],["mobInfoMaps",renderMobInfo],["itemTable",renderItems],["itemDropTable",renderItems],["priceTable",renderPrices]].forEach(([id,render])=>{const t=$(id);
   t.tHead.addEventListener("click",e=>{const th=e.target.closest("th[data-sk]");if(!th)return;const k=th.dataset.sk,[k0,d0]=tblSort(id);
-    state.tsort[id]=[k,k===k0?-d0:TABLES[id].cols[k].n?-1:1];save();render()});
+    const c=TABLES[id].cols[k];state.tsort[id]=[k,k===k0?-d0:c.n&&!c.asc?-1:1];save();render()});
   t.querySelectorAll("[data-tf]").forEach(inp=>{inp.value=(state.tfilt[id]||{})[inp.dataset.tf]||"";
     inp.addEventListener("input",()=>{(state.tfilt[id]=state.tfilt[id]||{})[inp.dataset.tf]=inp.value;save();render()})})});
 $("itemCard").addEventListener("click",e=>{const a=e.target.closest("[data-pitem]");if(a){e.preventDefault();addPrice(a.dataset.pitem,true);return}

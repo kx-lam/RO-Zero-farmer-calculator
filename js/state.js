@@ -34,9 +34,11 @@ state.npcPrices=Object.fromEntries(Object.entries(numMap(state.npcPrices)).filte
 state.autoLoot=Object.fromEntries(Object.entries(state.autoLoot&&typeof state.autoLoot==="object"?state.autoLoot:{}).filter(([k,v])=>/^[waueco]$/.test(k)&&typeof v==="boolean"));
 state.huntOff=Object.fromEntries(Object.entries(state.huntOff&&typeof state.huntOff==="object"?state.huntOff:{}).filter(([,v])=>Array.isArray(v)).map(([k,v])=>[String(k),v.map(Number).filter(Number.isFinite)]));
 state.huntAuto=state.huntAuto===true;
-// sort ([column, 1 or -1]) and column filters (text) of the Monster info, Item info and Market tables, by table id
+// sort ([column, 1 or -1]) and column filters (text) of the Monster info, Item info, Market and Hunter tables, by table id
 const objOr=o=>o&&typeof o==="object"&&!Array.isArray(o)?o:{};
 state.tsort=Object.fromEntries(Object.entries(objOr(state.tsort)).filter(([,v])=>Array.isArray(v)&&typeof v[0]==="string"&&(v[1]===1||v[1]===-1)));
+// the Hunter tables kept their sort in bestSort/huntSort before they moved to tsort
+[["bestTable","bestSort","bestDir"],["huntTable","huntSort","huntDir"]].forEach(([id,k,d])=>{if(typeof state[k]==="string"&&!state.tsort[id])state.tsort[id]=[state[k],state[d]===1?1:-1];delete state[k];delete state[d]});
 state.tfilt=Object.fromEntries(Object.entries(objOr(state.tfilt)).map(([k,v])=>[k,Object.fromEntries(Object.entries(objOr(v)).filter(([,x])=>typeof x==="string"))]));
 state.noTele=(Array.isArray(state.noTele)?state.noTele:[]).map(String);
 ["flyPrice","teleSec"].forEach(k=>{if(state[k]!=null&&!(Number.isFinite(+state[k])&&+state[k]>=0))delete state[k]});
