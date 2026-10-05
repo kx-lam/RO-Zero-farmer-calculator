@@ -233,7 +233,7 @@ t("job EXP: the last job level is the max and needs no EXP", () => {
 t("walking time: the current session first, then another of the same job, then 2s", () => {
   setup("Knight", { atkTxt: "100+300", hitTxt: "400", wAtk: 0, weapon: "Two-handed spear", wElem: "Neutral", st: {}, a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   const t0 = 1e12, sess = (id, pct) => `{id:'${id}',name:'${id}',job:'Knight',mobIds:[1002],entries:[{t:${t0},lv:30,pct:10},{t:${t0 + 36e5},lv:30,pct:${pct}}]}`;
-  run(`state.walkOverride=0;state.sessions=[${sess("a", 20)},${sess("b", 15)},{id:'c',name:'c',mobIds:[],entries:[]}];state.current='b'`);
+  run(`state.sessions=[${sess("a", 20)},${sess("b", 15)},{id:'c',name:'c',mobIds:[],entries:[]}];state.current='b'`);
   const walk = id => run(`sessionPace(state.sessions.find(s=>s.id==='${id}')).walk`);
   assert.ok(walk("a") > 1 && walk("b") > walk("a"));                 // slower EXP, so more walking per kill
   near(run("walkSec()"), walk("b"));
@@ -241,9 +241,6 @@ t("walking time: the current session first, then another of the same job, then 2
   near(run("walkSec()"), walk("a"));                                 // the current session has no pace yet
   run("state.sessions.forEach(s=>s.job='Mage')");
   assert.equal(run("walkSec()"), 2);                                  // no session of this job
-  run("state.walkOverride=7");
-  assert.equal(run("walkSec()"), 7);                                  // typed in Goal wins
-  run("state.walkOverride=0");
 });
 
 t("zeny per kill: the loot value scaled by the drop rate bonus", () => {

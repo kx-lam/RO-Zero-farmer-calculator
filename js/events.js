@@ -255,11 +255,10 @@ $("mapInput").addEventListener("change",e=>{state.map=mapKey(e.target.value);sav
 $("mapFromMob").addEventListener("click",()=>{state.map="";save();renderMap()});
 $("mapTable").querySelector("tbody").addEventListener("click",e=>{const sm=e.target.closest("[data-sessmob]");if(sm){toggleSessMob(+sm.dataset.sessmob);save();renderAll();return}const sk=e.target.closest("[data-skip]");if(sk){const id=+sk.dataset.skip;if(!state.skipMobs)state.skipMobs=[];state.skipMobs=state.skipMobs.includes(id)?state.skipMobs.filter(x=>x!==id):[...state.skipMobs,id];save();renderAll();return}const tr=e.target.closest("tr[data-id]");if(tr)pickMob(MOBS.find(m=>m.id===+tr.dataset.id))});
 // goal
-$("goalLv").value=state.goalLv||"";$("walkOverride").value=state.walkOverride||"";
-$("goalLv").addEventListener("input",e=>{state.goalLv=num(e.target.value)||null;save();renderTracker()});
-$("goalJobLv").value=state.goalJobLv||"";
-$("goalJobLv").addEventListener("input",e=>{state.goalJobLv=num(e.target.value)||null;save();renderTracker()});
-$("walkOverride").addEventListener("input",e=>{state.walkOverride=num(e.target.value);save();renderAll()});
+// goal levels default to the max (base Lv 70, your job's max job level); typing past it stops at it, and a blank or too-low goal goes back to it
+[["goalLv","goalLv"],["goalJobLv","goalJobLv"]].forEach(([id,k])=>{const el=$(id);
+  el.addEventListener("input",()=>{const v=num(el.value),mx=+el.max;if(v>mx)el.value=mx;state[k]=v>=+el.min?Math.min(v,mx):null;save();renderTracker()});
+  el.addEventListener("change",()=>{if(!(num(el.value)>=+el.min)){state[k]=null;save();renderTracker()}})});
 // backup
 const bkText=()=>JSON.stringify(state);
 // combined backup: every account's save plus the account list

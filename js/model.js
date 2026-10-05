@@ -335,7 +335,7 @@ function sessionPace(s){
   return {kph,obs,fight,walk:isFinite(fight)&&obs>=fight?obs-fight:null,zk:mix.avg(zenyKill),mix,st};
 }
 // the current session's walking time; without one, the first other session of this job that has one (the others are only worked out then)
-const walkSec=()=>{if(num(state.walkOverride)>0)return num(state.walkOverride);
+const walkSec=()=>{
   const c=cur(),p=sessionPace(c);if(p&&p.walk!=null)return Math.max(1,p.walk);
   for(const s of state.sessions){if(s===c||(s.job||state.job)!==state.job)continue;const q=sessionPace(s);if(q&&q.walk!=null)return Math.max(1,q.walk)}
   return 2};
