@@ -1,69 +1,187 @@
 # RO Zero Farm Planner
 
-A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Everything runs in your browser: there's no server and no login, and your data stays in your browser's local storage.
+A farming planner and EXP tracker for **Ragnarok Zero: Global**. Enter your character, and it works out your damage, kill speed, EXP/hr and zeny/hr against every monster. Then it ranks the open maps for you and tracks your real EXP while you farm.
+
+It's a single page that runs entirely in your browser. There's no server, no login and no build step, and your data stays in your browser's local storage.
 
 **Live page:** https://kx-lam.github.io/RO-Zero-farmer-calculator/
 
-## What it does
+## Quick start
 
-- **EXP tracker:** log your Base and Job EXP % as you farm (or paste many lines at once). Entries go on today's date unless you pick another; a session that runs past midnight or over several days shows the date next to each time. You get EXP/hr, time to the next level, a progress chart, and kill pace split into fighting and walking time.
-- **Every 2nd job:** pick a job and an attack. Presets use max-level Ragnarok Zero skill data (rozerodb, Landgris ROCalculator Zero data) and include cast time, delay, base-level scaling and stat bonuses.
-- **Damage model:** status ATK/MATK, weapon size penalty, element table, monster DEF/MDEF, hit and dodge chance, crits, mastery ATK, gear % bonuses, cast and delay reduction, ASPD potions and elemental converters. Sage Spell Fist counts the basic attack's own physical hit as well as the procs, and any job (Mages too) can add an auto-cast spell from a card, weapon or scroll that procs on basic attacks with your MATK.
-- **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned (Skills card) gets that much more from NPCs: the loot value per kill, and the NPC price a market price replaces. Discount cuts what you pay NPCs for SP items, the ASPD potion and consumables; untick "from NPCs" when you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10, read from Zero's skill data.
-- **Weight:** type your weight now and Max Weight, where you go sell (70% or 90%) and how long a town trip takes. At 70% HP and SP stop regenerating and at 90% you can't attack or use skills, so each trip ends at your sell point. Kills per trip come from each drop's weight × chance, and the trip time is spread over those kills in every EXP/min and zeny/hr figure. Selling at 90% fights the 70–90% stretch with no regen, and falls back to 70% when your attack needs SP and you have no SP items.
-- **Sage options:** Spell Fist with the best bolt per monster, Hindsight (with an auto on/off check against your zeny limit), Double Bolt, Vitata (you cast its Heal Lv1, which costs SP and time you aren't attacking), Energy Coat, Hunter Fly, Side Winder, and SP items.
-- **Monster table:** every non-MVP monster with HP, EXP, EXP/HP, your damage, kill time, EXP/min, dodge, HP lost and zeny per kill. It has column filters (`<350`, `100-200`, `fire`, `-` for blank, `or`) and you can show or hide columns.
-- **EXP Hunter:** open maps ranked by EXP/min, weighted by spawn counts. Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F); you can also type the rozerodb code (`sp_d05`). Monsters rozerodb has no EXP for yet (Myst, Isis, Anubis…) are listed with EXP `?` and left out of EXP/min. You can skip monsters you don't want to fight, and you can mark regions that aren't open yet as closed. The table sorts by any column, has column filters like the Monster table (`poring` under Main monsters finds every map with Porings) and can show or hide columns; filters apply before the Show limit, and # stays the map's rank among all open maps.
-- **Zeny Hunter:** open maps, or monsters farmed on their own, ranked by net zeny/hr: loot value per kill with your drop rate bonus and the level penalty (drops fall 50% from monsters 40 or more levels below you, per the official guide; −20 to −39 isn't in the guide and counts as no penalty), less skill costs (Mammonite), SP items and switched-on consumables. It picks converters by zeny rather than EXP, and still counts monsters with no EXP data, since they drop loot. Monsters mode lists every drop with your chance and what it adds per kill. Like the EXP Hunter, it sorts by any column, filters by column (type an item under Earns from, such as `elunium`, to find monsters that drop it) and can show or hide columns.
-  - **Auto loot:** tick the item groups you loot, like the game's Looting tab (weapons, armor, consumables, cards, miscellaneous, costumes). Unticked groups count as 0 zeny everywhere. The game's random option grade for equipment isn't modelled.
-  - **Monster picks:** like the game's Monster tab, click a monster on a map to stop or start hunting it. **Hunt only the best-paying monsters** picks for you, keeping at least "Min monsters on map" spawns. Passing monsters by costs time: you walk further (walking × √(all / hunted)) or teleport past them ((all / hunted − 1) teleports per kill, at your Fly Wing price and seconds per teleport). Each map uses whichever nets more. rozerodb doesn't say which maps block teleport, so click "teleport ok" on a map to mark it "no teleport".
-- **Market:** type what players pay for an item, and that drop counts at the player price in every zeny figure. What an NPC pays is taken off, since rozerodb's loot value already counts it: it's filled in from rozerodb for every drop, and you can type your own to override it. Click a drop in the Zeny Hunter, Monster info or Item info to price it. Like the Monsters table, the price list sorts by any column (click its header), filters by column and can show or hide columns.
-- **Monster info:** one monster's stats, how you do against it, its drops (auto-loot group, chance, your chance, NPC and player price, zeny per kill) and every map it spawns on. Both tables sort by any column, filter by column and can show or hide columns.
-- **Item info:** every item monsters drop, searchable and filterable by auto-loot group, with NPC and player prices. Click one to see every monster that drops it, its chance and the best open map. The item list and the droppers sort by any column, filter by column and can show or hide columns; sort and filters are saved.
+1. **Character tab:** pick your job and attack. Then copy ATK, MATK, HIT, FLEE, ASPD, DEF, Max HP/SP and your six stats from the in-game status window.
+2. **Session tab:** pick the monster you're farming and press **Farming … now**.
+3. Log your EXP % every few minutes, for example `15:05 17.9% 63%` (time, base %, job %). Leave the time off (`17.9% 63%`) to log it at the current time. You can also paste many lines at once.
+4. **Monsters & maps tab:** use the EXP Hunter, Zeny Hunter and Map planner to find a better spot.
+
+## Features by tab
+
+### Account
+
+- Keep separate characters, sessions and settings for each of your accounts, and switch between them.
+- **Backup:** copy or restore the current account's data, or every account at once, as text. Restoring an all-accounts backup replaces every account.
+- **Copy share link** puts the current account in a link. The data sits in the part after `#`, which never reaches the server. Opening the link loads the account into the backup box, and nothing changes until you click Restore.
+
+### Character
+
+- **Every 2nd job:** pick a job and an attack. The presets use max-level Ragnarok Zero skill data, including cast time, delay, base-level scaling and stat bonuses.
+- **Build mode:** works out ATK, MATK, HIT, FLEE, ASPD, DEF, HP and SP from base stats, job level, gear, refine and cards, matching the in-game status window.
+- **Damage model:** status ATK/MATK, weapon size penalty, the element table, monster DEF/MDEF, hit and dodge chance, crits, mastery ATK, gear % bonuses, cast and delay reduction, ASPD potions and elemental converters.
+- **Auto-cast spells:** any job, Mages included, can add a spell from a card, weapon or scroll that procs on basic attacks with your MATK. Sage Spell Fist counts the basic attack's own physical hit as well as the procs.
+- **Sage options:** Spell Fist with the best bolt per monster, Hindsight (switched on or off automatically against your zeny limit), Double Bolt, Vitata, Energy Coat, Hunter Fly, Side Winder and SP items. Vitata counts the Heal Lv1 you cast, which costs SP and time you aren't attacking.
+- **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for SP items, the ASPD potion and consumables; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10.
+- **Weight:** enter your current weight, Max Weight, where you sell (70% or 90%) and how long a town trip takes.
+  - At 70% weight HP and SP stop regenerating, and at 90% you can't attack or use skills, so each trip ends at your sell point.
+  - Kills per trip come from each drop's weight × chance. The trip time is spread over those kills in every EXP/min and zeny/hr figure.
+  - Selling at 90% means fighting the 70–90% stretch with no regen. It falls back to 70% when your attack needs SP and you have no SP items.
+
+### Session (EXP tracker)
+
+- Log Base and Job EXP % as you farm. Entries go on today's date unless you pick another. If a session runs past midnight or over several days, the date shows next to each time.
+- See EXP/hr, time to the next level and a progress chart. Kill pace is split into fighting and walking time.
+- Rename a session with ✎ next to the session picker (Enter or ✓ saves, Esc cancels), and compare sessions side by side.
+- **Goal:** the EXP needed and the farming time to a target base and job level, charted together, with a date for each level-up if you farm non-stop.
+
+### Monsters & maps
+
+- **Monster table:** every non-MVP monster with HP, EXP, EXP/HP, your damage, kill time, EXP/min, dodge, HP lost and zeny per kill.
+- **EXP Hunter:** open maps ranked by EXP/min, weighted by spawn counts.
+  - Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F). You can also type the database code (`sp_d05`).
+  - Monsters with no EXP data yet (Myst, Isis, Anubis…) show EXP `?` and are left out of EXP/min.
+  - Skip monsters you don't want to fight, and mark regions that aren't open yet as closed.
+- **Zeny Hunter:** open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite), SP items and consumables you've switched on.
+  - Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
+  - Converters are picked by zeny rather than EXP. Monsters with no EXP data still count, since they drop loot.
+  - Monsters mode lists every drop with your chance and what it adds per kill.
+  - **Auto loot:** tick the item groups you loot, like the game's Looting tab (weapons, armor, consumables, cards, miscellaneous, costumes). Unticked groups count as 0 zeny everywhere. The random option grade on equipment isn't modelled.
+  - **Monster picks:** like the game's Monster tab, click a monster on a map to stop or start hunting it. **Hunt only the best-paying monsters** picks for you, keeping at least "Min monsters on map" spawns.
+  - Skipping monsters costs time. You either walk further (walking × √(all / hunted)) or teleport past them ((all / hunted − 1) teleports per kill, at your Fly Wing price and seconds per teleport). Each map uses whichever nets more. The data doesn't say which maps block teleport, so click "teleport ok" on a map to mark it "no teleport".
 - **Map planner:** per-map averages, kills/hr, EXP/hr and zeny/hr.
-- **Goal:** EXP needed and farming time to a target base level and job level, charted together, with a date for each level-up if you farm non-stop. The tables cover Base Lv 1–70 and Novice, 1st and 2nd job levels.
-- **EXP & formulas:** the base and job EXP tables (with your level highlighted and kills per level for your monster), every formula the calculator uses with your own numbers next to it, and the element and weapon size tables.
-- **Party:** Even Share party bonus worked out from the party size (+10% per extra member: 2 members 110%, 3: 120% … 12: 210%, split evenly); EXP bonuses from gear and the EXP bonus % add together. Base and job EXP per kill: gear EXP counts for both, items' "EXP +X%" for base only (EXP bonus %) and "Job EXP +X%" for job (Job EXP bonus %). The EXP & formulas tab has the party table and both formulas, EXP bonus % and drop rate bonus %.
-- **Accounts:** keep separate characters, sessions and settings for each of your accounts, and switch between them on the Account tab. Click ✎ next to the session picker to rename a session (Enter or ✓ saves, Esc cancels).
-- **Backup:** copy or restore the current account's data, or all accounts at once, as text. Restoring an all-accounts backup replaces every account. **Copy share link** puts the current account in a link (in the part after `#`, which never reaches the server); opening it loads the account into the backup box, and nothing changes until you click Restore.
 
-## How to use
+### Monster info
 
-1. Pick your **job** and **attack**, then copy ATK, MATK, HIT, FLEE, ASPD, DEF, Max HP/SP and your six stats from the in-game status window.
-2. Pick the monster you're farming and press **Farming … now**.
-3. Log your EXP % every few minutes, for example `15:05 17.9% 63%` (time, base %, job %). Leave the time off (`17.9% 63%`) to log it at the current time.
-4. Use **EXP Hunter** and the **Map planner** to find a better spot.
+One monster's stats, how you do against it, and every map it spawns on. Its drops list shows the auto-loot group, chance, your chance, NPC and player price, and zeny per kill.
 
-## Files
+### Item info
 
-- `index.html`: page markup. Open it directly or serve the folder; there's no build step.
-- `style.css`: styles.
-- `js/*.js`: the calculator and tracker code, one file per section. They're plain scripts that `index.html` loads in this order and that share one global scope, so later files use what earlier ones define:
-  - `game.js`: merges the monster tables and holds the element and size tables and the jobs and attack presets.
-  - `state.js`: storage and accounts, saved state and its migrations, and small helpers.
-  - `model.js`: the damage, SP, defence and Sage models, maps, and the tracker maths.
-  - `render.js`: draws the Character, Session and Monsters & maps tabs.
-  - `events.js`: input handlers, stats, the log form, accounts, sessions, backups and the share link, plus the column picker.
-  - `skills.js`: skill trees, passives and buffs.
-  - `build-ui.js`: build mode, consumables and the equipment stats rows.
-  - `ref.js`: the EXP & formulas tab.
-  - `start.js`: tabs, collapsible cards and the first render.
-- `build.js`: the build simulator. It turns base stats, job level, gear, refine and cards into the same ATK/MATK/HIT/FLEE/ASPD/DEF/HP/SP the status window shows.
-- `data/*.js`: tables exported from the sources below, one per file, so a re-export after a patch only touches that file. `mobs.js` (monsters; EXP `null` where rozerodb has none yet), `spawn.js` (spawn maps and counts from the official client's navigation table, normal and PvP channels; regenerate with `python tools/export_spawns.py`, which reads `navi_mob.lub` from your installed client's `data.grf` without changing it; maps the client doesn't list yet keep rozerodb's estimates), `maps.js` (in-game map code and name for each spawn map; names as the game shows them, from your installed client via `python tools/export_mapnames.py`), `loot.js` (drops), `items.js` (item names), `weights.js` (item weight for every drop, from rozerodb, written with the prices by `python tools/export_prices.py`; items with no weight count as weightless), `prices.js` (NPC sell price for every drop, from rozerodb; regenerate with `python tools/export_prices.py`, which also checks the prices add up to each monster's loot value), `itemtypes.js` (auto-loot group for every drop, from rozerodb item categories; written by the same script), `mstat.js` (DEF/MDEF/ATK), `elem.js` (element, HIT/FLEE), `sizes.js` (size and race) and `exp.js` (EXP tables). Each file's first line describes its fields. Gear and skill data (`equipment.js`, `cards.js`, `refine.js`, `jobs.js`, `skills.js`) is regenerated with `python tools/export_prontera.py`; it caches pages in `tools/cache/`. It also applies corrections found by checking against the official client (top of the script): Guild gear options are GvG/Siege-only, a few cards' CRIT only counts against one race, and some missing skill cooldowns and damage-taken lines. After a patch, run it with `--refresh` to pick up new items and skill, job and refine changes; delete the cache to also pick up changed stats on existing items. Items that fail to download are left out and listed at the end, so rerun it to retry them.
-- `tools/check_maps.py`: compares `data/spawn.js` with ragnarokzero.net and lists missing monsters and spawn counts that differ. Monsters rozerodb marks as upcoming are expected to show up as missing.
-- `tools/check_drops.py`: compares the drops and drop rates in `data/loot.js`, and the item names in `data/items.js`, with ragnarokzero.net. Loot value per kill isn't compared, because the two sites price items differently.
-- `tests/`: `node tests/build.test.mjs` tests the build simulator; `node tests/ingame.test.mjs` checks real characters against their in-game status window; `node tests/model.test.mjs` loads the `js/` files with a stand-in page and checks the damage and tracker maths (damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time and the monster table filters). GitHub Actions runs all of them on every pull request and push to `main` (`.github/workflows/tests.yml`).
+Every item monsters drop, searchable and filterable by auto-loot group, with NPC and player prices. Click an item to see every monster that drops it, the drop chance and the best open map.
+
+### Market
+
+- Type what players pay for an item, and that drop counts at the player price in every zeny figure.
+- The NPC price is subtracted, since the loot value already includes it. It's filled in for every drop, and you can type your own to override it.
+- Click a drop in the Zeny Hunter, Monster info or Item info to price it.
+
+### EXP & formulas
+
+- Base and job EXP tables for Base Lv 1–70 and Novice, 1st and 2nd job levels. Your level is highlighted, with kills per level for your monster.
+- **Party EXP (Even Share):** the bonus is +10% per extra member (2 members 110%, 3: 120% … 12: 210%), split evenly.
+- **EXP bonuses** add together. Gear EXP counts for both base and job; an item's "EXP +X%" goes in EXP bonus % (base only) and "Job EXP +X%" in Job EXP bonus % (job only).
+- Every formula the calculator uses, with your own numbers next to it.
+- The element and weapon size tables.
+
+### Tables everywhere
+
+Every big table works the same way:
+
+- Click a column header to sort.
+- Type in the filter row under the header. Filters accept `<350`, `100-200`, `fire`, `-` for blank and `or`. In the EXP Hunter, `poring` under Main monsters finds every map with Porings; in the Zeny Hunter, `elunium` under Earns from finds every monster that drops it.
+- Show or hide columns with the column picker.
+- In the hunters, filters apply before the Show limit, and # stays the map's rank among all open maps.
+
+## Accuracy
+
+The numbers are estimates. Skill values and formulas follow the sources below and may differ from the live server after a patch, so check them against your own EXP logs.
+
+## Development
+
+The page is plain HTML, CSS and JavaScript with no dependencies. Open `index.html` directly or serve the folder.
+
+### Project layout
+
+| Path | What's in it |
+| --- | --- |
+| `index.html` | Page markup. Loads `data/*.js`, then `build.js`, then `js/*.js`. |
+| `style.css` | Styles. |
+| `build.js` | Build simulator: turns base stats, job level, gear, refine and cards into the status window's ATK/MATK/HIT/FLEE/ASPD/DEF/HP/SP. |
+| `js/` | Calculator and tracker code (see below). |
+| `data/` | Game data tables, one per file (see below). |
+| `tools/` | Python scripts that export and cross-check the data. |
+| `tests/` | Node tests. |
+
+### `js/`
+
+Plain scripts that `index.html` loads in this order. They share one global scope, so later files use what earlier ones define.
+
+| File | Purpose |
+| --- | --- |
+| `game.js` | Merges the monster tables; holds the element and size tables, the jobs and the attack presets. |
+| `state.js` | Storage and accounts, saved state and its migrations, small helpers. |
+| `model.js` | Damage, SP, defence and Sage models, maps and the tracker maths. |
+| `render.js` | Draws the Character, Session and Monsters & maps tabs. |
+| `events.js` | Input handlers, stats, the log form, accounts, sessions, backups, the share link and the column picker. |
+| `skills.js` | Skill trees, passives and buffs. |
+| `build-ui.js` | Build mode, consumables and the equipment stats rows. |
+| `ref.js` | The EXP & formulas tab. |
+| `start.js` | Tabs, collapsible cards and the first render. |
+
+### `data/`
+
+Each table lives in its own file, so a re-export after a patch only touches that file. Each file's first line describes its fields. See [Data sources](#data-sources) for where each comes from.
+
+| File | Contents |
+| --- | --- |
+| `mobs.js` | Monsters (EXP is `null` where there's no data yet) |
+| `spawn.js` | Spawn maps and counts, normal and PvP channels. Written by `tools/export_spawns.py`; maps the client doesn't list yet keep their estimates. |
+| `maps.js` | In-game map code and name for each spawn map. Names written by `tools/export_mapnames.py`. |
+| `loot.js` | Drops |
+| `items.js` | Item names |
+| `prices.js` | NPC sell price for every drop. Written by `tools/export_prices.py`. |
+| `weights.js` | Item weight for every drop; items with no weight count as weightless. Written by `tools/export_prices.py`. |
+| `itemtypes.js` | Auto-loot group for every drop, from item categories. Written by `tools/export_prices.py`. |
+| `mstat.js` | Monster DEF/MDEF/ATK |
+| `elem.js` | Monster element, HIT/FLEE |
+| `sizes.js` | Monster size and race |
+| `exp.js` | EXP tables |
+| `equipment.js`, `cards.js`, `refine.js`, `jobs.js`, `skills.js` | Gear, refine, job and skill data for the build simulator. Written by `tools/export_prontera.py`. |
+
+### Tools
+
+All scripts use only the Python standard library.
+
+| Command | What it does |
+| --- | --- |
+| `python tools/export_spawns.py [--client PATH]` | Rewrites `data/spawn.js` from `navi_mob.lub` in your installed client's `data.grf` (read-only). Default client path: `C:\Gravity\RagnarokZero`. |
+| `python tools/export_mapnames.py [--client PATH]` | Sets the map names in `data/maps.js` to the names your installed client shows in game (read-only). |
+| `python tools/export_prices.py [--refresh]` | Writes `data/prices.js`, `data/weights.js` and `data/itemtypes.js`, and checks the prices add up to each monster's loot value. |
+| `python tools/export_prontera.py [--refresh]` | Writes the gear, refine, job and skill data. |
+| `python tools/check_maps.py` | Compares `data/spawn.js` with the cross-check source and lists missing monsters and spawn counts that differ. Monsters marked as upcoming are expected to show up as missing. |
+| `python tools/check_drops.py` | Compares drops, drop rates and item names with the cross-check source. Loot value per kill isn't compared, because the two sources price items differently. |
+
+Notes on `export_prontera.py`:
+
+- It caches pages in `tools/cache/`. After a patch, run it with `--refresh` to pick up new items and skill, job and refine changes. Delete the cache to also pick up changed stats on existing items.
+- Items that fail to download are left out and listed at the end, so rerun it to retry them.
+- It applies corrections found by checking against the official client (listed at the top of the script): Guild gear options are GvG/Siege-only, a few cards' CRIT only counts against one race, and some skill cooldowns and damage-taken lines that were missing.
+
+### Tests
+
+```sh
+node tests/build.test.mjs    # build simulator
+node tests/ingame.test.mjs   # real characters against their in-game status window
+node tests/model.test.mjs    # damage and tracker maths, loaded with a stand-in page
+```
+
+`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time and the monster table filters. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`).
 
 ## Data sources
 
 - Monsters, drops, NPC prices and skills: [rozerodb.com](https://rozerodb.com)
-- Spawn counts: the official Ragnarok Zero Global client (navigation table), via `tools/export_spawns.py`; rozerodb's estimates for maps not out yet
-- Map names: the official client (`System/mapInfo_enUS.lub`), via `tools/export_mapnames.py`; ragnarokzero.net's names for maps not in the client yet
+- Gear, cards, refine and job data: [roz.prontera.info](https://roz.prontera.info)
+- Spawn counts: the official Ragnarok Zero Global client (navigation table); rozerodb's estimates for maps not out yet
+- Map names: the official client (`System/mapInfo_enUS.lub`); ragnarokzero.net's names for maps not in the client yet
 - Spawn, drop and item name cross-check, in-game map codes: [ragnarokzero.net](https://ragnarokzero.net/database/maps)
 - Monster race and HP cross-check: [einh-guild.de](https://einh-guild.de), [midgardhub.com](https://midgardhub.com/database/monsters)
 - Formulas: [roz.prontera.info/mechanics](https://roz.prontera.info/mechanics), [iRO Wiki](https://irowiki.org/wiki/Stats)
 - Zero skill data, element table and ASPD table: [Landgris ROCalculator](https://landgris.github.io/ROCalculator/?zero)
 - Size table and EXP tables: [official game guide](https://roz.mygnjoy.com/en/intro/guide/12)
 - Drop rate level penalty: [official game guide](https://roz.mygnjoy.com/en/intro/guide/11)
-
-The numbers are estimates. Skill values and formulas follow the sources above and may differ from the live server after patches, so check against your own logs.
