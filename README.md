@@ -41,7 +41,6 @@ It's a single page that runs entirely in your browser. There's no server, no log
 - Log Base and Job EXP % as you farm. Entries go on today's date unless you pick another. If a session runs past midnight or over several days, the date shows next to each time.
 - See EXP/hr, time to the next level and a progress chart. Kill pace is split into fighting and walking time.
 - Rename a session with ✎ next to the session picker (Enter or ✓ saves, Esc cancels), and compare sessions side by side.
-- **Sell timer:** the game's auto return only takes you to town at a weight %; it doesn't sell or store anything. Press Start when you leave town and the timer counts down to when the session's monsters should have filled you to your sell point, then rings: a beep, an optional browser notification and "Sell now" in the tab title. It can ring a few minutes early, and paused time is added on. Press **Back from town** to start the next trip. It also shows how long one trip is and how many town runs you make an hour. In a background tab the browser can make it up to a minute late.
 - **Goal:** the EXP needed and the farming time to a target base and job level, charted together, with a date for each level-up if you farm non-stop.
 
 ### Monsters & maps
@@ -73,6 +72,7 @@ Every item monsters drop, searchable and filterable by auto-loot group, with NPC
 - Type what players pay for an item, and that drop counts at the player price in every zeny figure.
 - The NPC price is subtracted, since the loot value already includes it. It's filled in for every drop, and you can type your own to override it.
 - Click a drop in the Zeny Hunter, Monster info or Item info to price it.
+- **Sell timer:** the game's auto return only takes you to town at a weight %; it doesn't sell or store anything. Press Start when you leave town and the timer counts down to when the current session's monsters should have filled you to your sell point, then rings: a beep, an optional browser notification and "Sell now" in the tab title. It can ring a few minutes early. Time the session spends paused is added on, and Start or **Back from town** ends a pause left open while you sold. If the trip length can't be worked out (no monster picked, no Max Weight) or doesn't match what you see, type the minutes one trip takes. It also shows how many town runs you make an hour. In a background tab the browser can make it up to a minute late.
 
 ### EXP & formulas
 

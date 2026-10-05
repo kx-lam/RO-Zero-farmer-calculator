@@ -124,9 +124,11 @@ $("tripNotify").addEventListener("change",e=>{const on=e.target.checked;state.tr
   else if(Notification.permission==="denied"){state.tripNotify=false;save();renderTrip();$("tripS").textContent="Notifications are blocked for this page in your browser settings"}});
 $("tripBtns").addEventListener("click",e=>{const b=e.target.closest("[data-trip]");if(!b)return;const s=cur();
   if(b.dataset.trip==="stop")delete s.trip;
-  else{const t=sessTrip(s);if(!t||!(t.min>0)||!isFinite(t.min))return;const now=Date.now();s.trip={from:now,due:now+t.min*6e4};TRIP_RING={id:null,n:0,at:0};
-    if(state.tripSound!==false)tripAudio()}// a click lets the page play sound later
+  else{const wasPaused=!!openPause(s);if(!startTrip(s))return;TRIP_RING={id:null,n:0,at:0};
+    if(state.tripSound!==false)tripAudio();// a click lets the page play sound later
+    if(wasPaused){save();renderAll();return}}
   save();renderTrip()});
+$("tripMin").addEventListener("input",e=>{const v=num(e.target.value);if(v>0)state.tripMin=v;else delete state.tripMin;save();renderTrip()});
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
 const openSession=id=>{state.current=id;state.calcMobId=null;save();renderAll();resetForm()};
 // accounts: switching saves this one and reloads the page with the other one's data

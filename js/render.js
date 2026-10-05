@@ -75,15 +75,21 @@ function renderTrip(s=cur()){const c=C(),act=document.activeElement;
   if(act!==$("tripAt"))$("tripAt").value=num(c.sellAt)>0?c.sellAt:"";if(act!==$("tripTownMin"))$("tripTownMin").value=c.townMin??3;
   if(act!==$("tripEarly"))$("tripEarly").value=num(state.tripEarly)>0?state.tripEarly:"";
   $("tripSound").checked=state.tripSound!==false;$("tripNotify").checked=state.tripNotify===true;
-  const t=wOn()?sessTrip(s):null,town=Math.max(0,num(c.townMin,3));let len="–",lenS,runs="–",runsS="";
-  if(!wOn())lenS="Type your Max Weight to work it out";
-  else if(!t)lenS=sessMobs(s).length?"You can't hurt the session's monsters with this attack":"Pick what you're farming (Monsters & maps → Farming … now)";
+  if(act!==$("tripMin"))$("tripMin").value=num(state.tripMin)>0?state.tripMin:"";
+  const t=wOn()?sessTrip(s):null,town=Math.max(0,num(c.townMin,3)),typed=num(state.tripMin)>0,ms=sessMobs(s);let len="–",lenS,runs="–",runsS="";
+  const auto=t&&t.wk>0&&t.kills>=1&&isFinite(t.min)?t.min:null;
+  $("tripFor").textContent=`${s.name}${ms.length?` · ${ms.map(m=>m.name).join(", ")}`:" · no monster picked"}`;
+  $("tripMin").placeholder=auto?String(Math.round(auto)):"auto";
+  if(!wOn())lenS="Type your Max Weight to work it out, or type the minutes a trip takes";
+  else if(!t)lenS=ms.length?"You can't hurt the session's monsters with this attack; type the minutes a trip takes":"Pick what you're farming (Monsters & maps → click a monster → Farming this now), or type the minutes a trip takes";
   else if(!(t.wk>0))lenS="Their drops weigh nothing, so you never fill up";
   else if(!(t.kills>=1))lenS=`<span class="bad">Your starting weight is already at your sell point (${fmtP(sellPct())}%)</span>`;
-  else{len=fmtDur(t.min/60);lenS=`~${fmtN(Math.floor(t.kills))} kills · ${t.wk.toFixed(1)} weight a kill · ${fmtN(Math.max(0,maxWt(c)*t.at/100-num(c.curW)))} weight of room: ${fmtN(num(c.curW))} you start with → ${fmtN(maxWt(c)*t.at/100)} (${fmtP(t.at)}%)${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}`;
-    const cyc=t.min+town;runs=`${(60/cyc).toFixed(1)}/hr`;runsS=`${fmtP(town)} min each · ${Math.round(town/cyc*100)}% of your time in town`}
+  else lenS=`~${fmtN(Math.floor(t.kills))} kills · ${t.wk.toFixed(1)} weight a kill · ${fmtN(Math.max(0,maxWt(c)*t.at/100-num(c.curW)))} weight of room: ${fmtN(num(c.curW))} you start with → ${fmtN(maxWt(c)*t.at/100)} (${fmtP(t.at)}%)${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}`;
+  if(typed)lenS=`typed${auto?` · worked out: ${fmtDur(auto/60)}`:""}`;
+  const min=typed?num(state.tripMin):auto;
+  if(min>0){len=fmtDur(min/60);const cyc=min+town;runs=`${(60/cyc).toFixed(1)}/hr`;runsS=`${fmtP(town)} min each · ${Math.round(town/cyc*100)}% of your time in town`}
   $("tripLen").textContent=len;$("tripLenS").innerHTML=lenS;$("tripRuns").textContent=runs;$("tripRunsS").textContent=runsS;
-  TRIP_OK=!!(t&&t.wk>0&&t.kills>=1&&isFinite(t.min));renderTripBtns(s);tickTrip();
+  TRIP_OK=min>0;renderTripBtns(s);tickTrip();
 }
 function renderTripBtns(s=cur()){const ph=tripPhase(s);TRIP_PHASE=ph;
   $("tripBtns").innerHTML=ph==="none"?`<button type="button" class="primary" data-trip="go"${TRIP_OK?"":" disabled"}>Start</button>`
@@ -103,11 +109,11 @@ function tickTrip(){const now=Date.now(),s=cur();
     if(!x.trip.rang){x.trip.rang=true;save();TRIP_RING={id:x.id,n:1,at:now};tripAlarm(x)}
     else if(TRIP_RING.id===x.id&&TRIP_RING.n<5&&now-TRIP_RING.at>=6e4){TRIP_RING.n++;TRIP_RING.at=now;if(state.tripSound!==false)tripBeep()}});
   const ph=tripPhase(s,now),el=$("tripClock");if(ph!==TRIP_PHASE)renderTripBtns(s);
-  if(ph==="none"){el.textContent="–";el.className="v mono";$("tripK").textContent="Next sell";$("tripS").textContent="Press Start when you leave town";document.title=BASE_TITLE;return}
+  if(ph==="none"){el.textContent="–";el.className="v mono";$("tripK").textContent="Next sell";$("tripS").textContent=TRIP_OK?"Press Start when you leave town":"Needs a trip length: see One trip";document.title=BASE_TITLE;return}
   const due=tripDue(s),left=due-now,early=tripEarly();
   el.textContent=ph==="paused"?"Paused":left>0?fmtClock(left):"Sell now";el.className="v mono"+(ph==="due"?left>0?" warnc":" bad":"");
   $("tripK").textContent=ph==="due"?"Time to sell":"Next sell";
-  $("tripS").textContent=`sell point at ${fmtT(due)}${early?` · rings at ${fmtT(due-early)}`:""} · left town ${fmtT(s.trip.from)}${ph==="paused"?" · paused: the clock waits for you":""}`;
+  $("tripS").textContent=`sell point at ${fmtT(due)}${early?` · rings at ${fmtT(due-early)}`:""} · left town ${fmtT(s.trip.from)}${ph==="paused"?" · session paused: the clock waits until you Resume (Session tab) or press Restart":""}`;
   document.title=(ph==="due"?"⏰ Sell now · ":ph==="run"?`${fmtClock(left)} · `:"")+BASE_TITLE}
 function renderChart(s){
   const svg=$("chart"),es=[...s.entries].sort((a,b)=>a.t-b.t);const W=800,H=340,pl=52,pr=18,pt=16,pb=34;
