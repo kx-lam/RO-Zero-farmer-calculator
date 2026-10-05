@@ -9,6 +9,7 @@ Object.assign(globalThis, {
       g: [{ b: [["str", null, null, 2]] }, { b: [["atk", null, null, 5, 1]] }, { r: 7, b: [["damage_percent", "race", "demi_human", 10]] }] },
     { id: 2, slug: "coat", name: "Coat", slot: ["armor"], refine: "armor", def: 10, g: [] },
     { id: 3, slug: "boots", name: "Boots", slot: ["footgear"], refine: "armor", def: 2, g: [] },
+    { id: 5, slug: "guard", name: "Guard", slot: ["shield"], refine: "armor", def: 3, g: [] },
     { id: 4, slug: "hat", name: "Hat", slot: ["head_upper", "head_middle"], refine: "armor", def: 1, g: [{ b: [["aspd_percent", null, null, 10]] }] },
   ],
   CARDS: [
@@ -66,6 +67,13 @@ t("ASPD % pivots on 195 and caps at 190; multi-slot headgear counts once", () =>
   assert.equal(r.fields.aspd, Math.round((a0 + (195 - a0) * 0.10) * 10) / 10);
   const fast = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {} }, "Knight", () => 189);
   assert.equal(fast.fields.aspd <= 190, true);
+});
+
+t("a shield takes the job's shield penalty off base ASPD", () => {
+  const off = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {} }, "Knight", aspdBase);
+  const on = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { shield: { id: 5 } } }, "Knight", aspdBase);
+  assert.equal(BUILD.SHIELD_ASPD.Knight, 5);
+  assert.equal(Math.round((off.fields.aspd - on.fields.aspd) * 10) / 10, 5);
 });
 
 t("status formulas match the verified Zero formulas", () => {

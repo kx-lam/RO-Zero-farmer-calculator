@@ -6,6 +6,9 @@ const BUILD=(()=>{
   // 2nd job -> 1st job
   const FIRST_OF={Knight:"Swordsman",Crusader:"Swordsman",Wizard:"Mage",Sage:"Mage",Hunter:"Archer",Bard:"Archer",Dancer:"Archer",Priest:"Acolyte",Monk:"Acolyte",Blacksmith:"Merchant",Alchemist:"Merchant",Assassin:"Thief",Rogue:"Thief"};
   const STAT6=["str","agi","vit","int","dex","luk"];
+  // ASPD lost while a shield is worn, per job (roz.prontera.info combat tables: shield_aspd_penalty)
+  const SHIELD_ASPD={Novice:10,Swordsman:5,Mage:10,Archer:9,Acolyte:7,Merchant:5,Thief:6,Knight:5,Crusader:5,Wizard:8,Sage:10,
+    Hunter:9,Bard:7,Dancer:7,Priest:5,Monk:5,Blacksmith:5,Alchemist:4,Assassin:6,Rogue:5};
   // the gear grid; "takes" lists the item slots (prontera equip_slot) that may go in it
   const SLOTS=[
     {k:"weapon",label:"Weapon",takes:["weapon"]},{k:"shield",label:"Shield",takes:["shield"]},
@@ -122,7 +125,7 @@ const BUILD=(()=>{
     const hpBase=+b.hpBase>0?+b.hpBase:curve(job,"hp",lv),spBase=+b.spBase>0?+b.spBase:curve(job,"sp",lv);
     const maxHp=hpBase!=null?f((f(hpBase*(1+tot.vit/100))+A.hp)*(1+A.hpPct/100)):null,maxSp=spBase!=null?f((f(spBase*(1+tot.int/100))+A.sp)*(1+A.spPct/100)):null;
     const ab=aspdBase?aspdBase(job,weapon):null;let aspd=null;
-    if(ab!=null){const a0=ab+S.aspdTerm;aspd=Math.min(190,Math.round((a0+(195-a0)*A.aspdPct/100+A.aspd)*10)/10)}
+    if(ab!=null){const a0=ab-(shield?SHIELD_ASPD[job]||0:0)+S.aspdTerm;aspd=Math.min(190,Math.round((a0+(195-a0)*A.aspdPct/100+A.aspd)*10)/10)}
     const ammo=worn.find(w=>w.slot==="ammo"),arrowEl=weapon==="Bow"&&ammo&&ammo.it.el?cap(ammo.it.el):null; // bows shoot the arrow's element
     const fields={baseLv:lv,jobLv,weapon,wElem:arrowEl||A.wEle||(wpn&&wpn.el?cap(wpn.el):null)||"Neutral",
       st:{str:`${base.str}+${tot.str-base.str}`,agi:`${base.agi}+${tot.agi-base.agi}`,vit:`${base.vit}+${tot.vit-base.vit}`,dex:`${base.dex}+${tot.dex-base.dex}`,luk:`${base.luk}+${tot.luk-base.luk}`},
@@ -132,5 +135,5 @@ const BUILD=(()=>{
       vctPct:A.vct,fctPct:A.fct,acdPct:A.acd,ignDef:A.ignDef,ignMdef:A.ignMdef};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
 if(typeof module!=="undefined")module.exports=BUILD;
