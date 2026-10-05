@@ -54,7 +54,7 @@ const BUILD=(()=>{
       softMdef:Math.max(0,f(s.int+lv/4+(s.dex+s.vit)/5)),crit:1+s.luk*0.3+lv/100,aspdTerm:Math.sqrt(s.agi*s.agi/2+s.dex*s.dex/(ranged?7:5))/4}}
 
   // ---- bonus accumulation ----
-  const blank=()=>({st:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},atk:0,matk:0,atkPct:0,matkPct:0,hit:0,flee:0,crit:0,critDmg:0,aspd:0,aspdPct:0,aspdMod:0,
+  const blank=()=>({st:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},stPct:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},atk:0,matk:0,atkPct:0,matkPct:0,hit:0,flee:0,crit:0,critDmg:0,aspd:0,aspdPct:0,aspdMod:0,
     hp:0,hpPct:0,sp:0,spPct:0,def:0,mdef:0,ranged:0,melee:0,skill:0,skillOf:{},vct:0,fct:0,acd:0,vctOf:{},fctOf:{},ignDef:0,ignMdef:0,
     phys:{all:0,race:{},size:{},ele:{},kind:{},group:{}},magic:{all:0,race:{},size:{},ele:{},kind:{},group:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},critRace:{},spCost:0,wEle:null,unmodelled:[]});
   // lines that only matter for PvP survival, healing or status resistance: not part of the farming maths, so not reported either
@@ -74,6 +74,7 @@ const BUILD=(()=>{
     if(type==="magic_damage_percent"&&!kind){A.magic.all+=v;return true}
     if(type==="sp_cost_percent"&&!kind){A.spCost+=v;return true}
     if(STAT6.includes(type)){A.st[type]+=v;return true}
+    if(/_percent$/.test(type)&&STAT6.includes(type.slice(0,-8))){A.stPct[type.slice(0,-8)]+=v;return true}
     if(type==="all_stats"){STAT6.forEach(k=>A.st[k]+=v);return true}
     // "When attacking Brute monsters, CRIT +7": counted only against that race
     if(type==="crit"&&kind==="race"){addTo(A.critRace,tgt(kind,target),v);return true}
@@ -97,7 +98,8 @@ const BUILD=(()=>{
   // random options typed by the player, e.g. "ATK +25, FLEE +20, MATK +3%" -> bonus lines
   const OPT={str:"str",agi:"agi",vit:"vit",int:"int",dex:"dex",luk:"luk",atk:"atk",matk:"matk",hit:"hit",flee:"flee",crit:"crit",critical:"crit",
     def:"def",mdef:"mdef",aspd:"aspd",maxhp:"hp",mhp:"hp",hp:"hp",maxsp:"sp",msp:"sp",sp:"sp"};
-  const PCT={atk:"atk_percent",matk:"matk_percent",aspd:"aspd_percent",hp:"hp_percent",sp:"sp_percent"};
+  const PCT={atk:"atk_percent",matk:"matk_percent",aspd:"aspd_percent",hp:"hp_percent",sp:"sp_percent",
+    str:"str_percent",agi:"agi_percent",vit:"vit_percent",int:"int_percent",dex:"dex_percent",luk:"luk_percent"};
   function parseOptions(txt){const out=[],bad=[];String(txt||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(p=>{
     const m=p.match(/^([a-z ]+?)\s*([+-]\s*\d+(?:\.\d+)?)\s*(%?)$/i);const k=m&&OPT[m[1].toLowerCase().replace(/\s+/g,"")];
     if(!k){bad.push(p);return}const v=parseFloat(m[2].replace(/\s/g,""));
@@ -128,7 +130,7 @@ const BUILD=(()=>{
     // sets: every piece worn; "combined refine" sums the pieces' refines
     (typeof SETS!=="undefined"?SETS:[]).forEach(st=>{const ps=st.pieces.map(p=>worn.find(w=>w.it.slug===p));if(ps.some(p=>!p))return;
       applyGroups(A,st.g,{...ctxBase,refine:0,refineSum:ps.reduce((a,p)=>a+p.r,0)},st.name)});
-    const jb=jobBonus(job,jobLv),base={},tot={};STAT6.forEach(k=>{base[k]=Math.max(1,+((b.base||{})[k])||1);tot[k]=base[k]+jb[k]+A.st[k]});
+    const jb=jobBonus(job,jobLv),base={},tot={};STAT6.forEach(k=>{base[k]=Math.max(1,+((b.base||{})[k])||1);tot[k]=base[k]+jb[k]+A.st[k];tot[k]+=Math.floor(tot[k]*A.stPct[k]/100)}); // "STR +10%": a share of the total stat, rounded down
     const weapon=wpn?WTYPE[wpn.type]||"Bare hands":"Bare hands",ranged=RANGED_W.includes(weapon),S=status(lv,tot,ranged),f=Math.floor;
     const lw=wpnL?WTYPE[wpnL.type]||null:null,dual=dualOk(job,weapon,lw);
     if(wpnL&&!dual)A.unmodelled.push(`${wpnL.name}: a left-hand weapon needs an Assassin with a dagger, one-handed sword or one-handed axe in each hand`);

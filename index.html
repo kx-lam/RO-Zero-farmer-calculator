@@ -130,6 +130,7 @@
       <label>LUK<input id="st_luk" inputmode="numeric"></label>
     </div>
     <div class="note" id="statNote"></div>
+    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add Consumables &amp; buffs, the ASPD potion and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
     <details class="card sub" id="eqPanel" open>
       <summary><b>Equipment stats</b> <span class="note">% lines from Equipment Stats that the status window doesn't show</span></summary>
       <div id="eqList" class="eqlist"></div>
@@ -177,10 +178,10 @@
         <label>My attack element %<input id="myElPct" type="number" step="1" placeholder="0" title="Gear like +20% Fire magic damage, when your attack is that element"></label>
         <label>Ignore DEF / MDEF %<span class="bar"><input id="ignDef" type="number" step="1" placeholder="DEF" style="flex:1"><input id="ignMdef" type="number" step="1" placeholder="MDEF" style="flex:1"></span></label>
       </div>
-      <div class="note">Presets are max-level skills from the <a href="https://rozerodb.com/tools/skill-tree" target="_blank" rel="noopener">rozerodb skill tree</a>; edit to match yours. Mastery ATK = flat ATK from weapon passives. Gear ATK % is already in your status window. Fixed share of cast = the part DEX/INT can't cut (usually 20%).</div>
+      <div class="note">Presets are max-level skills; edit to match yours. Mastery ATK = flat ATK from weapon passives. Gear ATK % is already in your status window. Fixed share of cast = the part DEX/INT can't cut (usually 20%).</div>
       <details class="note">
         <summary>How damage is worked out</summary>
-        <div style="margin-top:4px">Average damage from <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info</a>, checked against the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a>. Area skills split time across targets. Full formulas: EXP &amp; formulas tab.</div>
+        <div style="margin-top:4px">Area skills split time across targets. Full formulas: EXP &amp; formulas tab.</div>
       </details>
     </details>
     <details class="card" id="sagePanel" style="padding:12px 14px;gap:8px;background:var(--bg)" open>
@@ -221,19 +222,21 @@
       <span id="potInfo"></span>
     </div>
     <details class="card sub" id="consPanel" open>
-      <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they add on top and cost zeny/hr</span></summary>
+      <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they add on top</span></summary>
+      <div class="warnc" id="consOff" hidden>Not added: the status window box above says your numbers already include buffs and items.</div>
+      <div class="note">Stats from food and other consumables: + adds to the stat, +% is a share of your total stat, rounded down</div>
+      <table id="consStats" class="cstats"><thead><tr><th>Stat</th><th>+</th><th>+%</th></tr></thead><tbody></tbody></table>
+      <div class="note"><b>Other effects</b> (ATK, HIT, ASPD…)</div>
       <div id="consList" class="eqlist"></div>
       <div class="bar"><button type="button" class="small" id="consAdd">+ Add</button><span class="note" id="consNote"></span></div>
-    </details>
-    <details class="card sub" id="pbuffPanel">
-      <summary><b>Buffs from others &amp; food</b> <span class="note">ASPD and stats from the RO樂園攻速計算機 sheet; added on top like consumables</span></summary>
+      <div class="note"><b>Buffs from others</b></div>
       <div id="pbuffList" class="eqlist"></div>
     </details>
     <div class="bar note"><span>SP items:</span>
       <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
       <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
       <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Discount only cuts what you buy from an NPC; untick when you buy SP items, potions and consumables from players"><input type="checkbox" id="npcBuy" style="width:auto"> from NPCs</label>
+      <label class="bar" style="flex-direction:row;gap:4px" title="Discount only cuts what you buy from an NPC; untick when you buy SP items and potions from players"><input type="checkbox" id="npcBuy" style="width:auto"> from NPCs</label>
       <span id="itemInfo"></span>
       <span id="mercNote"></span>
     </div>
@@ -344,7 +347,7 @@
     <div class="scroll tall"><table id="mobTable"><thead><tr>
       <th data-k="name">Monster</th><th data-k="lv">Lv</th><th data-k="el">Element</th><th data-k="size">Size</th><th data-k="race">Race</th><th data-k="hp">HP</th><th data-k="exp">Base EXP</th><th data-k="ratio" title="Base EXP per HP: how much EXP each point of damage earns">EXP / HP</th><th data-k="mult">Your hit %</th><th data-k="hitc">Hit chance</th><th data-k="uses">Uses / kill</th><th data-k="sec">Sec / kill</th><th data-k="epm">EXP / min</th><th data-k="dodge">Dodge %</th><th data-k="hpm">HP lost / min</th><th data-k="zk">Zeny / kill</th><th data-k="topN">Best map</th><th></th>
     </tr><tr class="filters"><td><input data-f="name" placeholder="name"></td><td><input data-f="lv" placeholder="50-90"></td><td><input data-f="el" placeholder="fire"></td><td><input data-f="size" placeholder="L"></td><td><input data-f="race" placeholder="undead"></td><td><input data-f="hp" placeholder="<20000"></td><td><input data-f="exp" placeholder=">5000"></td><td><input data-f="ratio" placeholder=">1"></td><td><input data-f="mult" placeholder=">100"></td><td><input data-f="hitc" placeholder=">90"></td><td><input data-f="uses" placeholder="<=3"></td><td><input data-f="sec" placeholder="<5"></td><td><input data-f="epm" placeholder=""></td><td><input data-f="dodge" placeholder=">50"></td><td><input data-f="hpm" placeholder="<500"></td><td><input data-f="zk" placeholder=">20"></td><td><input data-f="topN" placeholder="map"></td><td><button type="button" class="small" id="clearF">Clear</button></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Click a row to see it; "Farming this now" or "Also killing" adds it to the session. Filters: &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, "or". Your hit % = skill % after element, size and bonuses. Data: rozerodb.com.</div>
+    <div class="note">Click a row to see it; "Farming this now" or "Also killing" adds it to the session. Filters: &lt;350, &gt;=2, 100-200, =86, text, "-" for blank, "or". Your hit % = skill % after element, size and bonuses.</div>
   </section>
 
   <section class="card" id="bestCard" data-tab="maps">
@@ -369,7 +372,7 @@
       <label id="huntMinWrap">Min monsters on map<input id="huntMin" type="number" value="20" style="width:90px"></label>
       <label>Show<select id="huntN"><option>10</option><option>20</option><option>50</option></select></label>
       <label id="huntAutoWrap"><span>&nbsp;</span><span class="bar"><input type="checkbox" id="huntAuto" style="width:auto"> Hunt only the best-paying monsters</span></label>
-      <label title="what one teleport costs: a Fly Wing from the shop (250 z on rozerodb), or 0 if you use the Teleport skill">Fly Wing z<input id="flyPrice" type="number" min="0" step="10" style="width:90px"></label>
+      <label title="what one teleport costs: a Fly Wing from the shop (250 z), or 0 if you use the Teleport skill">Fly Wing z<input id="flyPrice" type="number" min="0" step="10" style="width:90px"></label>
       <label title="seconds lost per teleport (casting, loading the screen)">Sec / teleport<input id="teleSec" type="number" min="0" step="0.5" style="width:90px"></label>
     </div>
     <div class="bar" id="autoLoot" style="align-items:center"><b>Auto loot</b></div>
@@ -419,7 +422,7 @@
     <datalist id="priceList"></datalist>
     <div class="note bad" id="priceMsg"></div>
     <div class="scroll"><table id="priceTable"><thead><tr><th data-sk="name">Item</th><th data-sk="pl">Players pay</th><th data-sk="npc">NPC pays</th><th data-sk="best" title="the monster with the best drop chance; sorts and filters by that chance, or by its name">Best drop</th><th></th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="pl" placeholder=">1000"></td><td><input type="search" data-tf="npc" placeholder=">100"></td><td><input type="search" data-tf="best" placeholder=">1"></td><td></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Player prices replace NPC prices in every zeny figure. NPC box: rozerodb's price; type to override, blank resets. Saved per account. Click any drop in Zeny Hunter, Monster info or Item info to add it here.</div>
+    <div class="note">Player prices replace NPC prices in every zeny figure. NPC box: what an NPC pays; type to override, blank resets. Saved per account. Click any drop in Zeny Hunter, Monster info or Item info to add it here.</div>
   </section>
 
   <section class="card" id="mobInfoCard" data-tab="mobinfo">
@@ -442,7 +445,7 @@
     <div class="calc" id="itemTiles"></div>
     <div id="itemDroppers" hidden><div class="scroll"><table id="itemDropTable"><thead><tr><th data-sk="name">Dropped by</th><th data-sk="lv">Lv</th><th data-sk="ch">Chance</th><th data-sk="your">Your chance</th><th data-sk="z">Zeny / kill from it</th><th data-sk="map">Best open map</th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="lv" placeholder="30-60"></td><td><input type="search" data-tf="ch" placeholder=">1"></td><td><input type="search" data-tf="your" placeholder=">1"></td><td><input type="search" data-tf="z" placeholder=">1"></td><td><input type="search" data-tf="map" placeholder="map"></td></tr></thead><tbody></tbody></table></div></div>
     <div class="scroll tall"><table id="itemTable"><thead><tr><th data-sk="name">Item</th><th data-sk="group">Group</th><th data-sk="npc">NPC pays</th><th data-sk="pl">Players pay</th><th data-sk="best" title="the monster with the best drop chance; sorts and filters by that chance, or by its name">Best drop</th><th data-sk="cnt" title="how many monsters drop it">Dropped by</th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="group" placeholder="card"></td><td><input type="search" data-tf="npc" placeholder=">1000"></td><td><input type="search" data-tf="pl" placeholder="-"></td><td><input type="search" data-tf="best" placeholder=">1"></td><td><input type="search" data-tf="cnt" placeholder=">5"></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Every monster drop (rozerodb.com). Click a row to see who drops it. Players pay = your Market price.</div>
+    <div class="note">Every monster drop. Click a row to see who drops it. Players pay = your Market price.</div>
   </section>
 
   <section class="card" data-tab="ref">
@@ -462,7 +465,7 @@
         <div class="scroll tall"><table id="refJobTable"><thead></thead><tbody></tbody></table></div>
       </div>
     </div>
-    <div class="note">EXP to reach the next level; Total is from Lv 1. Your levels are highlighted; kills use your picked monster. Source: <a href="https://roz.mygnjoy.com/en/intro/guide/21" target="_blank" rel="noopener">official game guide</a>.</div>
+    <div class="note">EXP to reach the next level; Total is from Lv 1. Your levels are highlighted; kills use your picked monster.</div>
   </section>
   <section class="card" data-tab="ref">
     <div class="bar"><h2 class="grow">Party EXP (Even Share)</h2><span class="note" id="refPartyNote"></span></div>
@@ -472,13 +475,13 @@
   <section class="card" data-tab="ref">
     <div class="bar"><h2 class="grow">Game formulas</h2><span class="note">"Yours" uses your Character tab</span></div>
     <div class="scroll"><table id="refFormulas" class="formulas"><thead><tr><th>Value</th><th>Formula</th><th>Yours</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Sources: <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info</a>, <a href="https://irowiki.org/wiki/Stats" target="_blank" rel="noopener">iRO Wiki</a>, <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a>. floor(…) = round down. Stats are totals (base + job bonus + gear).</div>
+    <div class="note">floor(…) = round down. Stats are totals (base + job bonus + gear).</div>
   </section>
   <section class="card" data-tab="ref">
     <div class="bar"><h2 class="grow">Element table</h2>
       <label style="flex-direction:row;align-items:center;gap:6px">Monster element level<select id="refElv"><option>1</option><option>2</option><option>3</option><option>4</option></select></label></div>
     <div class="scroll"><table id="refElemTable"><thead></thead><tbody></tbody></table></div>
-    <div class="note">Damage % by your attack element (rows) vs monster element (columns). Source: <a href="https://rozerodb.com/guides/elements-sizes" target="_blank" rel="noopener">rozerodb</a>.</div>
+    <div class="note">Damage % by your attack element (rows) vs monster element (columns).</div>
   </section>
   <section class="card" data-tab="ref">
     <h2>Weapon size table</h2>

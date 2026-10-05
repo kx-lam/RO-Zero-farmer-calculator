@@ -64,7 +64,7 @@ function renderPartyTable(m){const s=cur(),n0=partyN(s),known=m&&!m.expUnknown,s
   $("refPartyTable").tBodies[0].innerHTML=Array.from({length:12},(_,i)=>i+1).map(n=>`<tr${n===n0?' class="sel"':""}><td>${n===1?"Solo":n}</td><td>${100+partyBonus(sz(n))}%</td><td>${partyPct(sz(n))}%</td>${known?`<td>${fmtN(killExp(m,sz(n)))}</td><td>${fmtN(killJobExp(m,sz(n)))}</td>`:""}</tr>`).join("")}
 function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?killExp(m):0,jper=m?killJobExp(m):0;
   const kills=(e,p=per)=>p>0?fmtN(Math.ceil(e/p)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";
-  $("refExpNote").textContent=m?(m.expUnknown?`rozerodb has no EXP for ${m.name} yet`:`${fmtN(per)} base / ${fmtN(jper)} job EXP per ${m.name}`):"Pick a monster to see kills per level";
+  $("refExpNote").textContent=m?(m.expUnknown?`no EXP data for ${m.name} yet`:`${fmtN(per)} base / ${fmtN(jper)} job EXP per ${m.name}`):"Pick a monster to see kills per level";
   let tot=0;const base=Object.keys(EXP_TABLE).map(Number).sort((a,b)=>a-b).map(l=>{const e=EXP_TABLE[l],row=`<tr${l===blv?' class="sel"':""}><td>${l}</td><td>${fmtN(e)}</td><td>${fmtN(tot)}</td>${m?`<td>${kills(e)}</td>`:""}</tr>`;tot+=e;return row}).join("");
   $("refBaseTable").tHead.innerHTML=`<tr><th>Lv</th><th>EXP to next</th><th>Total</th>${kh}</tr>`;$("refBaseTable").tBodies[0].innerHTML=base;
   const tier=Object.hasOwn(JOB_EXP,state.refTier)?state.refTier:jobTier(),t=JOB_EXP[tier],mine=tier===jobTier();tot=0;

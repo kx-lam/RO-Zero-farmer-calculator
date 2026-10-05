@@ -120,6 +120,11 @@ details.sub{padding:12px 14px;gap:8px;background:var(--bg)}
 .eqrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .eqrow select,.eqrow input{padding:4px 8px;font-size:13px}
 .eqrow input[type=number]{width:72px}
+/* consumables: one row per stat, + and +% */
+table.cstats{width:auto}
+table.cstats th{cursor:default}
+table.cstats td{padding:3px 8px}
+table.cstats input{width:72px;padding:4px 8px;font-size:13px}
 /* skill tree: one grid per job tier, 7 columns like the game window */
 .trees{display:flex;flex-wrap:wrap;gap:16px}
 .tree{flex:1 1 100%;min-width:0;display:flex;flex-direction:column;gap:6px}

@@ -49,6 +49,11 @@ t("weapon stats, per-refine bonus, refine threshold and cards", () => {
   assert.ok(r.unmodelled.some(x => x.includes("autocast")));               // procs are listed, not counted
 });
 
+t("consumable STR +10%: a share of base + job + flat bonuses, rounded down", () => {
+  const r = BUILD.compute({ baseLv: 50, jobLv: 10, base, gear: {}, extra: [["str", null, null, 5], ["str_percent", null, null, 10]] }, "Knight", aspdBase);
+  assert.equal(r.total.str, 57 + Math.floor(57 * 0.10));                  // 50 + job 2 + 5 = 57, then +5
+});
+
 t("damage against a monster group (Boulder Dwarf Captain / Squad Leader cards)", () => {
   const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, refine: 0, cards: [14, 15] } } }, "Knight", aspdBase);
   assert.equal(r.acc.phys.group["Boulder Dwarf"], 30);                    // Captain: physical only
