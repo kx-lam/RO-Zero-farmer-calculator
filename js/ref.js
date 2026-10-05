@@ -55,7 +55,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Drop level penalty","gap = monster Lv − base Lv",()=>need(x=>dropGap(x)==null?null:`gap ${String(dropGap(x)).replace("-","−")}: ${penNote(x)||"no penalty"}${mn}`),"−19 or more: none; −40 or less: drops −50%; −20 to −39 isn't in the official guide, so none is counted")+
    R("Zeny per kill","loot value × (1 + drop bonus %) × (1 − level penalty %) + Σ (player price − NPC price) × min(100%, chance × (1 + drop bonus %) × (1 − level penalty %))",()=>need(x=>`${fmtN(zenyKill(x))} z${mn}`),"Σ over drops you price; with an auto-loot group unticked, only drops you loot count")+
    R("Zeny Hunter walking","walking per kill × √(spawns you can hurt / spawns you hunt)",()=>`${walkSec().toFixed(1)}s with every monster hunted`,"the nearest target is about 1 / √density away")+
-   R("Zeny Hunter teleporting","extra teleports per kill = spawns you can hurt / spawns you hunt − 1",()=>`${fmtN(flyPrice())} z and ${teleSec()}s per teleport`,"each costs a Fly Wing and its seconds; \"no teleport\" maps only walk");
+   R("Zeny Hunter teleporting","extra teleports per kill = spawns you can hurt / spawns you hunt − 1",()=>`${CRD().creamy?"0 z (Creamy Card)":fmtN(flyPrice())+" z"} and ${teleSec()}s per teleport`,"each costs a Fly Wing and its seconds; \"no teleport\" maps only walk");
 }
 // Even Share by party size, with your base and job EXP per kill of the picked monster for each size
 function renderPartyTable(m){const s=cur(),n0=partyN(s),known=m&&!m.expUnknown,sz=n=>({...s,partyN:n});

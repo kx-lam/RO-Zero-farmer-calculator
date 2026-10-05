@@ -559,6 +559,11 @@ t("Zeny Hunter monster picks: passing monsters by drops them from the map and le
   const nt = run(`huntMap0("mjo_d03",2)`); near(nt.walk, walked); assert.equal(nt.tele, 0);
   run(`state.noTele=[];state.flyPrice=0;state.teleSec=0`);                   // free, instant teleports: no time lost, no cost
   const ft = run(`huntMap0("mjo_d03",2)`); near(ft.tele, jumps); near(ft.walk, 2); near(ft.cost, nt.cost);
+  run(`state.teleSec=0;delete state.flyPrice;CRD().creamy=true`);           // Creamy Card: Teleport Lv1, so no Fly Wings either
+  assert.equal(run("flyCost()"), 0);
+  const cr = run(`huntMap0("mjo_d03",2)`); near(cr.tele, jumps); near(cr.cost, nt.cost);
+  run(`CRD().creamy=false`);
+  assert.ok(run("flyCost()") > 0);
   run(`delete state.flyPrice;delete state.teleSec`);
   run(`state.huntOff={};state.huntAuto=true`);                              // best-paying: never worse than hunting everything
   const a = run(`huntMap0("mjo_d03",2)`);
@@ -740,7 +745,7 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
 t("cards: a Sage's old Vitata, Hunter Fly and Side Winder settings move out of Sage options", () => {
   const app = load({ job: "Sage", current: "s1", sessions: [{ id: "s1", name: "t", mobIds: [], entries: [] }],
     chars: { Sage: { sage: { hsLv: 10, vitata: false, hfOn: true, hfHp: 120, daSF: true } }, Knight: { sage: { vitata: true } }, Wizard: { sage: { hsLv: 5 } } } });
-  assert.equal(app("JSON.stringify(state.chars.Sage.cards)"), JSON.stringify({ vitata: false, spBonus: 25, healSp: 13, healHp: 357, hfOn: true, hfPct: 5, hfHp: 120, daSF: true, daPct: 7 }));
+  assert.equal(app("JSON.stringify(state.chars.Sage.cards)"), JSON.stringify({ vitata: false, spBonus: 25, healSp: 13, healHp: 357, hfOn: true, hfPct: 5, hfHp: 120, daSF: true, daPct: 7, creamy: false }));
   assert.equal(app("Object.keys(CARD_D).filter(k=>k in state.chars.Sage.sage).length"), 0);   // gone from Sage options
   assert.equal(app("state.chars.Sage.sage.hsLv"), 10);
   assert.equal(app("state.chars.Knight.cards"), undefined);                 // only a Sage's settings carry over

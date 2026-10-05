@@ -172,6 +172,7 @@
         <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="vitata" style="width:auto" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost"> Vitata (+<input data-cd="spBonus" type="number" style="width:50px">% SP cost; you cast Heal Lv1: <input data-cd="healSp" type="number" style="width:50px"> SP → <input data-cd="healHp" type="number" style="width:64px"> HP each)</label>
         <label class="bar" style="flex-direction:row;gap:4px" title="Hunter Fly Card: physical attacks (basic attacks, Spell Fist, physical skills) have a chance to restore HP every second for 5 s"><input type="checkbox" data-cd="hfOn" style="width:auto"> Hunter Fly (<input data-cd="hfPct" type="number" style="width:50px">% · <input data-cd="hfHp" type="number" style="width:60px"> HP/s)</label>
         <label class="bar" style="flex-direction:row;gap:4px" title="Side Winder Card: basic attacks hit twice this often (right hand only). With Double Attack learned on the Skills card the card follows the skill, so nothing is added; Thief presets already count Double Attack"><input type="checkbox" data-cd="daSF" style="width:auto"> Side Winder double attack <input data-cd="daPct" type="number" style="width:50px">% (basic attacks; with Spell Fist the 2nd hit procs it too)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Creamy Card gives Teleport Lv1: Zeny Hunter teleports cost no Fly Wing. Its 10 SP a cast isn't counted"><input type="checkbox" data-cd="creamy" style="width:auto"> Creamy (Teleport Lv1: no Fly Wings)</label>
         <span id="cardInfo"></span>
       </div>
       <div class="bar note" id="ecRow"><span title="The Mage quest skill: Wizards and Sages have it too">Energy Coat (Mage, Wizard, Sage):</span>
@@ -357,7 +358,7 @@
       <label id="huntMinWrap">Min monsters on map<input id="huntMin" type="number" value="20" style="width:90px"></label>
       <label>Show<select id="huntN"><option>10</option><option>20</option><option>50</option></select></label>
       <label id="huntAutoWrap"><span>&nbsp;</span><span class="bar"><input type="checkbox" id="huntAuto" style="width:auto"> Hunt only the best-paying monsters</span></label>
-      <label title="what one teleport costs: a Fly Wing from the shop (250 z), or 0 if you use the Teleport skill">Fly Wing z<input id="flyPrice" type="number" min="0" step="10" style="width:90px"></label>
+      <label title="what one teleport costs: a Fly Wing from the shop (250 z), or 0 if you use the Teleport skill. Ticking Creamy in the Character tab's Cards row makes it 0">Fly Wing z<input id="flyPrice" type="number" min="0" step="10" style="width:90px"></label>
       <label title="seconds lost per teleport (casting, loading the screen)">Sec / teleport<input id="teleSec" type="number" min="0" step="0.5" style="width:90px"></label>
     </div>
     <div class="bar" id="autoLoot" style="align-items:center"><b>Auto loot</b></div>

@@ -413,13 +413,13 @@ const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600
 // 1/√density away, so walking per kill grows by √(monsters you can hurt / ones you hunt)
 // Or teleport past them (Fly Wing or the Teleport skill), on maps you haven't marked "no teleport" (rozerodb has no map flags):
 // each landing finds a hunted monster about hunted/all of the time, so a kill takes all/hunted − 1 extra jumps, each costing a
-// Fly Wing (state.flyPrice, less Discount; 0 for the Teleport skill) and state.teleSec seconds. Each pick uses whichever of the two nets more.
+// Fly Wing (state.flyPrice, less Discount; 0 for the Teleport skill or a Creamy Card) and state.teleSec seconds. Each pick uses whichever of the two nets more.
 // Kill time includes selling trips (tripTot), like every other ranking
 const huntOffOf=mp=>(state.huntOff||{})[mp];
 const killTot=(m,sec,walk)=>{const k=SG_MOB;SG_MOB=m;try{return tripTot(m,sec+walk,walk)}finally{SG_MOB=k}};
 const noTele=mp=>(state.noTele||[]).includes(mp);
 const flyPrice=()=>state.flyPrice==null?250:num(state.flyPrice);
-const flyCost=()=>flyPrice()*discMul();
+const flyCost=()=>CRD().creamy?0:flyPrice()*discMul();
 const teleSec=()=>state.teleSec==null?1:num(state.teleSec);
 function huntMap0(mp,w,minN=0){
   const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));const N=list.reduce((a,x)=>a+x.n,0);
