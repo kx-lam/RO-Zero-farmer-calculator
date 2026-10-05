@@ -123,6 +123,7 @@
       <label>LUK<input id="st_luk" inputmode="numeric"></label>
     </div>
     <div class="note" id="statNote"></div>
+    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add Consumables &amp; buffs, the ASPD potion and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
     <details class="card sub" id="eqPanel" open>
       <summary><b>Equipment stats</b> <span class="note">% lines from Equipment Stats that the status window doesn't show</span></summary>
       <div id="eqList" class="eqlist"></div>
@@ -215,6 +216,7 @@
     </div>
     <details class="card sub" id="consPanel" open>
       <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they add on top</span></summary>
+      <div class="warnc" id="consOff" hidden>Not added: the status window box above says your numbers already include buffs and items.</div>
       <div class="note">Stats from food and other consumables: + adds to the stat, +% is a share of your total stat, rounded down</div>
       <table id="consStats" class="cstats"><thead><tr><th>Stat</th><th>+</th><th>+%</th></tr></thead><tbody></tbody></table>
       <div class="note"><b>Other effects</b> (ATK, HIT, ASPD…)</div>

@@ -624,6 +624,10 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   run(`C().pbuffs={bandage:{on:true}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
   assert.equal(run(`statVal(C(),"luk")`), 8);                               // Yggdrasil's Blessing: all stats +7
   assert.equal(run(`sumStat(cf("hitTxt"))-sumStat(C().hitTxt)`), 5 + 7 + 2); // HIT +5, DEX +7, and LUK 1 → 8 adds floor(8/3)
+  run(`C().addOnTop=false;applyConsumables()`);                             // the typed status window already has them
+  assert.equal(run(`statVal(C(),"luk")`), 1);
+  assert.equal(run(`cf("hitTxt")`), run(`C().hitTxt`));
+  run(`C().addOnTop=true`);
   const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
   assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
 });

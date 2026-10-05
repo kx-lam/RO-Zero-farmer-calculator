@@ -57,8 +57,10 @@ const pbOn=(b,c)=>{if(!pbTicked(b.k,c)||(b.w&&!b.w.includes(c.weapon)))return fa
   if(own&&(c.buffs||{})[own]&&skLv(c,own))return false;return !(PB_OVER[b.k]&&pbTicked(PB_OVER[b.k],c))};
 function aspdBuffLines(c=C()){const out=[];if(c.potOn){const k=potKey(c);if(k)out.push(["aspd_mod",null,null,ASPD_POT[k].mod])}
   PBUFF.forEach(b=>{if(pbOn(b,c))b.fx(pbLv(b,pbuffOf(c)[b.k])).forEach(([t,v])=>out.push([t,null,null,v]))});return out}
-// status-window mode: the typed numbers are read with consumables off, so their effect is added here into EFF (see cf)
-function applyConsumables(){EFF=null;const c=C();if(c.mode==="build")return;const lines=[...consLines().lines,...(SKFX?SKFX.buffStat:[]),...aspdBuffLines(c)];if(!lines.length)return;
+// status-window mode: the typed numbers are read with consumables off, so their effect is added here into EFF (see cf).
+// Unticking "addOnTop" says the typed numbers already include them, so nothing is added
+const addOnTop=c=>c.mode!=="build"&&c.addOnTop!==false;
+function applyConsumables(){EFF=null;const c=C();if(!addOnTop(c))return;const lines=[...consLines().lines,...(SKFX?SKFX.buffStat:[]),...aspdBuffLines(c)];if(!lines.length)return;
   const A={};lines.forEach(([t,,,v])=>A[t]=(A[t]||0)+v);const g=k=>A[k]||0,f=Math.floor;
   // stat buffs move status ATK / MATK / HIT / FLEE / DEF / CRIT / ASPD through the same formulas (only for stats you typed);
   // "STR +10%" is a share of the typed stat plus the flat bonuses, rounded down as in build.js
@@ -87,7 +89,7 @@ function renderCons(){const c=C(),cs=consStatOf(c);
     <input data-f="eff" value="${esc(r.eff||"")}" placeholder="e.g. ATK +20, HIT +10, ASPD +10%" style="flex:1;min-width:200px">
     <button type="button" class="small danger" data-del aria-label="Remove">✕</button></div>`).join("")||'<div class="note">None yet.</div>';consNote()}
 // redrawn on every render (job and weapon change what's allowed), except while you're typing in it
-function renderAspdBuffs(){const c=C(),k=potKey(c),act=document.activeElement;
+function renderAspdBuffs(){const c=C(),k=potKey(c),act=document.activeElement;$("consOff").hidden=c.mode==="build"||addOnTop(c);
   if(act!==$("potType"))$("potType").innerHTML=Object.entries(ASPD_POT).filter(([key])=>potOk(key)).map(([key,p])=>`<option value="${key}"${key===k?" selected":""}>${p.name} (${p.mod})</option>`).join("");
   if(!$("pbuffList").contains(act))$("pbuffList").innerHTML=PBUFF.map(b=>{const o=pbuffOf(c)[b.k]||{},off=b.w&&!b.w.includes(c.weapon),own=PB_SELF[b.k]&&(c.buffs||{})[PB_SELF[b.k]]&&skLv(c,PB_SELF[b.k]);
     return `<div class="eqrow" data-pb="${b.k}"><label class="bar" style="flex-direction:row;gap:6px;min-width:250px"><input type="checkbox" data-f="on" ${o.on?"checked":""} style="width:auto">${esc(b.name)}</label>
@@ -95,6 +97,7 @@ function renderAspdBuffs(){const c=C(),k=potKey(c),act=document.activeElement;
     <span class="note">${esc(pbEff(b))}${off?' · <span class="warnc">not with this weapon</span>':own?" · on in your Skills card, counted there":""}</span></div>`}).join("")}
 $("pbuffList").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.target.closest("[data-pb]");if(!f||!row)return;const o=pbuffOf(C())[row.dataset.pb]||(pbuffOf(C())[row.dataset.pb]={});
   o[f]=f==="on"?e.target.checked:num(e.target.value);save();renderAll()});
+$("addOnTop").addEventListener("change",e=>{C().addOnTop=e.target.checked;save();renderAll()});
 $("potType").addEventListener("change",e=>{C().potType=e.target.value;save();renderAll()});
 const consNote=()=>{const {bad}=consLines();$("consNote").innerHTML=bad.length?`<span class="bad">Not understood: ${bad.map(esc).join(", ")}</span>`:""};
 $("consStats").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.target.closest("[data-cs]");if(!f||!row)return;const cs=consStatOf(C());
@@ -155,7 +158,7 @@ function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
 function renderBuild(){const c=C(),on=c.mode==="build";
   if(on&&renderBuild.job!==state.job){renderBuild.job=state.job;renderGearTable()}if(!on)renderBuild.job=null;
   ROOTQ("[data-cmode]").forEach(x=>x.setAttribute("aria-checked",String(x.dataset.cmode===(on?"build":"status"))));
-  $("buildPanel").hidden=!on;$("statNote").hidden=on;BUILT_IDS.forEach(id=>{const el=$(id);el.disabled=on;if(on&&document.activeElement!==el)el.value=id.startsWith("st_")?(c.st||{})[id.slice(3)]??"":c[id]??""});
+  $("buildPanel").hidden=!on;$("statNote").hidden=on;$("onTopWrap").hidden=on;$("addOnTop").checked=c.addOnTop!==false;BUILT_IDS.forEach(id=>{const el=$(id);el.disabled=on;if(on&&document.activeElement!==el)el.value=id.startsWith("st_")?(c.st||{})[id.slice(3)]??"":c[id]??""});
   $("modeNote").textContent=on?"Stats below are worked out from your base stats, job level and gear.":"Type the numbers from your in-game status window.";
   if(!on)return;const b=buildOf(c);ROOTQ("[data-bs]").forEach(x=>{if(document.activeElement!==x)x.value=b.base[x.dataset.bs]??""});
   const r=BUILD_LAST;if(!r)return;const jb=r.jobBonus;
