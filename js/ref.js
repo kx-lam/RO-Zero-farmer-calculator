@@ -30,11 +30,18 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Monster soft DEF","floor((monster Lv + VIT) / 2)",()=>need(x=>`${mobSoftDef(x)}${mn}`))+
    R("Monster soft MDEF","floor((monster Lv + INT) / 4)",()=>need(x=>`${mobSoftMdef(x)}${mn}`))+
    R("Hit chance","100 + HIT − monster's 100%-hit value",()=>need(x=>`${Math.round(hitChance(x))}%${mn}`),"5–100%; magic always hits")+
-   R("Critical hit","chance = CRIT + gear CRIT vs its race; damage × 1.4 × (1 + crit damage %)",()=>c.a.type==="auto"?`${(critChance(m)*100).toFixed(1)}%${mn}`:null,"basic attacks only; always hits")+
+   R("Critical hit","chance = CRIT + gear CRIT vs its race − monster LUK × 0.2; damage × 1.4 × (1 + crit damage %)",()=>c.a.type==="auto"?`${(critChance(m)*100).toFixed(1)}%${mn}`:null,"basic attacks only; always hits")+
+   grp("Kill speed")+
+   R("Uses per kill","ceil(monster HP / damage per use) / hit chance",()=>need(x=>{const u=usesPerKill(x);return isFinite(u)?`${u.toFixed(1)}${mn}`:null}),"crits and card auto-casts are averaged in")+
+   R("Damage per second","damage per use × hit chance × targets / seconds per use",()=>need(x=>{const v=dpsOf(x);return v==null?null:`${fmtN(Math.round(v))}${mn}`}))+
+   R("Time per kill","uses per kill × seconds per use / targets",()=>need(x=>{const t=fightSec(x);return isFinite(t)?`${t.toFixed(1)} s${mn}`:null}),"longer when you stop to rest for SP")+
    grp("Defence and SP")+
    R("Dodge","95 + FLEE − monster's 95%-flee value",()=>need(x=>dodge(x)==null?null:`${Math.round(dodge(x))}%${mn}`),"0–95%")+
    R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + race %) × (1 + element %) × (1 + boss/normal %)",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`),"% is your damage taken from its race, element and boss/normal; at least 1")+
-   R("SP regen","1 + floor(Max SP/100) + floor(INT/6) every 8 s",()=>`${fmtN(spRegen8())} / 8 s`,"none at 70% weight or more")+
+   R("Hits you can take","floor(Max HP / damage taken per hit)",()=>need(x=>{const h=mobHitDmg(x),hp=num(cf("maxHp"));return h&&hp>0?`${fmtN(Math.floor(hp/h))}${mn}`:null}),"from full HP")+
+   R("Perfect Dodge","1 + floor(LUK/10) + gear Perfect Dodge",()=>sv("luk")!=null?`${1+Math.floor(sv("luk")/10)} + gear`:null,"physical attacks only")+
+   R("HP regen","max(1, floor(Max HP/200)) every 6 s",()=>num(cf("maxHp"))>0?`${fmtN(Math.max(1,Math.floor(num(cf("maxHp"))/200)))} / 6 s`:null,"standing still; HP loss uses the HP back per minute box")+
+   R("SP regen","1 + floor(Max SP/100) + floor(INT/6) every 8 s; from INT 120 also + floor((INT − 120)/2) + 4",()=>`${fmtN(spRegen8())} / 8 s`,"none at 70% weight or more")+
    R("Overcharge / Discount","sell = floor(NPC price × (1 + Overcharge %)); buy = NPC price × (1 − Discount %)",()=>{const o=skRate("overcharge"),d=skRate("discount");return o||d?`+${o}% / −${d}%`:null},"Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%")+
    R("Max Weight","2000 + job bonus + 30 × STR + 200 × (Enlarge Weight Limit Lv + Increase Capacity Lv)",()=>{const w=maxWCalc(c),t=num(c.maxW);return w?`${fmtN(w.total)} (job +${w.jb})${t>0&&t!==w.total?` · using your ${fmtN(t)}`:""}`:t>0?`using your ${fmtN(t)}`:null},"only STR points you put in count, not job, gear or buff STR; Increase Capacity comes from the KP shop's Gym Membership")+
    R("Weight","kills per trip = (Max Weight × sell point − weight now) / weight per kill; time per kill = seconds per kill + town trip / kills per trip",()=>{if(!wOn())return "type your Max Weight";const t=m&&tripInfo(m,walkSec());return t&&t.wk>0?(isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills a trip${mn}`:"sell first"):`${fmtN(num(c.curW))} / ${fmtN(maxWt(c))}`},"at 70% weight HP and SP don't regenerate; at 90% you can't attack or use skills")+

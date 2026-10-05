@@ -1,6 +1,6 @@
 // ---- merge the per-monster tables from data/*.js into MOBS ----
 MOBS.forEach(m=>{const e=ELEM[m.id];if(e){m.el=e[0];m.elv=e[1];m.hit100=e[2];m.flee95=e[3]}
-  const st=MSTAT[m.id];if(st){m.def=st[0];m.mdef=st[1];m.atkMin=st[2];m.atkMax=st[3];m.vit=st[4];m.int=st[5];m.agg=!!st[6]}
+  const st=MSTAT[m.id];if(st){m.def=st[0];m.mdef=st[1];m.atkMin=st[2];m.atkMax=st[3];m.vit=st[4];m.int=st[5];m.agg=!!st[6];m.luk=st[7]||0}
   const lt=LOOT[m.id];if(lt){m.loot=lt[0];m.priced=lt[1];m.dropsN=lt[2];m.drops=lt[3]}else m.drops=[];
   const sz=SIZES[m.id];if(sz){m.size=sz[0];m.race=RACES[sz[1]]}});
 
