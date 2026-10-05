@@ -260,7 +260,7 @@ const huntPicker=(r,w)=>`<div class="note">hunting ${r.earn.length} of ${r.mobs.
 // market prices: one row per priced item with its best drop chance
 const DROPPERS={};MOBS.forEach(m=>(m.drops||[]).forEach(([id,ch])=>{const d=DROPPERS[id];if(!m.boss&&(!d||ch>d.ch))DROPPERS[id]={m,ch}}));
 function renderPrices(){
-  if($("priceTable").tBodies[0].contains(document.activeElement))return;// don't rebuild the box you're typing in
+  const f=document.activeElement;if(f&&f.tagName==="INPUT"&&$("priceTable").tBodies[0].contains(f))return;// don't rebuild the box you're typing in (a focused Remove button is fine)
   const ids=Object.keys(state.prices).sort((a,b)=>itemName(a).localeCompare(itemName(b)));
   const rows=tableRows("priceTable",ids.map(id=>({id,pl:state.prices[id]||null,npc:state.npcPrices[id]??NPCSELL[id]??null,d:DROPPERS[id]})));
   $("priceTable").querySelector("tbody").innerHTML=rows.map(({id,d})=>`<tr><td class="name">${esc(itemName(id))} <span class="note">#${esc(id)}</span></td><td><input type="number" min="0" step="100" data-price="${esc(id)}" value="${state.prices[id]||""}" placeholder="zeny" style="width:120px"></td><td><input type="number" min="0" step="1" data-npc="${esc(id)}" value="${state.npcPrices[id]??""}" placeholder="${NPCSELL[id]!=null?fmtN(NPCSELL[id])+" (rozerodb)":"0"}" title="${NPCSELL[id]!=null?`rozerodb NPC price ${fmtN(NPCSELL[id])} z; type to override`:"no NPC price known; counts as 0"}" style="width:130px"></td><td class="name">${d?`${esc(d.m.name)} <span class="note">${d.ch}%</span>`:"–"}</td><td><button type="button" class="small" data-unprice="${esc(id)}">Remove</button></td></tr>`).join("")
