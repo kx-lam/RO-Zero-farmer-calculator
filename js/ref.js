@@ -3,49 +3,50 @@ const yours=f=>{try{const v=f();return v==null||v===""||(typeof v==="number"&&!i
 function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=null),d=ok?derived(c):null,lv=num(c.baseLv),ab=aspdBase(state.job,c.weapon);
   const sv=k=>statVal(c,k),ranged=RANGED.includes(c.weapon),mn=m?` (${esc(m.name)})`:"",need=f=>m?f(m):null;
   const grp=t=>`<tr class="grp"><td colspan="3">${t}</td></tr>`;
-  const R=(name,f,y)=>`<tr><td class="name">${name}</td><td class="f">${f}</td><td>${yours(y)}</td></tr>`;
+  // f is the formula, n an optional short note shown under it
+  const R=(name,f,y,n)=>`<tr><td class="name">${name}</td><td class="f">${f}${n?`<div class="fn">${n}</div>`:""}</td><td>${yours(y)}</td></tr>`;
   return grp("Status window")+
-   R("Status ATK",ranged?"floor(BaseLv/4 + DEX + STR/5 + LUK/3) (bow, instrument, whip)":"floor(BaseLv/4 + STR + DEX/5 + LUK/3) (melee; ranged swaps STR and DEX)",()=>d&&d.atk)+
+   R("Status ATK",ranged?"floor(BaseLv/4 + DEX + STR/5 + LUK/3)":"floor(BaseLv/4 + STR + DEX/5 + LUK/3)",()=>d&&d.atk,ranged?"bow, instrument, whip":"melee; ranged weapons swap STR and DEX")+
    R("Status MATK","floor(BaseLv/4) + INT + floor(INT/2) + floor(DEX/5) + floor(LUK/3)",()=>d&&d.matk)+
    R("HIT","175 + BaseLv + DEX + floor(LUK/3)",()=>d&&d.hit)+
    R("FLEE","100 + BaseLv + AGI + floor(LUK/5)",()=>d&&d.flee)+
    R("Soft DEF","floor(BaseLv/2) + floor(VIT/2) + floor(AGI/5)",()=>d&&d.def)+
    R("Soft MDEF","floor(INT + BaseLv/4 + (DEX + VIT)/5)",()=>ok&&sv("int")!=null?Math.floor(sv("int")+lv/4+(sv("dex")+sv("vit"))/5):null)+
-   R("CRIT","1 + LUK × 0.3 + BaseLv/100 (doubled with a katar)",()=>d&&d.crit.toFixed(1))+
-   R("ASPD",`job + weapon base + √(AGI²/2 + DEX²/${ranged?7:5}) / 4, then ASPD % moves it toward 195: ASPD + (195 − ASPD) × %, cap 190`,()=>d&&ab!=null?`${ab} + ${d.aspdTerm.toFixed(1)} = ${(ab+d.aspdTerm).toFixed(1)}`:null)+
+   R("CRIT","1 + LUK × 0.3 + BaseLv/100",()=>d&&d.crit.toFixed(1),"doubled with a katar")+
+   R("ASPD",`base = job + weapon base + √(AGI²/2 + DEX²/${ranged?7:5}) / 4; ASPD = base + (195 − base) × ASPD %`,()=>d&&ab!=null?`${ab} + ${d.aspdTerm.toFixed(1)} = ${(ab+d.aspdTerm).toFixed(1)}`:null,"cap 190")+
    R("Max HP","floor((floor(job HP(BaseLv) × (1 + VIT/100)) + gear HP) × (1 + HP %))",()=>num(cf("maxHp"))>0?fmtN(num(cf("maxHp"))):null)+
    R("Max SP","floor((floor(job SP(BaseLv) × (1 + INT/100)) + gear SP) × (1 + SP %))",()=>num(cf("maxSp"))>0?fmtN(num(cf("maxSp"))):null)+
    grp("Speed")+
    R("Attacks per second","50 / (200 − ASPD)",()=>`${atkPerSec().toFixed(2)} at ASPD ${aspdEff()}`)+
-   R("Variable cast time","cast × (1 − √((2 × DEX + INT) / 530)) × (1 − cast %); none once 2 × DEX + INT ≥ 530",()=>sv("dex")!=null?`× ${vctFactor().toFixed(3)}`:null)+
+   R("Variable cast time","cast × (1 − √((2 × DEX + INT) / 530)) × (1 − cast %)",()=>sv("dex")!=null?`× ${vctFactor().toFixed(3)}`:null,"none once 2 × DEX + INT ≥ 530")+
    R("Fixed cast time","(fixed cast − flat reduction) × (1 − fixed cast %)",()=>null)+
    R("Time per skill use","cast time + max(after-cast delay × (1 − delay %), 1 / attacks per second)",()=>`${useSec().toFixed(2)} s (${esc(c.a.name||"attack")})`)+
    grp("Damage")+
-   R("Weapon ATK",`weapon ATK (incl. refine) × (1 + ${ranged?"DEX":"STR"}/200)`,()=>{const P=atkParts();return P.weapon?fmtN(P.weapon):null})+
-   R("Physical damage","floor(((weapon ATK × size % × element % + (2 × status ATK + other gear ATK) × Neutral %) × skill % + mastery ATK × Neutral %) × damage bonuses × (1 + ranged/melee %) × (1 + skill damage %, skills only) × (4000 + DEF) / (4000 + 10 × DEF) − monster soft DEF), at least 1",()=>m&&c.a.type!=="magic"&&c.a.type!=="spellfist"?`${fmtN(dmgPerHit(m))} per hit${mn}`:null)+
-   R("Magic damage","floor((MATK × skill % × damage bonuses × (1 + skill damage %) × (1000 + MDEF) / (1000 + 10 × MDEF) − monster soft MDEF) × element %), at least 1",()=>m&&(c.a.type==="magic"||c.a.type==="spellfist")?`${fmtN(dmgPerHit(m))} per hit${mn}`:null)+
-   R("Damage bonuses","each category multiplies: (1 + race %) × (1 + size %) × (1 + element %) × (1 + boss/normal %) × (1 + all %) × (1 + damage bonus %) × (1 + name bonus %, when the name matches) × (1 + vs normal monsters %, not bosses) × (1 + my attack element %) × (1 + skill passives and buffs %); for magic, also × (1 + gear magic % of your spell's element); bonuses in the same category add",()=>m?`× ${bonusMul(m,c.a.type==="magic"||c.a.type==="spellfist").toFixed(2)}${mn}`:null)+
-   R("Ignore DEF / MDEF","DEF × (1 − ignore %) before the DEF factor",()=>num(c.ignDef)||num(c.ignMdef)?`${num(c.ignDef)}% / ${num(c.ignMdef)}%`:null)+
+   R("Weapon ATK",`weapon ATK × (1 + ${ranged?"DEX":"STR"}/200)`,()=>{const P=atkParts();return P.weapon?fmtN(P.weapon):null},"weapon ATK includes refine")+
+   R("Physical damage","floor(((weapon ATK × size % × element % + (2 × status ATK + other gear ATK) × Neutral %) × skill % + mastery ATK × Neutral %) × damage bonuses × (1 + ranged/melee %) × (1 + skill damage %) × (4000 + DEF) / (4000 + 10 × DEF) − monster soft DEF)",()=>m&&c.a.type!=="magic"&&c.a.type!=="spellfist"?`${fmtN(dmgPerHit(m))} per hit${mn}`:null,"at least 1; skill damage % counts for skills only")+
+   R("Magic damage","floor((MATK × skill % × damage bonuses × (1 + skill damage %) × (1000 + MDEF) / (1000 + 10 × MDEF) − monster soft MDEF) × element %)",()=>m&&(c.a.type==="magic"||c.a.type==="spellfist")?`${fmtN(dmgPerHit(m))} per hit${mn}`:null,"at least 1")+
+   R("Damage bonuses","(1 + race %) × (1 + size %) × (1 + element %) × (1 + boss/normal %) × (1 + all %) × (1 + damage bonus %) × (1 + name bonus %) × (1 + vs normal monsters %) × (1 + my attack element %) × (1 + skill passives and buffs %)",()=>m?`× ${bonusMul(m,c.a.type==="magic"||c.a.type==="spellfist").toFixed(2)}${mn}`:null,"bonuses in the same category add; name bonus only when the name matches; vs normal monsters not on bosses; magic also × (1 + gear magic % of the spell's element)")+
+   R("Ignore DEF / MDEF","DEF × (1 − ignore %)",()=>num(c.ignDef)||num(c.ignMdef)?`${num(c.ignDef)}% / ${num(c.ignMdef)}%`:null,"before the DEF factor")+
    R("Monster soft DEF","floor((monster Lv + VIT) / 2)",()=>need(x=>`${mobSoftDef(x)}${mn}`))+
    R("Monster soft MDEF","floor((monster Lv + INT) / 4)",()=>need(x=>`${mobSoftMdef(x)}${mn}`))+
-   R("Hit chance","100 + HIT − monster's 100%-hit value, 5–100%; magic always hits",()=>need(x=>`${Math.round(hitChance(x))}%${mn}`))+
-   R("Critical hit","chance = CRIT (+ gear CRIT vs the monster's race; basic attacks only), always hits, damage × 1.4 × (1 + crit damage %)",()=>c.a.type==="auto"?`${(critChance(m)*100).toFixed(1)}%${mn}`:null)+
+   R("Hit chance","100 + HIT − monster's 100%-hit value",()=>need(x=>`${Math.round(hitChance(x))}%${mn}`),"5–100%; magic always hits")+
+   R("Critical hit","chance = CRIT + gear CRIT vs its race; damage × 1.4 × (1 + crit damage %)",()=>c.a.type==="auto"?`${(critChance(m)*100).toFixed(1)}%${mn}`:null,"basic attacks only; always hits")+
    grp("Defence and SP")+
-   R("Dodge","95 + FLEE − monster's 95%-flee value, 0–95%",()=>need(x=>dodge(x)==null?null:`${Math.round(dodge(x))}%${mn}`))+
-   R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + damage taken % from its race) × (1 + from its element) × (1 + from boss/normal), at least 1",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`))+
-   R("SP regen","1 + floor(Max SP/100) + floor(INT/6) every 8 s; none at 70% weight or more",()=>`${fmtN(spRegen8())} / 8 s`)+
-   R("Overcharge / Discount","NPC sell price × (1 + Overcharge %), rounded down; NPC buy price × (1 − Discount %). Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%",()=>{const o=skRate("overcharge"),d=skRate("discount");return o||d?`+${o}% / −${d}%`:null})+
-   R("Weight","at 70% of Max Weight HP and SP stop regenerating; at 90% you can't attack or use skills. Kills per trip = (Max Weight × sell point − weight now) / weight per kill; seconds per kill + town trip / kills per trip",()=>{if(!wOn())return "type your Max Weight";const t=m&&tripInfo(m,walkSec());return t&&t.wk>0?(isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills a trip${mn}`:"sell first"):`${fmtN(num(c.curW))} / ${fmtN(num(c.maxW))}`})+
+   R("Dodge","95 + FLEE − monster's 95%-flee value",()=>need(x=>dodge(x)==null?null:`${Math.round(dodge(x))}%${mn}`),"0–95%")+
+   R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + race %) × (1 + element %) × (1 + boss/normal %)",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`),"% is your damage taken from its race, element and boss/normal; at least 1")+
+   R("SP regen","1 + floor(Max SP/100) + floor(INT/6) every 8 s",()=>`${fmtN(spRegen8())} / 8 s`,"none at 70% weight or more")+
+   R("Overcharge / Discount","sell = floor(NPC price × (1 + Overcharge %)); buy = NPC price × (1 − Discount %)",()=>{const o=skRate("overcharge"),d=skRate("discount");return o||d?`+${o}% / −${d}%`:null},"Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%")+
+   R("Weight","kills per trip = (Max Weight × sell point − weight now) / weight per kill; time per kill = seconds per kill + town trip / kills per trip",()=>{if(!wOn())return "type your Max Weight";const t=m&&tripInfo(m,walkSec());return t&&t.wk>0?(isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills a trip${mn}`:"sell first"):`${fmtN(num(c.curW))} / ${fmtN(num(c.maxW))}`},"at 70% weight HP and SP don't regenerate; at 90% you can't attack or use skills")+
    grp("EXP")+
-   R("Even Share party","your share = floor(monster EXP × (100% + 10% × (members − 1)) / members): 2 members 110% (55% each), 3: 120% (40%), 4: 130% (32%) … 12: 210% (17%); only members on the same map within 15 base levels count. The game shares by damage dealt, so a kill can be 1 EXP off; checked against in-game kills",()=>`${100+partyBonus()}% ÷ ${partyN()} = ${partyPct()}% each`)+
-   R("Your base EXP per kill","floor(your share of its base EXP × (1 + gear EXP % + gear EXP % vs its race + EXP bonus %)): bonuses add up and come after the split, they don't multiply. EXP bonus % is items and buffs that say \"EXP +X%\"",()=>need(x=>`${fmtN(killExp(x))}${mn}`))+
-   R("Your job EXP per kill","floor(your share of its job EXP × (1 + gear EXP % + gear EXP % vs its race + Job EXP bonus %)): gear EXP counts for job EXP too, but an item's \"EXP +X%\" doesn't; only \"Job EXP +X%\" does",()=>need(x=>`${fmtN(killJobExp(x))}${mn}`))+
+   R("Even Share party","share = floor(monster EXP × (100% + 10% × (members − 1)) / members)",()=>`${100+partyBonus()}% ÷ ${partyN()} = ${partyPct()}% each`,"same map, within 15 base levels; the game splits by damage dealt, so a kill can be 1 EXP off")+
+   R("Base EXP per kill","floor(share of base EXP × (1 + gear EXP % + gear EXP % vs its race + EXP bonus %))",()=>need(x=>`${fmtN(killExp(x))}${mn}`),"bonuses add up, they don't multiply; EXP bonus % is items and buffs that say \"EXP +X%\"")+
+   R("Job EXP per kill","floor(share of job EXP × (1 + gear EXP % + gear EXP % vs its race + Job EXP bonus %))",()=>need(x=>`${fmtN(killJobExp(x))}${mn}`),"only \"Job EXP +X%\" counts here, not \"EXP +X%\"")+
    R("EXP / hour","EXP per kill × 3600 / (fight seconds + walking seconds)",()=>null)+
    grp("Loot")+
-   R("Drop level penalty","level gap = monster Lv − your base Lv: −19 or more, no penalty; −40 or less, drops −50%; −20 to −39 isn't in the official guide, so no penalty is counted",()=>need(x=>dropGap(x)==null?null:`gap ${String(dropGap(x)).replace("-","−")}: ${penNote(x)||"no penalty"}${mn}`))+
-   R("Zeny per kill","loot value × (1 + drop bonus %) × (1 − level penalty %) + Σ (player price − NPC price) × min(100%, chance × (1 + drop bonus %) × (1 − level penalty %)) over drops you price; with an auto-loot group unticked, the loot value is Σ NPC price × chance over the drops you loot, and drops you don't loot add nothing",()=>need(x=>`${fmtN(zenyKill(x))} z${mn}`))+
-   R("Zeny Hunter walking","walking per kill × √(spawns of monsters you can hurt on the map / spawns of the ones you hunt): the nearest target is about 1 / √density away",()=>`${walkSec().toFixed(1)}s with every monster hunted`)+
-   R("Zeny Hunter teleporting","extra teleports per kill = spawns you can hurt / spawns you hunt − 1; each adds the Fly Wing price and seconds per teleport. Maps marked \"no teleport\" only walk",()=>`${fmtN(flyPrice())} z and ${teleSec()}s per teleport`);
+   R("Drop level penalty","gap = monster Lv − base Lv",()=>need(x=>dropGap(x)==null?null:`gap ${String(dropGap(x)).replace("-","−")}: ${penNote(x)||"no penalty"}${mn}`),"−19 or more: none; −40 or less: drops −50%; −20 to −39 isn't in the official guide, so none is counted")+
+   R("Zeny per kill","loot value × (1 + drop bonus %) × (1 − level penalty %) + Σ (player price − NPC price) × min(100%, chance × (1 + drop bonus %) × (1 − level penalty %))",()=>need(x=>`${fmtN(zenyKill(x))} z${mn}`),"Σ over drops you price; with an auto-loot group unticked, only drops you loot count")+
+   R("Zeny Hunter walking","walking per kill × √(spawns you can hurt / spawns you hunt)",()=>`${walkSec().toFixed(1)}s with every monster hunted`,"the nearest target is about 1 / √density away")+
+   R("Zeny Hunter teleporting","extra teleports per kill = spawns you can hurt / spawns you hunt − 1",()=>`${fmtN(flyPrice())} z and ${teleSec()}s per teleport`,"each costs a Fly Wing and its seconds; \"no teleport\" maps only walk");
 }
 // Even Share by party size, with your base and job EXP per kill of the picked monster for each size
 function renderPartyTable(m){const s=cur(),n0=partyN(s),known=m&&!m.expUnknown,sz=n=>({...s,partyN:n});
