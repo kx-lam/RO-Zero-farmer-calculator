@@ -18,6 +18,7 @@ state.sessions.forEach(s=>{if(!Array.isArray(s.mobIds))s.mobIds=s.mobId!=null?[s
 state.sessions.forEach(s=>{s.id=String(s.id);s.name=String(s.name??"Session");s.mobIds=s.mobIds.map(Number).filter(Number.isFinite);if(s.job!=null)s.job=String(s.job);
   s.entries=(Array.isArray(s.entries)?s.entries:[]).map(e=>{const o={t:+(e&&e.t),lv:+(e&&e.lv),pct:+(e&&e.pct)};if(e&&e.jpct!=null&&e.jpct!==""&&isFinite(+e.jpct))o.jpct=+e.jpct;return o})
     .filter(e=>Number.isFinite(e.t)&&Number.isFinite(e.lv)&&Number.isFinite(e.pct));
+  if(s.trip!=null)s.trip=s.trip&&Number.isFinite(+s.trip.from)&&Number.isFinite(+s.trip.due)?{from:+s.trip.from,due:+s.trip.due,...(s.trip.rang===true?{rang:true}:{})}:undefined;
   if(s.pauses!=null)s.pauses=(Array.isArray(s.pauses)?s.pauses:[]).filter(p=>p&&Number.isFinite(+p.from)&&(p.to==null||Number.isFinite(+p.to))).map(p=>p.to==null?{from:+p.from}:{from:+p.from,to:+p.to})});
 // new accounts start as Novice; change it on the Character tab
 if(!JOBS[state.job])state.job="Novice";
@@ -41,7 +42,7 @@ state.tsort=Object.fromEntries(Object.entries(objOr(state.tsort)).filter(([,v])=
 [["bestTable","bestSort","bestDir"],["huntTable","huntSort","huntDir"]].forEach(([id,k,d])=>{if(typeof state[k]==="string"&&!state.tsort[id])state.tsort[id]=[state[k],state[d]===1?1:-1];delete state[k];delete state[d]});
 state.tfilt=Object.fromEntries(Object.entries(objOr(state.tfilt)).map(([k,v])=>[k,Object.fromEntries(Object.entries(objOr(v)).filter(([,x])=>typeof x==="string"))]));
 state.noTele=(Array.isArray(state.noTele)?state.noTele:[]).map(String);
-["flyPrice","teleSec"].forEach(k=>{if(state[k]!=null&&!(Number.isFinite(+state[k])&&+state[k]>=0))delete state[k]});
+["flyPrice","teleSec","tripEarly"].forEach(k=>{if(state[k]!=null&&!(Number.isFinite(+state[k])&&+state[k]>=0))delete state[k]});
 if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
 const D={bonus:0,jobBonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"epm",dir:-1,regions:{um:false},closed:[]};
 for(const k in D)if(state[k]==null)state[k]=JSON.parse(JSON.stringify(D[k]));

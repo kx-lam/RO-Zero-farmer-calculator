@@ -293,7 +293,7 @@ function jobRate(s){
   const h=activeH(s,es[0].t,es[es.length-1].t);return h>0?{rate:gain/h,last:es[es.length-1].jpct,h}:null;
 }
 // ---- weight: at 70% of Max Weight HP and SP stop regenerating, at 90% you can't attack or use skills (official guide) ----
-// a trip ends at your sell point (70% keeps regen, 90% carries more but fights 70–90% with no regen); then you go to town and back
+// a trip ends at your sell point (up to 70% keeps regen, past it carries more but fights with no regen); then you go to town and back
 const W_NOREGEN=0.7,W_STOP=0.9;
 let REGEN_OFF=false;
 const withRegenOff=fn=>{const k=REGEN_OFF;REGEN_OFF=true;try{return fn()}finally{REGEN_OFF=k}};
@@ -302,16 +302,21 @@ const weightKill=m=>(m.drops||[]).reduce((a,[id,ch])=>a+(ITEMW[id]||0)*Math.min(
 const wOn=()=>num(C().maxW)>0;
 const wRoom=lim=>Math.max(0,num(C().maxW)*lim-num(C().curW));
 const townSec=()=>Math.max(0,num(C().townMin,3))*60;
-// selling at 90% only pays when you can keep fighting with no regen (no SP needed, or SP items on)
-function tripParts(m,tot,w){const rA=wRoom(W_NOREGEN);let rB=0,totB=tot;
-  if(num(C().sellAt)===90){totB=withRegenOff(()=>fightSec(m))+w;if(isFinite(totB))rB=Math.max(0,wRoom(W_STOP)-rA)}return {rA,rB,totB}}
-// seconds per kill with selling trips: kills up to 70% at your normal pace, then 70–90% at the no-regen pace, plus the town trip spread
+// selling past 70% only pays when you can keep fighting with no regen (no SP needed, or SP items on)
+// the sell point is any % up to 90 (65% stops a loop before regen stops); blank or 0 means 70%
+const sellPct=()=>{const v=num(C().sellAt);return v>0?Math.min(W_STOP*100,v):70};
+const sellLim=()=>sellPct()/100;
+function tripParts(m,tot,w){const lim=sellLim(),rA=wRoom(Math.min(lim,W_NOREGEN));let rB=0,totB=tot;
+  if(lim>W_NOREGEN){totB=withRegenOff(()=>fightSec(m))+w;if(isFinite(totB))rB=Math.max(0,wRoom(lim)-rA)}return {rA,rB,totB}}
+// past 70% with no way to keep fighting (no regen, you need SP and have no SP items): the trip stops at 70%
+const sellFell=(rA,rB)=>sellLim()>W_NOREGEN&&rB<=0&&wRoom(sellLim())>rA;
+// seconds per kill with selling trips: kills up to 70% (or your sell point) at your normal pace, then 70% to the sell point at the no-regen pace, plus the town trip spread
 // over the trip's kills. It's linear in weight per kill, so the spawn-weighted map averages still add up
 function tripTot(m,tot,w){if(!wOn()||!isFinite(tot))return tot;const wk=weightKill(m);if(!(wk>0))return tot;
   const {rA,rB,totB}=tripParts(m,tot,w);if(rA+rB<=0)return Infinity;return (rA*tot+(rB?rB*totB:0))/(rA+rB)+townSec()*wk/(rA+rB)}
-// one trip on this monster alone: kills, minutes farming, and whether the 90% sell point fell back to 70%
+// one trip on this monster alone: kills, minutes farming, and whether a sell point past 70% fell back to 70%
 function tripInfo(m,w){const k=SG_MOB;SG_MOB=m;try{if(!wOn())return null;const wk=weightKill(m),tot=fightSec(m)+w;if(!(wk>0)||!isFinite(tot))return {wk,kills:Infinity};
-  const {rA,rB,totB}=tripParts(m,tot,w);return {wk,kills:(rA+rB)/wk,min:(rA*tot+(rB?rB*totB:0))/wk/60,fell:num(C().sellAt)===90&&rB<=0&&wRoom(W_STOP)>rA}}finally{SG_MOB=k}}
+  const {rA,rB,totB}=tripParts(m,tot,w);return {wk,kills:(rA+rB)/wk,min:(rA*tot+(rB?rB*totB:0))/wk/60,fell:sellFell(rA,rB)}}finally{SG_MOB=k}}
 function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally{SG_MOB=kSG}}
 function mobRow00(m,w){
   const sec=fightSec(m),tot=tripTot(m,sec+w,w),epk=killExp(m),jpk=killJobExp(m);
@@ -334,6 +339,20 @@ const currentMap=()=>sessMap(cur());
 function sessEpm(s,w){const mix=sessMix(s);if(!mix)return null;let best=null;
   elOptions().forEach(el=>{const v=withEl(el,()=>{let e=0,t=0;mix.list.forEach(({m,w:c})=>{const r=mobRow0(m,w);if(!isFinite(r.sec))return;e+=c*r.epk;t+=c*r.tot});return t>0?e/t*60:0});if(best==null||v>best)best=v});
   return best||null}
+// ---- sell timer: how long the session's monsters take to fill you from the weight you have now to your sell point ----
+// spawn-weighted like the session pace: weight and seconds per kill are averaged over the mix, so minutes = room / weight per kill ×
+// seconds per kill (past 70% at the no-regen pace; if one monster can't keep fighting there, the trip stops at 70%)
+function sessTrip(s,w=walkSec()){if(!wOn())return null;const mix=sessMix(s,m=>isFinite(bestFight(m)));if(!mix)return null;
+  let wk=0,tA=0,tB=0,rA=0,rB=Infinity;
+  mix.list.forEach(({m,w:c})=>{const el=mobRow(m,w).el2,k=SG_MOB;SG_MOB=m;try{withEl(el,()=>{const tot=fightSec(m)+w,p=tripParts(m,tot,w);
+    rA=p.rA;rB=Math.min(rB,p.rB);wk+=c*weightKill(m);tA+=c*tot;tB+=c*p.totB})}finally{SG_MOB=k}});
+  wk/=mix.W;tA/=mix.W;tB/=mix.W;if(!isFinite(tA))return null;
+  const fell=sellFell(rA,rB),at=fell?70:sellPct();
+  if(!(wk>0))return {wk,kills:Infinity,min:Infinity,at,fell};
+  return {wk,kills:(rA+rB)/wk,min:(rA*tA+(rB?rB*tB:0))/wk/60,at,fell}}
+// a running timer is s.trip={from,due} (ms); time the session spends paused is added on, since you aren't picking anything up then
+const tripDue=s=>s.trip?s.trip.due+pausedMs(s,s.trip.from,Date.now()):null;
+const tripEarly=()=>Math.max(0,num(state.tripEarly))*6e4;
 
 
 // ---- Zeny Hunter: maps and monsters ranked by net zeny per hour ----

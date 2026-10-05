@@ -42,7 +42,7 @@ const numK=["jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery",
 ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","townMin"].forEach(k=>
   $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
 $("npcBuy").addEventListener("change",e=>{C().npcBuy=e.target.checked;save();renderAll()});
-$("sellAt").addEventListener("change",e=>{C().sellAt=+e.target.value;save();renderAll()});
+$("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?Math.min(90,v):70;save();renderAll()});
 ["weapon","wElem","nameType"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
   if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
   c[k]=e.target.value;save();renderAll();if(k==="weapon")renderSkills()}));
@@ -101,6 +101,20 @@ $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel")
   if(n){autoResume(s,parsed[parsed.length-1].t);if(!s.job)s.job=state.job;$("pasteBox").value="";save();renderAll()}});
 $("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.pauses)s.pauses=[];
   if(p){p.to=Date.now();save();renderAll();showTab("track");$("fPct").focus()}else{s.pauses.push({from:Date.now()});save();renderAll()}});
+// sell timer: its weight boxes are the Character tab's, so typing in one updates the other
+[["tripW","curW"],["tripMax","maxW"],["tripTownMin","townMin"]].forEach(([id,k])=>$(id).addEventListener("input",e=>{C()[k]=num(e.target.value);$(k).value=e.target.value;save();renderAll()}));
+$("tripAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?Math.min(90,v):70;$("sellAt").value=e.target.value;save();renderAll()});
+$("tripEarly").addEventListener("input",e=>{state.tripEarly=Math.max(0,num(e.target.value));save();renderTrip()});
+$("tripSound").addEventListener("change",e=>{state.tripSound=e.target.checked;save();if(e.target.checked)tripBeep()});
+$("tripNotify").addEventListener("change",e=>{const on=e.target.checked;state.tripNotify=on;save();
+  if(!on)return;if(typeof Notification==="undefined"){state.tripNotify=false;save();renderTrip();$("tripS").textContent="This browser can't show notifications; the sound and the tab title still work";return}
+  if(Notification.permission==="default")Notification.requestPermission().then(p=>{if(p!=="granted"){state.tripNotify=false;save();renderTrip()}});
+  else if(Notification.permission==="denied"){state.tripNotify=false;save();renderTrip();$("tripS").textContent="Notifications are blocked for this page in your browser settings"}});
+$("tripBtns").addEventListener("click",e=>{const b=e.target.closest("[data-trip]");if(!b)return;const s=cur();
+  if(b.dataset.trip==="stop")delete s.trip;
+  else{const t=sessTrip(s);if(!t||!(t.min>0)||!isFinite(t.min))return;const now=Date.now();s.trip={from:now,due:now+t.min*6e4};TRIP_RING={id:null,n:0,at:0};
+    if(state.tripSound!==false)tripAudio()}// a click lets the page play sound later
+  save();renderTrip()});
 $("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
 const openSession=id=>{state.current=id;state.calcMobId=null;save();renderAll();resetForm()};
 // accounts: switching saves this one and reloads the page with the other one's data

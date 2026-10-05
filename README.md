@@ -29,16 +29,17 @@ It's a single page that runs entirely in your browser. There's no server, no log
 - **Auto-cast spells:** any job, Mages included, can add a spell from a card, weapon or scroll that procs on basic attacks with your MATK. Sage Spell Fist counts the basic attack's own physical hit as well as the procs.
 - **Sage options:** Spell Fist with the best bolt per monster, Hindsight (switched on or off automatically against your zeny limit), Double Bolt, Vitata, Energy Coat, Hunter Fly, Side Winder and SP items. Vitata counts the Heal Lv1 you cast, which costs SP and time you aren't attacking.
 - **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for SP items, the ASPD potion and consumables; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10.
-- **Weight:** enter your current weight, Max Weight, where you sell (70% or 90%) and how long a town trip takes.
-  - At 70% weight HP and SP stop regenerating, and at 90% you can't attack or use skills, so each trip ends at your sell point.
+- **Weight:** enter what you carry when you leave town (gear, potions, scrolls), your Max Weight, where you sell (any % up to 90, such as 65% to stay clear of 70%) and how long a town trip takes.
+  - At 70% weight HP and SP stop regenerating, and at 90% you can't attack or use skills, so each trip ends at your sell point. Only the room above your starting weight fills with loot.
   - Kills per trip come from each drop's weight × chance. The trip time is spread over those kills in every EXP/min and zeny/hr figure.
-  - Selling at 90% means fighting the 70–90% stretch with no regen. It falls back to 70% when your attack needs SP and you have no SP items.
+  - Selling past 70% means fighting the stretch above 70% with no regen. It falls back to 70% when your attack needs SP and you have no SP items.
 
 ### Session (EXP tracker)
 
 - Log Base and Job EXP % as you farm. Entries go on today's date unless you pick another. If a session runs past midnight or over several days, the date shows next to each time.
 - See EXP/hr, time to the next level and a progress chart. Kill pace is split into fighting and walking time.
 - Rename a session with ✎ next to the session picker (Enter or ✓ saves, Esc cancels), and compare sessions side by side.
+- **Sell timer:** the game's auto return only takes you to town at a weight %; it doesn't sell or store anything. Press Start when you leave town and the timer counts down to when the session's monsters should have filled you to your sell point, then rings: a beep, an optional browser notification and "Sell now" in the tab title. It can ring a few minutes early, and paused time is added on. Press **Back from town** to start the next trip. It also shows how long one trip is and how many town runs you make an hour. In a background tab the browser can make it up to a minute late.
 - **Goal:** the EXP needed and the farming time to a target base and job level, charted together, with a date for each level-up if you farm non-stop.
 
 ### Monsters & maps
