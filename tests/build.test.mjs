@@ -63,8 +63,8 @@ t("armor refine DEF, sets with combined refine, HP from the job curve", () => {
 
 t("ASPD % pivots on 195 and caps at 190; multi-slot headgear counts once", () => {
   const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { headTop: { id: 4 }, headMid: { id: 4 } } }, "Knight", aspdBase);
-  const a0 = 150 + r.status.aspdTerm;
-  assert.equal(r.fields.aspd, Math.round((a0 + (195 - a0) * 0.10) * 10) / 10);
+  const a1 = Math.floor(150 + r.status.aspdTerm);
+  assert.equal(r.fields.aspd, a1 + Math.floor((195 - a1) * 0.10));
   const fast = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {} }, "Knight", () => 189);
   assert.equal(fast.fields.aspd <= 190, true);
 });
@@ -73,7 +73,7 @@ t("a shield takes the job's shield penalty off base ASPD", () => {
   const off = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {} }, "Knight", aspdBase);
   const on = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { shield: { id: 5 } } }, "Knight", aspdBase);
   assert.equal(BUILD.SHIELD_ASPD.Knight, 5);
-  assert.equal(Math.round((off.fields.aspd - on.fields.aspd) * 10) / 10, 5);
+  assert.equal(off.fields.aspd - on.fields.aspd, 5);
 });
 
 t("status formulas match the verified Zero formulas", () => {
