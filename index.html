@@ -175,6 +175,13 @@
         <label class="bar" style="flex-direction:row;gap:4px" title="Creamy Card gives Teleport Lv1: Zeny Hunter teleports cost no Fly Wing. Its 10 SP a cast isn't counted"><input type="checkbox" data-cd="creamy" style="width:auto"> Creamy (Teleport Lv1: no Fly Wings)</label>
         <span id="cardInfo"></span>
       </div>
+      <div class="bar note" id="spCardRow"><span title="Cards that give SP back. SP Recovery +% cards (Eggyra, Sohee, Merman): build mode reads them from your gear; in status window mode add an &quot;SP recovery&quot; line under Equipment stats">SP back (cards):</span>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Dracula Card: physical and magic attacks have a chance to restore SP every second for 7 s"><input type="checkbox" data-cd="dracOn" style="width:auto"> Dracula (<input data-cd="dracPct" type="number" style="width:56px">% · <input data-cd="dracSp" type="number" style="width:56px"> SP/s)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" id="dpWrap" title="Dark Priest Card, when a Sage wears it: 1 SP each time a physical attack hits (Spell Fist's physical hit too)"><input type="checkbox" data-cd="dpOn" style="width:auto"> Dark Priest (+1 SP per physical hit)</label>
+        <span title="Weapon cards: 5 SP when a melee physical attack kills a monster of that race. Not counted with Spell Fist or a bow, instrument or whip">+5 SP per melee kill:</span>
+        <span id="killSpBoxes" class="bar" style="gap:8px"></span>
+        <span id="spCardInfo"></span>
+      </div>
       <div class="bar note" id="ecRow"><span title="The Mage quest skill: Wizards and Sages have it too">Energy Coat (Mage, Wizard, Sage):</span>
         <label class="bar" style="flex-direction:row;gap:4px" title="Cuts damage taken by 6–30% and costs 1–3% of Max SP per hit taken; the fuller your SP, the bigger both"><input type="checkbox" data-ec="on" style="width:auto"> on</label>
         <label class="bar" style="flex-direction:row;gap:4px" title="When regen can't keep your SP up, SP items hold it around this level (sets the damage cut); without items your SP runs low">with SP items, SP kept at <input data-ec="spPct" type="number" min="1" max="100" style="width:56px">%</label>

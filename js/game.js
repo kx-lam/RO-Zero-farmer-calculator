@@ -104,9 +104,14 @@ const AC_SPELLS={"Fire Bolt":["Fire",10,()=>100,lv=>lv,0.5],"Cold Bolt":["Water"
 const AC_D={on:false,spell:"Fire Bolt",lv:3,pct:5};
 const AC=()=>{const c=C();if(!c.ac||typeof c.ac!=="object")c.ac={};for(const k in AC_D)if(c.ac[k]==null)c.ac[k]=AC_D[k];if(!AC_SPELLS[c.ac.spell])c.ac.spell=AC_D.spell;return c.ac};
 // cards any job can slot (they used to sit in Sage options): Vitata (Heal Lv1, SP cost +25%), Hunter Fly (HP back on physical
-// attacks), Side Winder (Double Attack on basic attacks), Creamy (Teleport Lv1, so no Fly Wings)
-const CARD_D={vitata:false,spBonus:25,healSp:13,healHp:357,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7,creamy:false};
-const CRD=()=>{const c=C();if(!c.cards||typeof c.cards!=="object")c.cards={};for(const k in CARD_D)if(c.cards[k]==null)c.cards[k]=CARD_D[k];return c.cards};
+// attacks), Side Winder (Double Attack on basic attacks), Creamy (Teleport Lv1, so no Fly Wings), and SP back: Dracula (SP on attacks),
+// Dark Priest (Sage: 1 SP per physical hit) and the +5 SP per kill cards (killSp: the races, see KILL_SP)
+const CARD_D={vitata:false,spBonus:25,healSp:13,healHp:357,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7,creamy:false,
+  dracOn:false,dracPct:10,dracSp:20,dpOn:false,killSp:[]};
+const CRD=()=>{const c=C();if(!c.cards||typeof c.cards!=="object")c.cards={};for(const k in CARD_D)if(c.cards[k]==null)c.cards[k]=JSON.parse(JSON.stringify(CARD_D[k]));
+  if(!Array.isArray(c.cards.killSp))c.cards.killSp=[];return c.cards};
+// weapon cards: "Recovers 5 SP when defeating <race> monsters with melee physical attacks"
+const KILL_SP={Fish:"Beetle King",Plant:"Caterpillar",Dragon:"Driller",Brute:"Nereid","Demi-Human":"Phendark",Formless:"Tri-Joint",Undead:"Zombie Master"};
 // Energy Coat: the Mage quest skill, so Wizards and Sages have it too (it used to sit in Sage options). spPct: where your SP sits
 // when SP items top it up, which sets the damage cut
 const EC_JOBS=["Mage","Wizard","Sage"];

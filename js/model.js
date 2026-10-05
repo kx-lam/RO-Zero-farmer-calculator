@@ -116,7 +116,10 @@ function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m
   if(critChance(m)>0||proc>0)return Math.max(1,m.hp/useAvg(m,per,proc));
   return Math.ceil(m.hp/per)/(hitChance(m)/100)}
 // SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s, + (INT − 120)/2 + 4 from INT 120 (roz.prontera.info), unless typed
-const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVal(C(),"int");return 1+Math.floor(num(cf("maxSp"))/100)+Math.floor(i/6)+(i>=120?Math.floor((i-120)/2)+4:0)};
+// "SP Recovery +x%" from gear (Eggyra, Sohee, Merman Cards…) raises it by x%; a typed regen already has it
+const spRecPct=()=>{const c=C();return c.bx?num(c.bx.spRec):0};
+const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVal(C(),"int");const r=1+Math.floor(num(cf("maxSp"))/100)+Math.floor(i/6)+(i>=120?Math.floor((i-120)/2)+4:0);
+  return spRecPct()?Math.floor(r*(1+spRecPct()/100)):r};
 // gear "SP consumption +x%" (build mode) scales the SP each use costs
 // Vitata Card's +25% counts when ticked, unless build mode already has the card in your gear
 const vitInGear=c=>c.mode==="build"&&Object.values((c.build&&c.build.gear)||{}).some(g=>g&&(g.cards||[]).some(id=>+id===4053));
@@ -125,7 +128,8 @@ const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/1
 // SP the attack itself costs per second (Spell Fist: its upkeep); defSP adds Energy Coat and Vitata's heals against the monster in play
 const skillSPPerSec=()=>num(C().a.sp)*spCostMul()/useSec();
 const spNeedPerSec=()=>isSF()?sgUpkeep()+defSP()+hsFullSP()*hsSustain():skillSPPerSec()+defSP();
-const regenPerSec=()=>REGEN_OFF?0:spRegen8()/8;
+// SP back per second: natural regen (stops when you're overweight) plus SP from cards (cardSPPerSec), which keeps going
+const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8)+cardSPPerSec();
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&num(C().itemSp)>0?Math.max(0,spNeedPerSec()-regenPerSec())/num(C().itemSp):0;
 const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&num(C().itemSp)>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
@@ -166,6 +170,17 @@ const daFactor=()=>CRD().daSF?1+num(CRD().daPct)/100:1;
 // and Spell Fist swing at your ASPD, physical skills once per use; spells don't trigger it
 const physAtkPerSec=()=>{const t=C().a.type;return t==="auto"||t==="spellfist"?atkPerSec():t==="phys"?1/useSec():0};
 const hfHpPerSec=()=>{if(!CRD().hfOn)return 0;const p=num(CRD().hfPct)/100,n=physAtkPerSec()*5;return (1-Math.pow(1-p,n))*num(CRD().hfHp)};
+// SP from cards, against the monster in play:
+// Dracula Card: each physical or magic attack has a 10% chance to restore 20 SP/s for 7 s (refreshes, doesn't stack)
+const dracSPPerSec=()=>{const cd=CRD();if(!cd.dracOn)return 0;const p=num(cd.dracPct)/100,n=(isSF()||C().a.type==="auto"?atkPerSec():1/useSec())*7;return (1-Math.pow(1-p,n))*num(cd.dracSp)};
+// Dark Priest Card (Sage only): 1 SP each time a physical attack hits, so crits and hits that land
+const dpSPPerSec=()=>{if(!CRD().dpOn||state.job!=="Sage")return 0;const r=physAtkPerSec();if(!r)return 0;const m=SG_MOB||calcMob();if(!m)return r;
+  return r*withAtk(isSF()?BASIC:C().a,()=>{const cr=critChance(m),hc=hitChance(m)/100;return cr+(1-cr)*hc})};
+// +5 SP per kill (Nereid, Tri-Joint… Cards) when a melee physical attack kills that race: counted over the time spent fighting it.
+// Not with Spell Fist, where the killing blow is as likely to be the bolt
+const killSPPerSec=()=>{const cd=CRD(),m=SG_MOB||calcMob(),t=C().a.type;if(!m||!cd.killSp.includes(m.race)||isSF()||(t!=="auto"&&t!=="phys")||RANGED.includes(C().weapon))return 0;
+  const f=rawFight(m);return isFinite(f)&&f>0?5/f:0};
+const cardSPPerSec=()=>dracSPPerSec()+dpSPPerSec()+killSPPerSec();
 // Energy Coat: damage cut and SP per hit taken (% of Max SP) depend on how full your SP is
 const EC_BANDS=[[30,3,"100–81%"],[24,2.5,"80–61%"],[18,2,"60–41%"],[12,1.5,"40–21%"],[6,1,"20–1%"]];
 const hsFullSP=()=>atkPerSec()*hsChance()*hsProcSP();

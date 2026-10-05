@@ -66,7 +66,9 @@ ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;c
   if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));
 // cards any job can slot: Vitata, Hunter Fly, Side Winder
-$("cardRow").addEventListener("input",e=>{const i=e.target,k=i.dataset.cd;if(!k)return;CRD()[k]=i.type==="checkbox"?i.checked:num(i.value);save();renderAll()});
+["cardRow","spCardRow"].forEach(id=>$(id).addEventListener("input",e=>{const i=e.target,cd=CRD();
+  if(i.dataset.cdkill){const r=i.dataset.cdkill;cd.killSp=cd.killSp.filter(x=>x!==r);if(i.checked)cd.killSp.push(r)}
+  else if(i.dataset.cd){const k=i.dataset.cd;cd[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;save();renderAll()}));
 // Energy Coat: Mage, Wizard, Sage
 $("ecRow").addEventListener("input",e=>{const i=e.target,k=i.dataset.ec;if(!k)return;ECO()[k]=i.type==="checkbox"?i.checked:num(i.value);save();renderAll()});
 // auto-cast spell (card / weapon / scroll), any job

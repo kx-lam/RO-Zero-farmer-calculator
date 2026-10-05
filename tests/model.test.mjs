@@ -745,7 +745,8 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
 t("cards: a Sage's old Vitata, Hunter Fly and Side Winder settings move out of Sage options", () => {
   const app = load({ job: "Sage", current: "s1", sessions: [{ id: "s1", name: "t", mobIds: [], entries: [] }],
     chars: { Sage: { sage: { hsLv: 10, vitata: false, hfOn: true, hfHp: 120, daSF: true } }, Knight: { sage: { vitata: true } }, Wizard: { sage: { hsLv: 5 } } } });
-  assert.equal(app("JSON.stringify(state.chars.Sage.cards)"), JSON.stringify({ vitata: false, spBonus: 25, healSp: 13, healHp: 357, hfOn: true, hfPct: 5, hfHp: 120, daSF: true, daPct: 7, creamy: false }));
+  const keys = ["vitata", "spBonus", "healSp", "healHp", "hfOn", "hfPct", "hfHp", "daSF", "daPct"];
+  assert.equal(app(`JSON.stringify(${JSON.stringify(keys)}.map(k=>state.chars.Sage.cards[k]))`), JSON.stringify([false, 25, 13, 357, true, 5, 120, true, 7]));
   assert.equal(app("Object.keys(CARD_D).filter(k=>k in state.chars.Sage.sage).length"), 0);   // gone from Sage options
   assert.equal(app("state.chars.Sage.sage.hsLv"), 10);
   assert.equal(app("state.chars.Knight.cards"), undefined);                 // only a Sage's settings carry over
@@ -784,6 +785,38 @@ t("Energy Coat: a Sage's old setting moves out of Sage options", () => {
   const old = load({ job: "Sage", current: "s1", sessions: S, chars: { Sage: { sage: { hsLv: 10 } } } });
   assert.equal(old("JSON.stringify(state.chars.Sage.ec)"), JSON.stringify({ on: true, spPct: 50 }));   // it was on by default
   assert.equal(run("state.job='Sage';state.chars={};ecOn()"), true);       // and still is for a new Sage
+});
+
+t("SP back from cards: Dracula, Dark Priest, +5 SP per kill, SP recovery %", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", weapon: "Two-handed sword", hitTxt: "300", crit: 0, aspd: 170, maxSp: 500, spRegen: 0,
+    st: { int: "30" }, intTxt: "30", skills: {}, a: AUTO });
+  const mob = `({...${MOB},race:'Brute'})`, at = code => run(`(()=>{SG_MOB=${mob};try{return ${code}}finally{SG_MOB=null}})()`);
+  const base = at("regenPerSec()");
+  near(base, (1 + 5 + 5) / 8);                                              // 1 + 500/100 + 30/6 per 8 s
+  run("CRD().dracOn=true");                                                 // Dracula: 10% per attack, 20 SP/s for 7 s
+  near(at("dracSPPerSec()"), (1 - Math.pow(0.9, run("atkPerSec()") * 7)) * 20);
+  near(at("regenPerSec()"), base + at("dracSPPerSec()"));
+  run("CRD().dracOn=false;CRD().dpOn=true");                                // Dark Priest: Sages only
+  assert.equal(at("dpSPPerSec()"), 0);
+  run("CRD().dpOn=false;CRD().killSp=['Brute']");                           // Nereid: +5 SP per Brute kill, over the fight time
+  near(at("killSPPerSec()"), 5 / at(`rawFight(${mob})`));
+  assert.equal(at(`(SG_MOB={...SG_MOB,race:'Plant'},killSPPerSec())`), 0);  // other races don't count
+  run("C().weapon='Bow'");                                                  // melee only
+  assert.equal(at("killSPPerSec()"), 0);
+  run("C().weapon='Two-handed sword';C().a={...C().a,type:'magic'}");       // physical only
+  assert.equal(at("killSPPerSec()"), 0);
+  run(`C().a=${JSON.stringify(AUTO)};CRD().killSp=[]`);
+  near(at("regenPerSec()"), base);
+  run("C().eq=[{by:'spRec',v:15}];applyBuild()");                           // Eggyra Card in status window mode: an Equipment stats line
+  assert.equal(run("spRegen8()"), Math.floor(11 * 1.15));
+  run("C().spRegen=20");                                                    // a typed regen already has it
+  assert.equal(run("spRegen8()"), 20);
+  setup("Sage", { matkTxt: "300+200", atkTxt: "100+300", wAtk: 0, hitTxt: "300", crit: 0, aspd: 170, st: {}, intTxt: "", cards: { dpOn: true } });
+  const hc = at(`withAtk(BASIC,()=>hitChance(${mob}))`) / 100;               // Dark Priest on a Sage: 1 SP per physical hit that lands
+  near(at("dpSPPerSec()"), run("atkPerSec()") * hc);
+  run("C().mode='build';C().build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{shoes:{id:470011,cards:[4070]}}};applyBuild()");   // build mode: Eggyra in your shoes
+  assert.equal(run("C().bx.spRec"), 15);
 });
 
 console.log(`${n} tests passed`);

@@ -10,6 +10,8 @@ const syncChar=()=>{
   {const ac=AC();$("acSpell").innerHTML=Object.keys(AC_SPELLS).map(n=>`<option>${esc(n)}</option>`).join("");$("acOn").checked=!!ac.on;$("acSpell").value=ac.spell;$("acLv").value=ac.lv;$("acPct").value=ac.pct}
   $("bonus").value=state.bonus;$("jobBonus").value=num(state.jobBonus);
   {const cd=CRD();ROOTQ("[data-cd]").forEach(i=>{const k=i.dataset.cd;if(i.type==="checkbox")i.checked=!!cd[k];else i.value=cd[k]??""})}
+  $("dpWrap").hidden=state.job!=="Sage";
+  {const ks=CRD().killSp;$("killSpBoxes").innerHTML=Object.entries(KILL_SP).map(([r,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cdkill="${esc(r)}" style="width:auto"${ks.includes(r)?" checked":""}> ${esc(n)} (${esc(r)})</label>`).join("")}
   $("ecRow").hidden=!EC_JOBS.includes(state.job);{const e=ECO();ROOTQ("[data-ec]").forEach(i=>{const k=i.dataset.ec;if(i.type==="checkbox")i.checked=!!e[k];else i.value=e[k]??""})}
   $("sagePanel").hidden=state.job!=="Sage";if(state.job==="Sage"){const g=G();ROOTQ("[data-sg]").forEach(i=>{const k=i.dataset.sg;if(i.type==="checkbox")i.checked=!!g[k];else i.value=g[k]??""});ROOTQ("[data-sgbolt]").forEach(i=>i.checked=!!g.bolts[i.dataset.sgbolt]);$("sg_hsOn").disabled=!!g.hsAuto}STATS.forEach(k=>$("st_"+k).value=(c.st&&c.st[k])||"");renderStatNote();
 };
@@ -31,7 +33,13 @@ function renderChar(){renderAspdBuffs();potInfo();
     if(cd.vitata)parts.push((vitInGear(c)?"Vitata SP cost from your gear":`SP cost +${num(cd.spBonus)}%`)+(hs>0?` · vs ${esc(m.name)}: Heal ${(hs*60).toFixed(1)} casts/min${sh>=1?` <span class="bad">(can't keep up: more than all of your time)</span>`:` (${Math.round(sh*100)}% of your time not attacking)`}`:""));
     if(cd.creamy)parts.push("Creamy: Zeny Hunter teleports cost no Fly Wing");
     if(cd.daSF)parts.push(a.type!=="auto"&&a.type!=="spellfist"?"Side Winder: only basic attacks":swMul()===1&&a.type==="auto"?"Side Winder: follows your learned Double Attack":`Side Winder: +${num(cd.daPct)}% hits`);
-    $("cardInfo").innerHTML=parts.join(" · ")}finally{SG_MOB=k0}}
+    $("cardInfo").innerHTML=parts.join(" · ");
+    const sp=[],dr=dracSPPerSec(),dp=dpSPPerSec(),ks=killSPPerSec();
+    if(cd.dracOn)sp.push(`Dracula ~${fmtN(dr*60)} SP/min`);
+    if(cd.dpOn&&state.job==="Sage")sp.push(dp>0?`Dark Priest ~${fmtN(dp*60)} SP/min`:"Dark Priest: only physical attacks");
+    if(cd.killSp.length)sp.push(!m?"pick a monster to see the SP per kill":ks>0?`vs ${esc(m.name)}: +5 SP a kill ≈ ${fmtN(ks*60)} SP/min`:`no +5 SP per kill vs ${esc(m.name)}${isSF()?" (not with Spell Fist)":RANGED.includes(c.weapon)?" (melee only)":cd.killSp.includes(m.race)?"":` (${esc(m.race||"?")})`}`);
+    if(spRecPct())sp.push(`SP recovery +${spRecPct()}% from gear`);
+    $("spCardInfo").innerHTML=sp.join(" · ")}finally{SG_MOB=k0}}
   if(ecOn()){const m=calcMob(),k0=SG_MOB;SG_MOB=m;try{const d=m?defense(m):null;
     $("ecInfo").textContent=d?`vs ${m.name}: −${d.red}% damage at SP ${d.label}, ${fmtN(d.ecSP*60)} SP/min on hits taken`:"pick a monster to see the damage cut"}finally{SG_MOB=k0}}else $("ecInfo").textContent=""
   if(state.job==="Sage"){const g=G(),m=calcMob(),d=m?((k)=>{SG_MOB=m;try{return defense(m)}finally{SG_MOB=k}})(SG_MOB):null;
