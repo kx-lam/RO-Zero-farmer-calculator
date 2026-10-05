@@ -31,7 +31,7 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 
 1. Pick your **job** and **attack**, then copy ATK, MATK, HIT, FLEE, ASPD, DEF, Max HP/SP and your six stats from the in-game status window.
 2. Pick the monster you're farming and press **Farming … now**.
-3. Log your EXP % every few minutes, for example `15:05 17.9% 63%` (time, base %, job %).
+3. Log your EXP % every few minutes, for example `15:05 17.9% 63%` (time, base %, job %). Leave the time off (`17.9% 63%`) to log it at the current time.
 4. Use **EXP Hunter** and the **Map planner** to find a better spot.
 
 ## Files

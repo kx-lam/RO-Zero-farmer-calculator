@@ -77,6 +77,12 @@ $("addForm").addEventListener("focusin",e=>{if(e.target.id!=="fDate"&&$("fDate")
 function entryTime(h,m,day){const d=day?new Date(day+"T00:00"):new Date();d.setHours(h,m,0,0);if(!day&&d.getTime()-Date.now()>3600e3)d.setDate(d.getDate()-1);return d.getTime()}
 // pasted lines on a picked date run on into the next day when a time goes back (23:50 then 00:10)
 function pasteTimes(lines,day){let off=0,prev=-1;return lines.map(([h,m])=>{if(!day)return entryTime(h,m);if(h*60+m<prev)off++;prev=h*60+m;const d=new Date(day+"T00:00");d.setDate(d.getDate()+off);d.setHours(h,m,0,0);return d.getTime()})}
+// one pasted line → [hour, minute, base %, job % or null]; with no time ("17.9% 63%") hour and minute are null, for the current time.
+// a time is 15:05 or 1505 standing on its own, so "100%" or "45.123%" read as percentages, not 1:00 or 1:23
+function pasteLine(line){const pct="(\\d+(?:\\.\\d+)?)\\s*%?(?:[^\\d\\n]+?(\\d+(?:\\.\\d+)?)\\s*%?)?";
+  let m=line.match(new RegExp("(?<![\\d.])(\\d{1,2}):?(\\d{2})(?![\\d.%])[^\\d\\n]+?"+pct));
+  if(m)return +m[1]>23||+m[2]>59?null:[+m[1],+m[2],+m[3],m[4]!=null?+m[4]:null];
+  if(/\d:\d/.test(line))return null;m=line.match(new RegExp("^[^\\d\\n]*?"+pct));return m?[null,null,+m[1],m[2]!=null?+m[2]:null]:null}
 function guessLevel(s,t,lv,p){const prev=[...s.entries].filter(e=>e.t<t).sort((a,b)=>b.t-a.t)[0];return prev&&prev.lv===lv&&prev.pct-p>=50?lv+1:lv}
 $("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m,pickedDay());
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
@@ -84,10 +90,10 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();cons
   const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=Math.min(jobMax(),num(C().jobLv)+1)}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
   if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm(true);$("fPct").focus()});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
-  const lines=$("pasteBox").value.split(/\n/).map(line=>{const m=line.match(/(\d{1,2}):?(\d{2})[^\d\n]+?(\d+(?:\.\d+)?)\s*%?(?:[^\d\n]+?(\d+(?:\.\d+)?)\s*%?)?/);if(!m||+m[1]>23||+m[2]>59)return null;return [+m[1],+m[2],+m[3],m[4]!=null?+m[4]:null]}).filter(Boolean);
-  const ts=pasteTimes(lines,pickedDay()),parsed=lines.map(([,,pct,jpct],i)=>({t:ts[i],pct,jpct})).sort((a,b)=>a.t-b.t);
+  const [h0,m0]=nowTime().split(":").map(Number),lines=$("pasteBox").value.split(/\n/).map(pasteLine).filter(Boolean).map(([h,m,...r])=>h==null?[h0,m0,...r]:[h,m,...r]);
+  const ts=pasteTimes(lines,pickedDay()),parsed=[...new Map(lines.map(([,,pct,jpct],i)=>[ts[i],{t:ts[i],pct,jpct}])).values()].sort((a,b)=>a.t-b.t);
   parsed.forEach(x=>{const g=guessLevel(s,x.t,lv,x.pct);if(g!==lv){ups++;lv=g}const ent={t:x.t,lv,pct:x.pct};if(x.jpct!=null)ent.jpct=x.jpct;s.entries=s.entries.filter(e=>e.t!==x.t);s.entries.push(ent);n++});
-  $("pasteMsg").textContent=n?`Added ${n} entr${n===1?"y":"ies"}${ups?` with ${ups} level-up${ups>1?"s":""} (now Lv ${lv})`:` at Lv ${lv}`}.`:"No lines matched. Use the format 15:05 17.9% (job % optional)";
+  $("pasteMsg").textContent=n?`Added ${n} entr${n===1?"y":"ies"}${ups?` with ${ups} level-up${ups>1?"s":""} (now Lv ${lv})`:` at Lv ${lv}`}.`:"No lines matched. Use the format 15:05 17.9% 63% (time and job % optional; no time means now)";
   if(n){autoResume(s,parsed[parsed.length-1].t);if(!s.job)s.job=state.job;$("pasteBox").value="";save();renderAll()}});
 $("pauseBtn").addEventListener("click",()=>{const s=cur(),p=openPause(s);if(!s.pauses)s.pauses=[];
   if(p){p.to=Date.now();save();renderAll();showTab("track");$("fPct").focus()}else{s.pauses.push({from:Date.now()});save();renderAll()}});
