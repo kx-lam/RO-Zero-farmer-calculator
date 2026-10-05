@@ -60,6 +60,9 @@ const cur=()=>state.sessions.find(s=>s.id===state.current)||state.sessions[0];
 // Vitata, Hunter Fly and Side Winder moved from Sage options (c.sage, where Vitata defaulted on) to c.cards, for every job
 (function cardsV1(){if(state.cardsV1)return;state.cardsV1=true;for(const j in state.chars){const c=state.chars[j],s=c&&c.sage;if(!s||typeof s!=="object")continue;
   if(j==="Sage"&&!c.cards){c.cards={};for(const k in CARD_D)c.cards[k]=s[k]!=null?s[k]:k==="vitata"?true:CARD_D[k]}for(const k in CARD_D)delete s[k]}save()})();
+// Energy Coat and "SP items at x% SP" moved from Sage options (c.sage, where Energy Coat defaulted on) to c.ec, for Mages and Wizards too
+(function ecV1(){if(state.ecV1)return;state.ecV1=true;for(const j in state.chars){const c=state.chars[j],s=c&&c.sage;if(!s||typeof s!=="object")continue;
+  if(j==="Sage"&&!c.ec)c.ec={on:s.ecOn!=null?!!s.ecOn:true,spPct:s.autoSpPct!=null?s.autoSpPct:EC_D.spPct};delete s.ecOn;delete s.autoSpPct}save()})();
 // ---- helpers ----
 const sumStat=v=>String(v??"").split("+").reduce((a,x)=>a+(parseFloat(x)||0),0);
 const fmtN=n=>isFinite(n)?Math.round(n).toLocaleString("en-GB"):"–";

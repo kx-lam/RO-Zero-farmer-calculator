@@ -255,11 +255,11 @@ t("a restored save is cleaned up before anything uses it", () => {
 
 t("Vitata: you cast Heal Lv1, so healing takes time away from attacking", () => {
   setup("Sage", { matkTxt: "300+200", aspd: 170, defTxt: "10+10", maxSp: 800, maxHp: 4000, hitScale: 1, mobInterval: 1.5, st: {}, intTxt: "",
-    sage: { ecOn: false, hsOn: false, hsAuto: false }, cards: { vitata: false, healSp: 13, healHp: 357, spBonus: 25 } });
+    sage: { hsOn: false, hsAuto: false }, ec: { on: false }, cards: { vitata: false, healSp: 13, healHp: 357, spBonus: 25 } });
   const off = run(`fightSec(${MOB})`);
   assert.equal(run(`healShare(${MOB})`), 0);                         // no Vitata: no healing
   run("CRD().vitata=true");
-  const d = run(`sgDefense(${MOB})`), heals = d.hp / 357, f = heals * Math.max(0.3, 1 / run("atkPerSec()"));
+  const d = run(`defense(${MOB})`), heals = d.hp / 357, f = heals * Math.max(0.3, 1 / run("atkPerSec()"));
   near(run(`healsPerSec(${MOB})`), heals);
   near(run(`healShare(${MOB})`), f);
   assert.ok(f > 0 && f < 1);
@@ -632,7 +632,7 @@ t("gear from the client check: Guild options are GvG-only, race CRIT and damage 
 t("Spell Fist: each basic attack also lands its physical hit", () => {
   const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
   const char = { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", matkTxt: "300+200", hitTxt: "220", crit: 0, aspd: 170, st: {}, intTxt: "",
-    sage: { sfLv: 10, boltLv: 10, bolts: { Fire: true, Water: false, Wind: false }, hsOn: false, hsAuto: false, ecOn: false }, cards: { daSF: false, vitata: false } };
+    sage: { sfLv: 10, boltLv: 10, bolts: { Fire: true, Water: false, Wind: false }, hsOn: false, hsAuto: false }, ec: { on: false }, cards: { daSF: false, vitata: false } };
   setup("Sage", { ...char, a: AUTO });
   const phys = run(`dmgPerHit(${MOB})`) * run(`hitChance(${MOB})`) / 100;   // a plain basic attack's hit, misses averaged in
   assert.ok(phys > 0);
@@ -732,7 +732,7 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
   near(run(`fightSec(${MOB})`), fight / (1 - f));
   near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`), sp + heals * 13 * 1.25);   // Heal's SP, +25%
   run("C().a={...C().a,sp:20}");
-  near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()-healSPPerSec()}finally{SG_MOB=null}})()`), 20 * 1.25 / run("useSec()"));   // skills cost +25% SP
+  near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()-defSP()}finally{SG_MOB=null}})()`), 20 * 1.25 / run("useSec()"));   // skills cost +25% SP
   run("C().mode='build';C().build={gear:{acc1:{id:2601,cards:[4053]}}}");    // build mode: the card in your gear already counts its +25%
   assert.equal(run("vitPct()"), 0);
 });
@@ -748,6 +748,37 @@ t("cards: a Sage's old Vitata, Hunter Fly and Side Winder settings move out of S
   const old = load({ job: "Sage", current: "s1", sessions: [{ id: "s1", name: "t", mobIds: [], entries: [] }], chars: { Sage: { sage: { hsLv: 10 } } } });
   assert.equal(old("state.chars.Sage.cards.vitata"), true);                 // Vitata was on by default in Sage options
   assert.equal(run("state.job='Sage';state.chars={};CRD().vitata"), true);  // and still is for a new Sage
+});
+
+t("Energy Coat works on any Mage, Wizard or Sage attack", () => {
+  setup("Wizard", { matkTxt: "300+200", aspd: 170, defTxt: "10+10", maxSp: 1000, maxHp: 4000, hitScale: 1, mobInterval: 1.5, spRegen: 40, st: {}, intTxt: "", autoSp: false,
+    a: { name: "x", type: "magic", pct: 100, hits: 1, el: "Fire", cast: 0, delay: 1, sp: 1, targets: 1 } });
+  assert.equal(run("ecOn()"), false);                                       // off for a new Wizard
+  const raw = run(`defense(${MOB})`).taken, hp = run(`hpLossPerMin(${MOB})`), sp = run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`);
+  run("ECO().on=true");
+  let d = run(`defense(${MOB})`);
+  assert.equal(d.red, 30);                                                  // 40 SP per 8 s holds full SP: −30%, 3% of Max SP a hit
+  near(d.hp, raw * 0.7);
+  near(d.ecSP, raw / run(`mobHitDmg(${MOB})`) * 0.03 * 1000);
+  near(run(`hpLossPerMin(${MOB})`), hp * 0.7);
+  near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`), sp + d.ecSP);
+  run("C().a={...C().a,sp:60}");                                            // the skill eats the regen: SP runs low, −6%
+  assert.equal(run(`defense(${MOB})`).red, 6);
+  run("C().autoSp=true;C().itemSp=37;ECO().spPct=70");                      // SP items keep it around 70%: −24%
+  assert.equal(run(`defense(${MOB})`).red, 24);
+  run("state.job='Knight';state.chars={};ECO().on=true");                   // not a Mage-line job
+  assert.equal(run("ecOn()"), false);
+});
+
+t("Energy Coat: a Sage's old setting moves out of Sage options", () => {
+  const S = [{ id: "s1", name: "t", mobIds: [], entries: [] }];
+  const app = load({ job: "Sage", current: "s1", sessions: S, chars: { Sage: { sage: { hsLv: 10, ecOn: false, autoSpPct: 30 } }, Wizard: { sage: { ecOn: true } } } });
+  assert.equal(app("JSON.stringify(state.chars.Sage.ec)"), JSON.stringify({ on: false, spPct: 30 }));
+  assert.equal(app("'ecOn' in state.chars.Sage.sage||'autoSpPct' in state.chars.Sage.sage"), false);
+  assert.equal(app("state.chars.Wizard.ec"), undefined);                    // only a Sage's setting carries over
+  const old = load({ job: "Sage", current: "s1", sessions: S, chars: { Sage: { sage: { hsLv: 10 } } } });
+  assert.equal(old("JSON.stringify(state.chars.Sage.ec)"), JSON.stringify({ on: true, spPct: 50 }));   // it was on by default
+  assert.equal(run("state.job='Sage';state.chars={};ecOn()"), true);       // and still is for a new Sage
 });
 
 console.log(`${n} tests passed`);

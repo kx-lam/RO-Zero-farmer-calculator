@@ -107,6 +107,12 @@ const AC=()=>{const c=C();if(!c.ac||typeof c.ac!=="object")c.ac={};for(const k i
 // attacks), Side Winder (Double Attack on basic attacks)
 const CARD_D={vitata:false,spBonus:25,healSp:13,healHp:357,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7};
 const CRD=()=>{const c=C();if(!c.cards||typeof c.cards!=="object")c.cards={};for(const k in CARD_D)if(c.cards[k]==null)c.cards[k]=CARD_D[k];return c.cards};
+// Energy Coat: the Mage quest skill, so Wizards and Sages have it too (it used to sit in Sage options). spPct: where your SP sits
+// when SP items top it up, which sets the damage cut
+const EC_JOBS=["Mage","Wizard","Sage"];
+const EC_D={on:false,spPct:50};
+const ECO=()=>{const c=C();if(!c.ec||typeof c.ec!=="object")c.ec={};for(const k in EC_D)if(c.ec[k]==null)c.ec[k]=EC_D[k];return c.ec};
+const ecOn=()=>EC_JOBS.includes(state.job)&&!!ECO().on;
 const acSpell=()=>{const a=AC(),[el,max,pct,hits,int]=AC_SPELLS[a.spell],lv=Math.min(max,Math.max(1,Math.round(num(a.lv,1))));return {el,lv,pct:pct(lv)+(statVal(C(),"int")||0)*int,hits:hits(lv)}};
 // auto-cast damage per proc (0 when it's off or the attack isn't basic attacks)
 const acDmg=m=>{if(!AC().on||C().a.type!=="auto")return 0;const s=acSpell();return withEl(s.el,()=>magicDmg(m,s.pct,s.el))*s.hits};
@@ -117,6 +123,6 @@ const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="
     preset:0,a:{...J.p[0]},dmgBonus:0,eq:[],
     nameType:MAGIC_JOBS.includes(job)?"magic":"phys", // name bonus defaults to the job's damage type
     autoSp:false,itemSp:37,itemPrice:200,potOn:false,potType:"",potPrice:2200,potMin:30,mobInterval:1.5,hitScale:0.3,hpRegen:0,curW:0,maxW:0,sellAt:70,townMin:3};
-  if(job==="Sage")Object.assign(c,{matkTxt:"100+200",intTxt:"40+10",maxSp:800,maxHp:4000,sage:{hsAuto:true,hsWorth:50000,hsLv:10},cards:{vitata:true}});
+  if(job==="Sage")Object.assign(c,{matkTxt:"100+200",intTxt:"40+10",maxSp:800,maxHp:4000,sage:{hsAuto:true,hsWorth:50000,hsLv:10},cards:{vitata:true},ec:{on:true}});
   return c};
 
