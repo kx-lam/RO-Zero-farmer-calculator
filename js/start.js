@@ -23,4 +23,5 @@ showTab(state.tab||"char");
 })();
 // ---- start ----
 syncClosed();syncChar();renderAll();resetForm();
+(function tripLoop(){tickTrip();setTimeout(tripLoop,1000)})();
 loadShareLink();addEventListener("hashchange",loadShareLink);

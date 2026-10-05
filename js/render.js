@@ -3,7 +3,7 @@ const syncChar=()=>{
   const c=C();$("job").value=state.job;renderEq();renderCons();
   $("preset").innerHTML=JOBS[state.job].p.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("")+'<option value="-1">Custom</option>';
   $("preset").value=String(c.preset??0);renderSkills();
-  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");["curW","maxW"].forEach(k=>$(k).value=num(c[k])>0?c[k]:"");$("townMin").value=c.townMin??3;$("sellAt").value=String(num(c.sellAt)===90?90:70);$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
+  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");["curW","maxW"].forEach(k=>$(k).value=num(c[k])>0?c[k]:"");$("townMin").value=c.townMin??3;$("sellAt").value=num(c.sellAt)>0?c.sellAt:"";$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
   $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";
   $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("nameType").value=c.nameType||"phys";$("autoSp").checked=!!c.autoSp;$("converters").checked=!!c.converters;$("potOn").checked=!!c.potOn;$("potAspd").value=c.potAspd??3;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;potInfo();$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
   const a=c.a;$("aType").value=a.type;$("aPct").value=a.pct;$("aHits").value=a.hits;$("aElem").value=a.el;$("aCast").value=a.cast;$("aDelay").value=a.delay;$("aSp").value=a.sp;$("aTargets").value=a.targets;$("aZeny").value=a.zeny||"";$("cartW").value=c.cartW||"";$("cartWrap").hidden=!num(a.cart);
@@ -62,8 +62,51 @@ function renderTracker(){
   const j=jobRate(s);
   if(j&&num(C().jobLv)>=jobMax()){$("tJob").textContent="Max";$("tJobS").textContent=`Job Lv ${jobMax()} is the max for ${state.job}`}
   else if(j){const need=jobNeed();$("tJob").textContent=pct(j.rate);$("tJobS").textContent=`${fmtDur((100-j.last)/j.rate)} to Job Lv ${num(C().jobLv)?num(C().jobLv)+1:"next"}`+(need?` · ≈ ${fmtN(j.rate/100*need)} job EXP/hr`:" · set your job level for job EXP/hr")}else{$("tJob").textContent="–";$("tJobS").textContent="Add Job EXP % to 2+ entries"}
-  renderChart(s);renderLog(s);renderCompare();renderGoalChart(renderGoal(s,st),renderJobGoal(s));
+  renderChart(s);renderLog(s);renderCompare();renderGoalChart(renderGoal(s,st),renderJobGoal(s));renderTrip(s);
 }
+// ---- sell timer: counts down to the session's sell point and rings (sound, notification, tab title); ticked every second by start.js ----
+const fmtClock=ms=>{const t=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(t/3600),m=Math.floor(t/60)%60,x=String(t%60).padStart(2,"0");return h?`${h}:${String(m).padStart(2,"0")}:${x}`:`${m}:${x}`};
+const BASE_TITLE=String(document.title||"Rozero Farm Planner");
+const tripPhase=(s,now=Date.now())=>!s.trip?"none":openPause(s)?"paused":now>=tripDue(s)-tripEarly()?"due":"run";
+function renderTrip(s=cur()){const c=C(),act=document.activeElement;
+  [["tripW","curW"],["tripMax","maxW"]].forEach(([id,k])=>{if(act!==$(id))$(id).value=num(c[k])>0?c[k]:""});
+  if(act!==$("tripAt"))$("tripAt").value=num(c.sellAt)>0?c.sellAt:"";if(act!==$("tripTownMin"))$("tripTownMin").value=c.townMin??3;
+  if(act!==$("tripEarly"))$("tripEarly").value=num(state.tripEarly)>0?state.tripEarly:"";
+  $("tripSound").checked=state.tripSound!==false;$("tripNotify").checked=state.tripNotify===true;
+  const t=wOn()?sessTrip(s):null,town=Math.max(0,num(c.townMin,3));let len="–",lenS,runs="–",runsS="";
+  if(!wOn())lenS="Type your Max Weight to work it out";
+  else if(!t)lenS=sessMobs(s).length?"You can't hurt the session's monsters with this attack":"Pick what you're farming (Monsters & maps → Farming … now)";
+  else if(!(t.wk>0))lenS="Their drops weigh nothing, so you never fill up";
+  else if(!(t.kills>=1))lenS=`<span class="bad">Your starting weight is already at your sell point (${fmtP(sellPct())}%)</span>`;
+  else{len=fmtDur(t.min/60);lenS=`~${fmtN(Math.floor(t.kills))} kills · ${t.wk.toFixed(1)} weight a kill · ${fmtN(Math.max(0,num(c.maxW)*t.at/100-num(c.curW)))} weight of room: ${fmtN(num(c.curW))} you start with → ${fmtN(num(c.maxW)*t.at/100)} (${fmtP(t.at)}%)${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}`;
+    const cyc=t.min+town;runs=`${(60/cyc).toFixed(1)}/hr`;runsS=`${fmtP(town)} min each · ${Math.round(town/cyc*100)}% of your time in town`}
+  $("tripLen").textContent=len;$("tripLenS").innerHTML=lenS;$("tripRuns").textContent=runs;$("tripRunsS").textContent=runsS;
+  TRIP_OK=!!(t&&t.wk>0&&t.kills>=1&&isFinite(t.min));renderTripBtns(s);tickTrip();
+}
+function renderTripBtns(s=cur()){const ph=tripPhase(s);TRIP_PHASE=ph;
+  $("tripBtns").innerHTML=ph==="none"?`<button type="button" class="primary" data-trip="go"${TRIP_OK?"":" disabled"}>Start</button>`
+    :`<button type="button" class="${ph==="due"?"primary":""}" data-trip="go"${TRIP_OK?"":" disabled"}>${ph==="due"?"Back from town: next trip":"Restart"}</button><button type="button" data-trip="stop">Stop</button>`}
+let TRIP_OK=false,TRIP_PHASE=null,TRIP_RING={id:null,n:0,at:0},TRIP_CTX=null;
+const tripAudio=()=>{try{if(!TRIP_CTX){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;TRIP_CTX=new A()}if(TRIP_CTX.state==="suspended")TRIP_CTX.resume();return TRIP_CTX}catch(e){return null}};
+// three short beeps
+function tripBeep(){const a=tripAudio();if(!a)return;const t0=a.currentTime+0.05;
+  [0,0.3,0.6].forEach(d=>{const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=880;g.gain.setValueAtTime(0.0001,t0+d);
+    g.gain.exponentialRampToValueAtTime(0.15,t0+d+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+d+0.22);o.connect(g);g.connect(a.destination);o.start(t0+d);o.stop(t0+d+0.25)})}
+function tripAlarm(s){if(state.tripSound!==false)tripBeep();
+  if(state.tripNotify===true&&typeof Notification!=="undefined"&&Notification.permission==="granted")
+    try{new Notification("Time to sell",{body:`${s.name}: you should be at your sell point. Go to town and sell or store.`,tag:"rozero-sell"})}catch(e){}}
+// rings once when a trip is due (and again each minute, up to 5 times, while this page stays open); paused sessions don't ring
+function tickTrip(){const now=Date.now(),s=cur();
+  state.sessions.forEach(x=>{if(tripPhase(x,now)!=="due")return;
+    if(!x.trip.rang){x.trip.rang=true;save();TRIP_RING={id:x.id,n:1,at:now};tripAlarm(x)}
+    else if(TRIP_RING.id===x.id&&TRIP_RING.n<5&&now-TRIP_RING.at>=6e4){TRIP_RING.n++;TRIP_RING.at=now;if(state.tripSound!==false)tripBeep()}});
+  const ph=tripPhase(s,now),el=$("tripClock");if(ph!==TRIP_PHASE)renderTripBtns(s);
+  if(ph==="none"){el.textContent="–";el.className="v mono";$("tripK").textContent="Next sell";$("tripS").textContent="Press Start when you leave town";document.title=BASE_TITLE;return}
+  const due=tripDue(s),left=due-now,early=tripEarly();
+  el.textContent=ph==="paused"?"Paused":left>0?fmtClock(left):"Sell now";el.className="v mono"+(ph==="due"?left>0?" warnc":" bad":"");
+  $("tripK").textContent=ph==="due"?"Time to sell":"Next sell";
+  $("tripS").textContent=`sell point at ${fmtT(due)}${early?` · rings at ${fmtT(due-early)}`:""} · left town ${fmtT(s.trip.from)}${ph==="paused"?" · paused: the clock waits for you":""}`;
+  document.title=(ph==="due"?"⏰ Sell now · ":ph==="run"?`${fmtClock(left)} · `:"")+BASE_TITLE}
 function renderChart(s){
   const svg=$("chart"),es=[...s.entries].sort((a,b)=>a.t-b.t);const W=800,H=340,pl=52,pr=18,pt=16,pb=34;
   if(!es.length){svg.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle">No entries yet</text>`;return}
@@ -216,10 +259,10 @@ function renderMobs(){
 }
 // selling trips spread over each kill (weight); hidden when it rounds to nothing
 const sellTxt=(s,pre,post="")=>s>=0.05&&isFinite(s)?`${pre}${s.toFixed(1)}s${post}`:s===Infinity?`${pre}<span class="bad">over your sell point</span>`:"";
-function weightTile(m){const t=tripInfo(m,walkSec());if(!t)return "";const c=C(),at=num(c.sellAt)===90?90:70;
+function weightTile(m){const t=tripInfo(m,walkSec());if(!t)return "";const c=C(),at=sellPct();
   const pctNow=num(c.maxW)?Math.round(num(c.curW)/num(c.maxW)*100):0;
   const v=!(t.wk>0)?"–":isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills`:'<span class="bad">sell first</span>';
-  return `<div class="tile"><div class="k">Weight · sell at ${t.fell?70:at}%</div><div class="v mono">${v}</div><div class="s">${t.wk>0?`${t.wk.toFixed(1)} weight per kill`:"its drops weigh nothing"}${isFinite(t.kills)&&t.wk>0?` · ${fmtDur(t.min/60)} a trip + ${fmtN(num(c.townMin,3))} min to town`:""} · now ${pctNow}%${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}</div></div>`}
+  return `<div class="tile"><div class="k">Weight · sell at ${t.fell?70:fmtP(at)}%</div><div class="v mono">${v}</div><div class="s">${t.wk>0?`${t.wk.toFixed(1)} weight per kill`:"its drops weigh nothing"}${isFinite(t.kills)&&t.wk>0?` · ${fmtDur(t.min/60)} a trip + ${fmtN(num(c.townMin,3))} min to town`:""} · start at ${pctNow}%${t.fell?' · <span class="bad">no regen past 70% and you need SP, so you sell at 70%</span>':""}</div></div>`}
 function renderMobTiles(){
   const m=calcMob();if(!m){$("mobTiles").innerHTML='<div class="note">Click a monster to see it here.</div>';return}
   const r=mobRow(m,walkSec());const s=cur();const L=lvExp(num(C().baseLv))||null;const om=openMaps(m);

@@ -227,8 +227,8 @@
       <span id="mercNote"></span>
     </div>
     <div class="bar note"><span>Weight:</span>
-      <label class="bar" style="flex-direction:row;gap:4px">now <input id="curW" type="number" min="0" style="width:72px"> of max <input id="maxW" type="number" min="0" placeholder="off" style="width:72px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">go sell at <select id="sellAt" style="width:auto"><option value="70">70%</option><option value="90">90%</option></select></label>
+      <label class="bar" style="flex-direction:row;gap:4px">carrying <input id="curW" type="number" min="0" style="width:72px" title="What you carry when you leave town: gear, potions, scrolls… Only the room above it fills with loot"> of max <input id="maxW" type="number" min="0" placeholder="off" style="width:72px"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">go sell at <input id="sellAt" type="number" min="1" max="90" step="1" placeholder="70" style="width:56px" title="Where you stop to sell, e.g. 65 to stay clear of 70% (no HP/SP regen). Past 70% you fight with no regen; 90% is the most">%</label>
       <label class="bar" style="flex-direction:row;gap:4px">town and back <input id="townMin" type="number" step="0.5" min="0" placeholder="3" style="width:64px"> min</label>
       <span class="muted">at 70% HP and SP stop regenerating; at 90% you can't attack or use skills</span>
     </div>
@@ -264,6 +264,25 @@
     <div class="tile"><div class="k">Kill pace</div><div class="v" id="tPace">–</div><div class="s" id="tPaceS"></div></div>
     <div class="tile"><div class="k">Zeny / hr</div><div class="v" id="tZeny">–</div><div class="s" id="tZenyS"></div></div>
     <div class="tile"><div class="k">Job EXP / hr</div><div class="v" id="tJob">–</div><div class="s" id="tJobS"></div></div>
+  </section>
+
+  <section class="card" data-tab="track" id="tripCard">
+    <div class="bar"><h2 class="grow">Sell timer</h2><span id="tripBtns" class="bar"></span></div>
+    <div class="note">The game's auto return only takes you to town at a weight %; it doesn't sell or store anything. Set your starting weight to what you leave town with (gear, potions, scrolls) — only the room above it fills with loot. Start this when you leave town and it rings when the session's monsters should have filled you to your sell point, so you can go back and sell. Time the session is paused is added on.</div>
+    <div class="bar note" style="margin-top:6px">
+      <label class="bar" style="flex-direction:row;gap:4px">starting weight <input id="tripW" type="number" min="0" style="width:72px" title="What you carry when you leave town: gear, potions, scrolls, Fly Wings… Read it from the weight in your inventory window. Only the room left above it fills with loot"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">of max <input id="tripMax" type="number" min="0" placeholder="off" style="width:72px"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">sell at <input id="tripAt" type="number" min="1" max="90" step="1" placeholder="70" style="width:56px">%</label>
+      <label class="bar" style="flex-direction:row;gap:4px">town and back <input id="tripTownMin" type="number" step="0.5" min="0" placeholder="3" style="width:56px"> min</label>
+      <label class="bar" style="flex-direction:row;gap:4px">ring <input id="tripEarly" type="number" min="0" step="0.5" placeholder="0" style="width:56px"> min early</label>
+      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="tripSound" style="width:auto"> sound</label>
+      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="tripNotify" style="width:auto"> notification</label>
+    </div>
+    <div class="tiles" style="margin-top:10px">
+      <div class="tile now"><div class="k" id="tripK">Next sell</div><div class="v mono" id="tripClock">–</div><div class="s" id="tripS"></div></div>
+      <div class="tile"><div class="k">One trip</div><div class="v mono" id="tripLen">–</div><div class="s" id="tripLenS"></div></div>
+      <div class="tile"><div class="k">Town runs</div><div class="v mono" id="tripRuns">–</div><div class="s" id="tripRunsS"></div></div>
+    </div>
   </section>
 
   <section class="card" data-tab="track">
