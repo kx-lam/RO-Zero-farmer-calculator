@@ -455,12 +455,12 @@
   <section class="card" data-tab="ref">
     <div class="bar"><h2 class="grow">Party EXP (Even Share)</h2><span class="note" id="refPartyNote"></span></div>
     <div class="scroll"><table id="refPartyTable"><thead></thead><tbody></tbody></table></div>
-    <div class="note">Your share = ⌊monster EXP × (100% + 10% × (members − 1)) ÷ members⌋; then base EXP = share × (1 + gear EXP % + EXP bonus %) and job EXP = job share × (1 + gear EXP % + Job EXP bonus %), rounded down. Bonuses add up and come after the split. Only members on the same map within 15 base levels count, and the game shares by damage dealt, so a kill can be 1 EXP off. Checked against in-game kills.</div>
+    <div class="note">Your share = floor(monster EXP × (100% + 10% × (members − 1)) ÷ members); then base EXP = share × (1 + gear EXP % + EXP bonus %) and job EXP = job share × (1 + gear EXP % + Job EXP bonus %), rounded down. Bonuses add up and come after the split. Only members on the same map within 15 base levels count, and the game shares by damage dealt, so a kill can be 1 EXP off. Checked against in-game kills.</div>
   </section>
   <section class="card" data-tab="ref">
     <div class="bar"><h2 class="grow">Game formulas</h2><span class="note">"Yours" uses your Character tab</span></div>
     <div class="scroll"><table id="refFormulas" class="formulas"><thead><tr><th>Value</th><th>Formula</th><th>Yours</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Formulas the calculator uses, from <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info</a>, <a href="https://irowiki.org/wiki/Stats" target="_blank" rel="noopener">iRO Wiki</a> and the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a>. ⌊ ⌋ rounds down. Stats are your totals (base + job bonus + gear).</div>
+    <div class="note">Formulas the calculator uses, from <a href="https://roz.prontera.info/mechanics" target="_blank" rel="noopener">roz.prontera.info</a>, <a href="https://irowiki.org/wiki/Stats" target="_blank" rel="noopener">iRO Wiki</a> and the <a href="https://landgris.github.io/ROCalculator/?zero" target="_blank" rel="noopener">Landgris ROCalculator</a>. floor(…) means round down to a whole number. Stats are your totals (base + job bonus + gear).</div>
   </section>
   <section class="card" data-tab="ref">
     <div class="bar"><h2 class="grow">Element table</h2>
