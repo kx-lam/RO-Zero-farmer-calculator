@@ -6,7 +6,7 @@ A single-page farming planner and EXP tracker for **Ragnarok Zero: Global**. Eve
 
 ## What it does
 
-- **EXP tracker:** log your Base and Job EXP % as you farm (or paste many lines at once). You get EXP/hr, time to the next level, a progress chart, and kill pace split into fighting and walking time.
+- **EXP tracker:** log your Base and Job EXP % as you farm (or paste many lines at once). Entries go on today's date unless you pick another; a session that runs past midnight or over several days shows the date next to each time. You get EXP/hr, time to the next level, a progress chart, and kill pace split into fighting and walking time.
 - **Every 2nd job:** pick a job and an attack. Presets use max-level Ragnarok Zero skill data (rozerodb, Landgris ROCalculator Zero data) and include cast time, delay, base-level scaling and stat bonuses.
 - **Damage model:** status ATK/MATK, weapon size penalty, element table, monster DEF/MDEF, hit and dodge chance, crits, mastery ATK, gear % bonuses, cast and delay reduction, ASPD potions and elemental converters.
 - **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned (Skills card) gets that much more from NPCs: the loot value per kill, and the NPC price a market price replaces. Discount cuts what you pay NPCs for SP items, the ASPD potion and consumables; untick "from NPCs" when you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10, read from Zero's skill data.

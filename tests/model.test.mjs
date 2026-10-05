@@ -102,6 +102,15 @@ t("tracker: EXP rate across a level-up, with paused time left out", () => {
   assert.equal(s.spanMin, 45);
 });
 
+t("tracker: entries on a picked date, and pasted times running past midnight", () => {
+  assert.equal(run(`entryTime(21,30,"2026-10-04")`), new Date(2026, 9, 4, 21, 30).getTime());
+  assert.deepEqual([...run(`pasteTimes([[23,50],[0,10],[0,40]],"2026-10-04")`)],
+    [new Date(2026, 9, 4, 23, 50), new Date(2026, 9, 5, 0, 10), new Date(2026, 9, 5, 0, 40)].map(d => d.getTime()));
+  const a = new Date(2026, 9, 4, 23, 50).getTime(), b = new Date(2026, 9, 5, 0, 10).getTime();
+  assert.equal(run(`multiDay([{t:${a - 6e5}},{t:${a}}])`), false);
+  assert.equal(run(`multiDay([{t:${a}},{t:${b}}])`), true);
+});
+
 t("tracker: job EXP % wraps at a job level-up", () => {
   const t0 = 1e12;
   run(`cur().entries=[{t:${t0},lv:10,pct:1,jpct:80},{t:${t0 + 18e5},lv:10,pct:2,jpct:95},{t:${t0 + 36e5},lv:10,pct:3,jpct:10}];cur().pauses=[]`);
