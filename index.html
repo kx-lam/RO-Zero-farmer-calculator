@@ -327,7 +327,7 @@
 
   <section class="card" data-tab="track">
     <div class="bar"><h2 class="grow">Compare sessions</h2><span class="note">Click a row to open it</span></div>
-    <div class="scroll"><table id="cmpTable"><thead><tr><th>Session</th><th>Job</th><th>Monster</th><th>When</th><th>Length</th><th>%/hr</th><th>EXP/min</th><th>Kills/hr</th><th>Sec/kill</th></tr></thead><tbody></tbody></table></div>
+    <div class="scroll tall"><table id="cmpTable"><thead><tr><th data-sk="name">Session</th><th data-sk="job">Job</th><th data-sk="mobs" title="filters on the monsters and the map">Monster</th><th data-sk="when">When</th><th data-sk="len">Length</th><th data-sk="pct" title="filters on the %/hr, or on the level: B65">%/hr</th><th data-sk="epm">EXP/min</th><th data-sk="kph">Kills/hr</th><th data-sk="spk">Sec/kill</th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="job" placeholder="job"></td><td><input type="search" data-tf="mobs" placeholder="monster or map"></td><td><input type="search" data-tf="when" placeholder="3 Oct"></td><td><input type="search" data-tf="len" placeholder=">60"></td><td><input type="search" data-tf="pct" placeholder=">5 or B65"></td><td><input type="search" data-tf="epm" placeholder=">100000"></td><td><input type="search" data-tf="kph" placeholder=">300"></td><td><input type="search" data-tf="spk" placeholder="<10"></td></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card" data-tab="maps">

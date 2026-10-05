@@ -74,7 +74,7 @@ tbody tr{cursor:pointer}
 #huntTable td{vertical-align:top}
 /* Compare sessions: long session names and monster lists wrap instead of widening the table */
 #cmpTable th:nth-child(3),#cmpTable td:nth-child(1),#cmpTable td:nth-child(3){white-space:normal;text-align:left;min-width:120px;max-width:180px;line-height:1.35}
-#cmpTable td:nth-child(1){max-width:150px}
+#cmpTable td:nth-child(1){max-width:150px}#cmpTable .filters input{min-width:40px}
 #huntTable td.mainmobs{white-space:normal;min-width:200px;line-height:1.35;text-align:left}
 #mobInfoDrops td.name,#mobInfoMaps td.name,#itemTable td.name,#itemDroppers td.name{text-align:left}
 #mobInfoMaps td:last-child{white-space:normal}
