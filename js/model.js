@@ -19,8 +19,10 @@ const ocMul=()=>1+skRate("overcharge")/100;
 const discMul=()=>C().npcBuy===false?1:1-skRate("discount")/100;
 const spItemPrice=()=>num(C().itemPrice)*discMul();
 const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
-// zeny per hour spent on the ASPD potion (consumables carry no price)
-const potCostHr=()=>potOnlyHr();
+// Blessing of Yggdrasil: one World Tree Dew or Zelstar an hour (not sold by NPCs, so no Discount)
+const yggCostHr=()=>C().yggOn?num(C().yggPrice):0;
+// zeny per hour spent on the ASPD potion and Blessing of Yggdrasil (other consumables carry no price)
+const potCostHr=()=>potOnlyHr()+yggCostHr();
 const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 // seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
 // variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)

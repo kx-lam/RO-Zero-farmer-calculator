@@ -62,6 +62,9 @@ $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();ren
 const potInfo=()=>{const c=C();$("potInfo").textContent=!c.potOn?"":c.mode!=="build"&&statVal(c,"agi")==null?"type your AGI above to count it (value × AGI/200)":`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`};
 $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});
 ["potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
+const yggInfo=()=>{const c=C();$("yggInfo").textContent=c.yggOn&&yggCostHr()>0?`~${fmtN(yggCostHr())} z/hr`:""};
+$("yggOn").addEventListener("change",e=>{C().yggOn=e.target.checked;save();yggInfo();renderAll()});
+$("yggPrice").addEventListener("input",e=>{C().yggPrice=num(e.target.value);save();yggInfo();renderAll()});
 ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
   if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));

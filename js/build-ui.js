@@ -24,7 +24,9 @@ const consOf=c=>{if(!Array.isArray(c.cons))c.cons=[];return c.cons};
 const consStatOf=c=>{if(!c.consStat||typeof c.consStat!=="object")c.consStat={};const pb=c.pbuffs||{};
   [["agiFood","agi"],["dexFood","dex"]].forEach(([k,st])=>{if(!pb[k])return;if(pb[k].on){const o=c.consStat[st]||(c.consStat[st]={});o.n=num(o.n)+Math.min(10,Math.max(1,num(pb[k].lv,10)))}delete pb[k]});
   return c.consStat};
-const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C());
+// Blessing of Yggdrasil (World Tree Dew or Zelstar, 1 hour): all stats +7, ATK +30, MATK +30, HIT +5, FLEE +5
+const YGG_FX=[...["str","agi","vit","int","dex","luk"].map(k=>[k,7]),["atk",30],["matk",30],["hit",5],["flee",5]];
+const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C());if(C().yggOn)YGG_FX.forEach(([t,v])=>lines.push([t,null,null,v]));
   STAT6_UI.forEach(k=>{const o=cs[k]||{};if(num(o.n))lines.push([k,null,null,num(o.n)]);if(num(o.p))lines.push([k+"_percent",null,null,num(o.p)])});
   consOf(C()).filter(r=>r.on).forEach(r=>{const o=BUILD.parseOptions(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||"Consumable"}: ${x}`))});return {lines,bad}};
 // ---- ASPD potions and buffs from others, from the RO樂園攻速計算機 sheet (2026-09-07, "增益"). "aspd_mod" is the sheet's potion/skill

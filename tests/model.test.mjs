@@ -719,6 +719,16 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`statVal(C(),"luk")`), 1);
   assert.equal(run(`cf("hitTxt")`), run(`C().hitTxt`));
   run(`C().addOnTop=true`);
+  // Blessing of Yggdrasil (World Tree Dew / Zelstar, 1 hour): all stats +7, ATK/MATK +30, HIT/FLEE +5, and its price each hour
+  run(`C().consStat={};C().cons=[];C().yggOn=true;C().yggPrice=50000;applyConsumables()`);
+  assert.equal(run(`statVal(C(),"luk")`), 8);
+  assert.equal(run(`statVal(C(),"str")`), 57);
+  assert.equal(run(`sumStat(cf("hitTxt"))-sumStat(C().hitTxt)`), 5 + 7 + 2); // HIT +5, DEX +7, LUK +7
+  assert.equal(run(`sumStat(cf("fleeTxt"))-sumStat(C().fleeTxt)`), 5 + 7 + 1); // FLEE +5, AGI +7, LUK +7
+  assert.equal(run(`potCostHr()`), 50000);
+  run(`C().yggOn=false;applyConsumables()`);
+  assert.equal(run(`statVal(C(),"luk")`), 1);
+  assert.equal(run(`potCostHr()`), 0);
   const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
   assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
 });
