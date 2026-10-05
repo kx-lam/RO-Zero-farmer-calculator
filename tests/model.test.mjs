@@ -255,17 +255,17 @@ t("a restored save is cleaned up before anything uses it", () => {
 
 t("Vitata: you cast Heal Lv1, so healing takes time away from attacking", () => {
   setup("Sage", { matkTxt: "300+200", aspd: 170, defTxt: "10+10", maxSp: 800, maxHp: 4000, hitScale: 1, mobInterval: 1.5, st: {}, intTxt: "",
-    sage: { vitata: false, healSp: 13, healHp: 357, spBonus: 25, ecOn: false, hsOn: false, hsAuto: false } });
+    sage: { ecOn: false, hsOn: false, hsAuto: false }, cards: { vitata: false, healSp: 13, healHp: 357, spBonus: 25 } });
   const off = run(`fightSec(${MOB})`);
   assert.equal(run(`healShare(${MOB})`), 0);                         // no Vitata: no healing
-  run("G().vitata=true");
+  run("CRD().vitata=true");
   const d = run(`sgDefense(${MOB})`), heals = d.hp / 357, f = heals * Math.max(0.3, 1 / run("atkPerSec()"));
   near(run(`healsPerSec(${MOB})`), heals);
   near(run(`healShare(${MOB})`), f);
   assert.ok(f > 0 && f < 1);
   near(run(`fightSec(${MOB})`), off / (1 - f));                       // the fight takes longer by the time spent healing
   near(d.healSP, heals * 13 * 1.25);                                  // Heal's SP carries Vitata's +25%
-  run("G().healHp=1");                                                // a heal too small to keep up
+  run("CRD().healHp=1");                                                // a heal too small to keep up
   assert.equal(run(`fightSec(${MOB})`), Infinity);
 });
 
@@ -632,14 +632,14 @@ t("gear from the client check: Guild options are GvG-only, race CRIT and damage 
 t("Spell Fist: each basic attack also lands its physical hit", () => {
   const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
   const char = { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", matkTxt: "300+200", hitTxt: "220", crit: 0, aspd: 170, st: {}, intTxt: "",
-    sage: { sfLv: 10, boltLv: 10, bolts: { Fire: true, Water: false, Wind: false }, hsOn: false, hsAuto: false, daSF: false, vitata: false, ecOn: false } };
+    sage: { sfLv: 10, boltLv: 10, bolts: { Fire: true, Water: false, Wind: false }, hsOn: false, hsAuto: false, ecOn: false }, cards: { daSF: false, vitata: false } };
   setup("Sage", { ...char, a: AUTO });
   const phys = run(`dmgPerHit(${MOB})`) * run(`hitChance(${MOB})`) / 100;   // a plain basic attack's hit, misses averaged in
   assert.ok(phys > 0);
   setup("Sage", { ...char, preset: 0, a: JSON.parse(run("JSON.stringify(JOBS.Sage.p[0])")) });   // the Spell Fist preset
   near(run(`sfPerAttack(${MOB})`), run(`sfMagic(${MOB})`) + phys);
   near(run(`hitChance(${MOB})`), 100);                                    // the Spell Fist proc itself still always lands
-  run("G().daSF=true;G().daPct=7");                                        // Side Winder: the 2nd hit is physical too
+  run("CRD().daSF=true;CRD().daPct=7");                                        // Side Winder: the 2nd hit is physical too
   near(run(`sfPerAttack(${MOB})`), run(`sfMagic(${MOB})`) + phys * 1.07);
   run("C().atkTxt='0'");                                                   // no ATK still leaves the 1 damage minimum
   assert.ok(run(`sfPhys(${MOB})`) < phys);
@@ -691,8 +691,11 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`statVal(C(),"agi")`), 87);                              // AGI food Lv 7 from an old save
   assert.equal(run(`JSON.stringify(C().pbuffs)`), "{}");
   assert.equal(run(`potCostHr()`), 0);                                       // consumables carry no zeny cost
+  assert.equal(run(`PBUFF.some(b=>b.k==="bandage")`), false);               // Yggdrasil's Blessing (Battle Bandage) is gone
   run(`C().pbuffs={bandage:{on:true}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
-  assert.equal(run(`statVal(C(),"luk")`), 8);                               // Yggdrasil's Blessing: all stats +7
+  assert.equal(run(`statVal(C(),"luk")`), 1);                               // an old save's tick adds nothing
+  run(`C().pbuffs={};C().consStat={...C().consStat,dex:{n:7},luk:{n:7}};C().cons=[{on:true,name:"x",eff:"HIT +5"}];applyConsumables()`);
+  assert.equal(run(`statVal(C(),"luk")`), 8);
   assert.equal(run(`sumStat(cf("hitTxt"))-sumStat(C().hitTxt)`), 5 + 7 + 2); // HIT +5, DEX +7, and LUK 1 → 8 adds floor(8/3)
   run(`C().addOnTop=false;applyConsumables()`);                             // the typed status window already has them
   assert.equal(run(`statVal(C(),"luk")`), 1);
@@ -700,6 +703,51 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   run(`C().addOnTop=true`);
   const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
   assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
+});
+
+t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", hitTxt: "300", crit: 0, aspd: 170, defTxt: "10+10", hitScale: 1, mobInterval: 1.5, hpRegen: 0,
+    st: {}, skills: {}, a: AUTO });
+  assert.equal(run("JSON.stringify(CRD())"), run("JSON.stringify(CARD_D)"));  // all off for a new job
+  const per = run(`perUse(${MOB})`), hp = run(`hpLossPerMin(${MOB})`), fight = run(`fightSec(${MOB})`), sp = run("spNeedPerSec()");
+  run("CRD().daSF=true;CRD().daPct=7");                                     // Side Winder: basic attacks hit twice 7% of the time
+  near(run(`perUse(${MOB})`), per * 1.07);
+  run("C().skills={'double-attack':10}");                                   // a learned Double Attack: the card follows it, nothing added
+  near(run(`perUse(${MOB})`), per);
+  run("C().skills={};C().a={...AUTO_,type:'phys',pct:300,sp:10}".replace("AUTO_", JSON.stringify(AUTO)));
+  const skillPer = run(`perUse(${MOB})`);
+  run("CRD().daSF=false");
+  near(run(`perUse(${MOB})`), skillPer);                                    // skills don't double attack
+  run(`C().a=${JSON.stringify(AUTO)}`);
+  run("CRD().hfOn=true");                                                   // Hunter Fly: HP back from basic attacks
+  const hf = run("hfHpPerSec()"), n = run("atkPerSec()") * 5;
+  near(hf, (1 - Math.pow(0.95, n)) * 100);
+  near(run(`hpLossPerMin(${MOB})`), Math.max(0, hp - hf * 60));
+  run("C().a={...C().a,type:'magic'}");                                     // spells don't trigger it
+  assert.equal(run("hfHpPerSec()"), 0);
+  run(`C().a=${JSON.stringify(AUTO)};CRD().hfOn=false;CRD().vitata=true`);  // Vitata: you cast Heal Lv1 as on a Sage
+  const heals = hp / 60 / 357, f = heals * Math.max(0.3, 1 / run("atkPerSec()"));
+  near(run(`healsPerSec(${MOB})`), heals);
+  near(run(`fightSec(${MOB})`), fight / (1 - f));
+  near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`), sp + heals * 13 * 1.25);   // Heal's SP, +25%
+  run("C().a={...C().a,sp:20}");
+  near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()-healSPPerSec()}finally{SG_MOB=null}})()`), 20 * 1.25 / run("useSec()"));   // skills cost +25% SP
+  run("C().mode='build';C().build={gear:{acc1:{id:2601,cards:[4053]}}}");    // build mode: the card in your gear already counts its +25%
+  assert.equal(run("vitPct()"), 0);
+});
+
+t("cards: a Sage's old Vitata, Hunter Fly and Side Winder settings move out of Sage options", () => {
+  const app = load({ job: "Sage", current: "s1", sessions: [{ id: "s1", name: "t", mobIds: [], entries: [] }],
+    chars: { Sage: { sage: { hsLv: 10, vitata: false, hfOn: true, hfHp: 120, daSF: true } }, Knight: { sage: { vitata: true } }, Wizard: { sage: { hsLv: 5 } } } });
+  assert.equal(app("JSON.stringify(state.chars.Sage.cards)"), JSON.stringify({ vitata: false, spBonus: 25, healSp: 13, healHp: 357, hfOn: true, hfPct: 5, hfHp: 120, daSF: true, daPct: 7 }));
+  assert.equal(app("Object.keys(CARD_D).filter(k=>k in state.chars.Sage.sage).length"), 0);   // gone from Sage options
+  assert.equal(app("state.chars.Sage.sage.hsLv"), 10);
+  assert.equal(app("state.chars.Knight.cards"), undefined);                 // only a Sage's settings carry over
+  assert.equal(app("JSON.stringify(state.chars.Knight.sage)"), "{}");
+  const old = load({ job: "Sage", current: "s1", sessions: [{ id: "s1", name: "t", mobIds: [], entries: [] }], chars: { Sage: { sage: { hsLv: 10 } } } });
+  assert.equal(old("state.chars.Sage.cards.vitata"), true);                 // Vitata was on by default in Sage options
+  assert.equal(run("state.job='Sage';state.chars={};CRD().vitata"), true);  // and still is for a new Sage
 });
 
 console.log(`${n} tests passed`);

@@ -65,6 +65,8 @@ $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potIn
 ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
   if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));
+// cards any job can slot: Vitata, Hunter Fly, Side Winder
+$("cardRow").addEventListener("input",e=>{const i=e.target,k=i.dataset.cd;if(!k)return;CRD()[k]=i.type==="checkbox"?i.checked:num(i.value);save();renderAll()});
 // auto-cast spell (card / weapon / scroll), any job
 $("acOn").addEventListener("change",e=>{AC().on=e.target.checked;save();renderAll()});
 $("acSpell").addEventListener("change",e=>{AC().spell=e.target.value;save();renderAll()});
