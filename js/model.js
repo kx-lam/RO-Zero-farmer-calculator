@@ -25,12 +25,21 @@ const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 // seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
 // variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)
 const vctFactor=()=>{const c=C();const dex=statVal(c,"dex");if(dex==null)return 1;return Math.max(0,1-Math.sqrt((2*dex+statVal(c,"int"))/530))};
-const castSec=()=>{const c=C(),a=c.a;
-  if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-num(c.vctPct)/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-num(c.fctPct)/100));
+// a card ticked in the Cards rows that build mode already has in your gear (its own lines count from there)
+const cardInGear=(c,ids)=>c.mode==="build"&&Object.values((c.build&&c.build.gear)||{}).some(g=>g&&(g.cards||[]).some(id=>ids.includes(+id)));
+// Phen (4077) and Bloody Butterfly (4327) Cards: casts can't be interrupted, variable cast +25% / +30%
+const PHEN=4077,BBFLY=4327;
+const noBreak=()=>{const cd=CRD();return !!(cd.phen||cd.bbfly)||cardInGear(C(),[PHEN,BBFLY])};
+const vctCards=()=>{const cd=CRD(),c=C();return (cd.phen&&!cardInGear(c,[PHEN])?25:0)+(cd.bbfly&&!cardInGear(c,[BBFLY])?30:0)};
+const castSec=()=>{const c=C(),a=c.a,vp=num(c.vctPct)-vctCards();
+  if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-vp/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-num(c.fctPct)/100));
   const base=num(a.cast),f=Math.min(100,Math.max(0,num(c.fixedShare)))/100;
-  return Math.max(0,base*(1-f)*vctFactor()*(1-num(c.vctPct)/100))+Math.max(0,(base*f-num(c.fctSec))*(1-num(c.fctPct)/100))};
+  return Math.max(0,base*(1-f)*vctFactor()*(1-vp/100))+Math.max(0,(base*f-num(c.fctSec))*(1-num(c.fctPct)/100))};
+// a hit that lands while you cast interrupts it and you start again (SP is only spent on a cast that finishes). With λ hits landing per
+// second from the monster in play, a T-second cast takes (e^(λT) − 1)/λ on average. Not with Phen or Bloody Butterfly
+const castEff=()=>{const T=castSec();if(T<=0||noBreak())return T;const l=hitsOnYou(SG_MOB||calcMob());return l>0?Math.expm1(l*T)/l:T};
 const delaySec=()=>Math.max(0,num(C().a.delay)*(1-num(C().acdPct)/100));
-const useSec=()=>{const a=C().a;if(a.type==="auto"||a.type==="spellfist")return 1/atkPerSec();return Math.max(castSec()+Math.max(delaySec(),1/atkPerSec()),0.1)};
+const useSec=()=>{const a=C().a;if(a.type==="auto"||a.type==="spellfist")return 1/atkPerSec();return Math.max(castEff()+Math.max(delaySec(),1/atkPerSec()),0.1)};
 // cart skills (Cart Revolution): +a.cart % per 8,000 cart weight, capped at a full 8,000 cart
 const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});if(num(a.cart))p+=num(a.cart)*Math.min(8000,Math.max(0,num(c.cartW)))/8000;return a.blv?p*num(c.baseLv,99)/100:p};
 const targets=()=>Math.max(1,num(C().a.targets,1));
@@ -99,7 +108,9 @@ function physDmg(m,pool){if(pool<=0)return 0;
 function leftDmg(m){if(!dualHit())return 0;const P=atkParts(),d=physDmg(m,P.left*sizeMod(m,C().lw)/100*elemMult(m,leftEl())/100+(P.neutral-P.st)*elemMult(m,"Neutral")/100);
   return d>0?Math.max(1,Math.floor(d*handPct().left/100)):0}
 // damage of one use before hit and crit: every hit of the attack, plus the left hand once
-const perUse=m=>{const a=C().a,h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);return dmgPerHit(m)*Math.max(0.01,h)+leftDmg(m)};
+// Side Winder adds its double attack to basic attacks, right hand only, unless you learned Double Attack (the card then follows the skill)
+const swMul=()=>C().a.type==="auto"&&!skLv(C(),"double-attack")?daFactor():1;
+const perUse=m=>{const a=C().a,h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);return dmgPerHit(m)*Math.max(0.01,h)*swMul()+leftDmg(m)};
 // crits (basic attacks only): chance = CRIT (doubled with a katar) − monster LUK × 0.2, always hit, × 1.4 × (1 + crit damage %)
 // m: the monster, for gear CRIT that only counts against its race (Cruiser Card: CRIT +7 vs Brute)
 const critRace=m=>{const c=C();return m&&c.bx&&c.bx.critRace?num(c.bx.critRace[m.race]):0};
@@ -114,11 +125,20 @@ function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m
   if(critChance(m)>0||proc>0)return Math.max(1,m.hp/useAvg(m,per,proc));
   return Math.ceil(m.hp/per)/(hitChance(m)/100)}
 // SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s, + (INT − 120)/2 + 4 from INT 120 (roz.prontera.info), unless typed
-const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVal(C(),"int");return 1+Math.floor(num(cf("maxSp"))/100)+Math.floor(i/6)+(i>=120?Math.floor((i-120)/2)+4:0)};
+// "SP Recovery +x%" from gear (Eggyra, Sohee, Merman Cards…) raises it by x%; a typed regen already has it
+const spRecPct=()=>{const c=C();return c.bx?num(c.bx.spRec):0};
+const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVal(C(),"int");const r=1+Math.floor(num(cf("maxSp"))/100)+Math.floor(i/6)+(i>=120?Math.floor((i-120)/2)+4:0);
+  return spRecPct()?Math.floor(r*(1+spRecPct()/100)):r};
 // gear "SP consumption +x%" (build mode) scales the SP each use costs
-const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100)};
-const spNeedPerSec=()=>isSF()?sgUpkeep()+sgDefSP()+hsFullSP()*hsSustain():num(C().a.sp)*spCostMul()/useSec();
-const regenPerSec=()=>REGEN_OFF?0:spRegen8()/8;
+// Vitata Card's +25% counts when ticked, unless build mode already has the card in your gear
+const vitInGear=c=>cardInGear(c,[4053]);
+const vitPct=()=>CRD().vitata&&!vitInGear(C())?num(CRD().spBonus):0;
+const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100+vitPct()/100)};
+// SP the attack itself costs per second (Spell Fist: its upkeep); defSP adds Energy Coat and Vitata's heals against the monster in play
+const skillSPPerSec=()=>num(C().a.sp)*spCostMul()/useSec();
+const spNeedPerSec=()=>isSF()?sgUpkeep()+defSP()+hsFullSP()*hsSustain():skillSPPerSec()+defSP();
+// SP back per second: natural regen (stops when you're overweight) plus SP from cards (cardSPPerSec), which keeps going
+const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8)+cardSPPerSec();
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&num(C().itemSp)>0?Math.max(0,spNeedPerSec()-regenPerSec())/num(C().itemSp):0;
 const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&num(C().itemSp)>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
@@ -129,9 +149,9 @@ const defParts=()=>{const p=String(cf("defTxt")||"0").split("+").map(x=>parseFlo
 // dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
 const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(cf("fleeTxt"))-m.flee95));
 const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,((m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)*takenMul(m))};
-const hpLossPerMin=m=>{if(isSF()){const d=sgDefense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)):null}const raw=mobHitDmg(m);if(raw==null)return null;const dg=dodge(m);const hits=Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5));return Math.max(0,raw*hits*60-num(C().hpRegen))};
-// ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, Vitata, Energy Coat, Hunter Fly, Side Winder, SP items) ----
-const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5,vitata:true,spBonus:25,healSp:13,healHp:357,ecOn:true,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7,autoSpPct:50};
+const hpLossPerMin=m=>{const d=defense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)):null};
+// ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, SP items; Energy Coat from ECO(), Vitata, Hunter Fly and Side Winder from CRD()) ----
+const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5};
 const G=()=>{const c=C();if(!c.sage)c.sage={};for(const k in SAGE_D)if(c.sage[k]==null)c.sage[k]=JSON.parse(JSON.stringify(SAGE_D[k]));return c.sage};
 const isSF=()=>C().a.type==="spellfist";
 let HS_OVR=null; // Hindsight forced on/off while comparing
@@ -146,42 +166,59 @@ const magicDmg=(m,pct,el,addMatk=0)=>{const e=elemMult(m,el)/100;if(e<=0||pct<=0
 const hsLvN=()=>Math.min(10,Math.max(0,num(G().hsLv)));
 const hsChance=()=>hsOnNow()?hsLvN()*2/100:0;
 const hsBoltLv=()=>Math.floor(hsLvN()/2);
-const sgSpMult=()=>1+(G().vitata?num(G().spBonus):0)/100; // Vitata Card: +25% SP cost
+const sgSpMult=()=>1+(CRD().vitata?num(CRD().spBonus):0)/100; // Vitata Card: +25% SP cost
 const hsProcSP=()=>(10+2*hsBoltLv())*2/3*sgSpMult();
 // Double Bolt (needs Hindsight): (30 + 10 × Lv)% chance the auto-cast bolt fires again; recast every 90 s for 35 + 5 × Lv SP
 const dbLvN=()=>Math.min(5,Math.max(1,num(G().dbLv,5)));
 const dbChance=()=>hsOnNow()&&G().dbOn?(30+10*dbLvN())/100:0;
 // Spell Fist upkeep: 76 SP plus a bolt every 300 s
 const sgUpkeep=()=>(76+30)*sgSpMult()/300+(hsOnNow()&&G().dbOn?(35+5*dbLvN())*sgSpMult()/90:0);
-// Side Winder Card: chance to hit twice; the 2nd hit can proc Spell Fist if ticked
-const daFactor=()=>G().daSF?1+num(G().daPct)/100:1;
-// Hunter Fly Card: each attack has a 5% chance to restore 100 HP/s for 5 s (refreshes, doesn't stack)
-const hfHpPerSec=()=>{if(!G().hfOn)return 0;const p=num(G().hfPct)/100,n=atkPerSec()*5;return (1-Math.pow(1-p,n))*num(G().hfHp)};
+// Side Winder Card: chance for a basic attack to hit twice; under Spell Fist the 2nd hit procs it too
+const daFactor=()=>CRD().daSF?1+num(CRD().daPct)/100:1;
+// Hunter Fly Card: each physical attack has a 5% chance to restore 100 HP/s for 5 s (refreshes, doesn't stack). Basic attacks
+// and Spell Fist swing at your ASPD, physical skills once per use; spells don't trigger it
+const physAtkPerSec=()=>{const t=C().a.type;return t==="auto"||t==="spellfist"?atkPerSec():t==="phys"?1/useSec():0};
+const hfHpPerSec=()=>{if(!CRD().hfOn)return 0;const p=num(CRD().hfPct)/100,n=physAtkPerSec()*5;return (1-Math.pow(1-p,n))*num(CRD().hfHp)};
+// SP from cards, against the monster in play:
+// Dracula Card: each physical or magic attack has a 10% chance to restore 20 SP/s for 7 s (refreshes, doesn't stack)
+const dracSPPerSec=()=>{const cd=CRD();if(!cd.dracOn)return 0;const p=num(cd.dracPct)/100,n=(isSF()||C().a.type==="auto"?atkPerSec():1/useSec())*7;return (1-Math.pow(1-p,n))*num(cd.dracSp)};
+// Dark Priest Card (Sage only): 1 SP each time a physical attack hits, so crits and hits that land
+const dpSPPerSec=()=>{if(!CRD().dpOn||state.job!=="Sage")return 0;const r=physAtkPerSec();if(!r)return 0;const m=SG_MOB||calcMob();if(!m)return r;
+  return r*withAtk(isSF()?BASIC:C().a,()=>{const cr=critChance(m),hc=hitChance(m)/100;return cr+(1-cr)*hc})};
+// +5 SP per kill (Nereid, Tri-Joint… Cards) when a melee physical attack kills that race: counted over the time spent fighting it.
+// Not with Spell Fist, where the killing blow is as likely to be the bolt
+const killSPPerSec=()=>{const cd=CRD(),m=SG_MOB||calcMob(),t=C().a.type;if(!m||!cd.killSp.includes(m.race)||isSF()||(t!=="auto"&&t!=="phys")||RANGED.includes(C().weapon))return 0;
+  const f=rawFight(m);return isFinite(f)&&f>0?5/f:0};
+const cardSPPerSec=()=>dracSPPerSec()+dpSPPerSec()+killSPPerSec();
 // Energy Coat: damage cut and SP per hit taken (% of Max SP) depend on how full your SP is
 const EC_BANDS=[[30,3,"100–81%"],[24,2.5,"80–61%"],[18,2,"60–41%"],[12,1.5,"40–21%"],[6,1,"20–1%"]];
 const hsFullSP=()=>atkPerSec()*hsChance()*hsProcSP();
 const sgItemsOn=()=>hsOnNow()&&num(C().itemSp)>0; // SP items go with Hindsight
-function sgDefense(m){
-  const raw=mobHitDmg(m);if(raw==null)return null;const dg=dodge(m);
-  const hits=Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5));
-  const g=G(),max=num(cf("maxSp")),ec=!!g.ecOn,regen=regenPerSec(),up=sgUpkeep(),hs=hsFullSP();
-  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),healSP=g.vitata&&num(g.healHp)>0?hp/num(g.healHp)*num(g.healSp)*sgSpMult():0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
+// damage taken, any attack: Energy Coat (Mage, Wizard, Sage), Hunter Fly and Vitata's heals. Energy Coat's cut and SP per hit depend on
+// how full your SP is: the fullest band your regen can hold after the attack's own SP, else where SP items keep it, else nearly empty
+const itemsOnNow=()=>isSF()?sgItemsOn():!!C().autoSp&&num(C().itemSp)>0;
+// its hits that land on you per second: a swing every interval, times "swings reach you", less what you dodge
+const hitsOnYou=m=>{if(!m||m.atkMin==null)return 0;const dg=dodge(m);return Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5))};
+function defense(m){
+  const raw=mobHitDmg(m);if(raw==null)return null;const hits=hitsOnYou(m);
+  const sf=isSF(),max=num(cf("maxSp")),ec=ecOn(),regen=regenPerSec(),up=sf?sgUpkeep():skillSPPerSec(),hs=sf?hsFullSP():0,spMul=sf?sgSpMult():spCostMul();
+  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),cd=CRD(),healSP=cd.vitata&&num(cd.healHp)>0?hp/num(cd.healHp)*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
   const cost=b=>up+b.ecSP+b.healSP;
   let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
-  if(!b){const p=num(g.autoSpPct,50);b=sgItemsOn()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}
+  if(!b){const p=num(ECO().spPct,50);b=itemsOnNow()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}
   return {...b,extra:b.ecSP+b.healSP};
 }
 // Vitata Card gives Heal Lv1, which you cast yourself rather than an automatic heal: each cast (no cast time, 0.3 s after-cast delay,
 // or an attack's worth of time if that's longer) is time you aren't attacking. healShare is that share of your time; at 100% you can't keep up
 const HEAL_DELAY=0.3;
 const healSec=()=>Math.max(HEAL_DELAY,1/atkPerSec());
-const healsPerSec=m=>{const g=G();if(!isSF()||!g.vitata||!(num(g.healHp)>0))return 0;const d=sgDefense(m);return d?d.hp/num(g.healHp):0};
+const healsPerSec=m=>{const cd=CRD();if(!cd.vitata||!(num(cd.healHp)>0))return 0;const hp=(defense(m)||{}).hp;return hp>0?hp/num(cd.healHp):0};
 const healShare=m=>healsPerSec(m)*healSec();
 let SG_MOB=null; // monster the SP balance is worked out against
-const sgDefSP=()=>{const m=SG_MOB||calcMob();const d=m?sgDefense(m):null;return d?d.extra:0};
-const sgItemsPerSec=()=>sgItemsOn()?Math.max(0,sgUpkeep()+sgDefSP()+hsFullSP()-regenPerSec())/num(C().itemSp):0;
+const defSP=()=>{const m=SG_MOB||calcMob();const d=m?defense(m):null;return d?d.extra:0};
+const sgItemsPerSec=()=>sgItemsOn()?Math.max(0,sgUpkeep()+defSP()+hsFullSP()-regenPerSec())/num(C().itemSp):0;
 // without SP items, Hindsight only fires as often as spare regen pays for
-const hsSustain=()=>{const f=hsFullSP();if(f<=0||sgItemsOn())return 1;return Math.max(0,Math.min(1,(regenPerSec()-sgUpkeep()-sgDefSP())/f))};
+const hsSustain=()=>{const f=hsFullSP();if(f<=0||sgItemsOn())return 1;return Math.max(0,Math.min(1,(regenPerSec()-sgUpkeep()-defSP())/f))};
 // the basic attack under Spell Fist still deals its own physical hit: weapon element, size, DEF, HIT and crits, plus card auto-casts
 const withAtk=(a,fn)=>{const c=C(),k=c.a;c.a=a;try{return fn()}finally{c.a=k}};
 const sfPhys=m=>withAtk(BASIC,()=>withEl(null,()=>useAvg(m,dmgPerHit(m),procPerUse(m))));
@@ -401,13 +438,13 @@ const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600
 // 1/√density away, so walking per kill grows by √(monsters you can hurt / ones you hunt)
 // Or teleport past them (Fly Wing or the Teleport skill), on maps you haven't marked "no teleport" (rozerodb has no map flags):
 // each landing finds a hunted monster about hunted/all of the time, so a kill takes all/hunted − 1 extra jumps, each costing a
-// Fly Wing (state.flyPrice, less Discount; 0 for the Teleport skill) and state.teleSec seconds. Each pick uses whichever of the two nets more.
+// Fly Wing (state.flyPrice, less Discount; 0 for the Teleport skill or a Creamy Card) and state.teleSec seconds. Each pick uses whichever of the two nets more.
 // Kill time includes selling trips (tripTot), like every other ranking
 const huntOffOf=mp=>(state.huntOff||{})[mp];
 const killTot=(m,sec,walk)=>{const k=SG_MOB;SG_MOB=m;try{return tripTot(m,sec+walk,walk)}finally{SG_MOB=k}};
 const noTele=mp=>(state.noTele||[]).includes(mp);
 const flyPrice=()=>state.flyPrice==null?250:num(state.flyPrice);
-const flyCost=()=>flyPrice()*discMul();
+const flyCost=()=>CRD().creamy?0:flyPrice()*discMul();
 const teleSec=()=>state.teleSec==null?1:num(state.teleSec);
 function huntMap0(mp,w,minN=0){
   const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));const N=list.reduce((a,x)=>a+x.n,0);

@@ -57,6 +57,12 @@ const cur=()=>state.sessions.find(s=>s.id===state.current)||state.sessions[0];
 (function sfV3(){if(state.sfV3)return;state.sfV3=true;const c=state.chars&&state.chars.Sage;if(c){c.preset=0;c.a={...JOBS.Sage.p[0]}}save()})();
 (function skillsV3(){if(state.skillsV3)return;state.skillsV3=true;for(const j in state.chars){if(!JOBS[j])continue;const c=state.chars[j];if(c.preset==null||c.preset>=0){c.preset=Math.min(c.preset||0,JOBS[j].p.length-1);c.a={...JOBS[j].p[c.preset]}}}save()})();
 (function skillsV2(){if(state.skillsV2)return;state.skillsV2=true;for(const j in state.chars){if(!JOBS[j]){delete state.chars[j];continue}const c=state.chars[j];if(c.preset==null||c.preset>=0){c.preset=0;c.a={...JOBS[j].p[0]}}}save()})();
+// Vitata, Hunter Fly and Side Winder moved from Sage options (c.sage, where Vitata defaulted on) to c.cards, for every job
+(function cardsV1(){if(state.cardsV1)return;state.cardsV1=true;for(const j in state.chars){const c=state.chars[j],s=c&&c.sage;if(!s||typeof s!=="object")continue;
+  if(j==="Sage"&&!c.cards){c.cards={};for(const k in CARD_D)c.cards[k]=s[k]!=null?s[k]:k==="vitata"?true:CARD_D[k]}for(const k in CARD_D)delete s[k]}save()})();
+// Energy Coat and "SP items at x% SP" moved from Sage options (c.sage, where Energy Coat defaulted on) to c.ec, for Mages and Wizards too
+(function ecV1(){if(state.ecV1)return;state.ecV1=true;for(const j in state.chars){const c=state.chars[j],s=c&&c.sage;if(!s||typeof s!=="object")continue;
+  if(j==="Sage"&&!c.ec)c.ec={on:s.ecOn!=null?!!s.ecOn:true,spPct:s.autoSpPct!=null?s.autoSpPct:EC_D.spPct};delete s.ecOn;delete s.autoSpPct}save()})();
 // ---- helpers ----
 const sumStat=v=>String(v??"").split("+").reduce((a,x)=>a+(parseFloat(x)||0),0);
 const fmtN=n=>isFinite(n)?Math.round(n).toLocaleString("en-GB"):"–";

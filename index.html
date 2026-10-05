@@ -168,6 +168,27 @@
         <label class="bar" style="flex-direction:row;gap:4px"><input id="acPct" type="number" step="0.5" min="0" max="100" style="width:64px">% per basic attack</label>
         <span id="acInfo"></span>
       </div>
+      <div class="bar note" id="cardRow"><span title="Cards any job can slot">Cards (any job):</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="vitata" style="width:auto" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost"> Vitata (+<input data-cd="spBonus" type="number" style="width:50px">% SP cost; you cast Heal Lv1: <input data-cd="healSp" type="number" style="width:50px"> SP → <input data-cd="healHp" type="number" style="width:64px"> HP each)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Hunter Fly Card: physical attacks (basic attacks, Spell Fist, physical skills) have a chance to restore HP every second for 5 s"><input type="checkbox" data-cd="hfOn" style="width:auto"> Hunter Fly (<input data-cd="hfPct" type="number" style="width:50px">% · <input data-cd="hfHp" type="number" style="width:60px"> HP/s)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Side Winder Card: basic attacks hit twice this often (right hand only). With Double Attack learned on the Skills card the card follows the skill, so nothing is added; Thief presets already count Double Attack"><input type="checkbox" data-cd="daSF" style="width:auto"> Side Winder double attack <input data-cd="daPct" type="number" style="width:50px">% (basic attacks; with Spell Fist the 2nd hit procs it too)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Creamy Card gives Teleport Lv1: Zeny Hunter teleports cost no Fly Wing. Its 10 SP a cast isn't counted"><input type="checkbox" data-cd="creamy" style="width:auto"> Creamy (Teleport Lv1: no Fly Wings)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Phen Card: casts can't be interrupted, variable cast +25%. Without it (or Bloody Butterfly) a hit that lands while you cast interrupts it and you start again. Build mode reads it from your gear"><input type="checkbox" data-cd="phen" style="width:auto"> Phen (no interrupted casts, cast +25%)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Bloody Butterfly Card: casts can't be interrupted, variable cast +30%. Build mode reads it from your gear"><input type="checkbox" data-cd="bbfly" style="width:auto"> Bloody Butterfly (no interrupted casts, cast +30%)</label>
+        <span id="cardInfo"></span>
+      </div>
+      <div class="bar note" id="spCardRow"><span title="Cards that give SP back. SP Recovery +% cards (Eggyra, Sohee, Merman): build mode reads them from your gear; in status window mode add an &quot;SP recovery&quot; line under Equipment stats">SP back (cards):</span>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Dracula Card: physical and magic attacks have a chance to restore SP every second for 7 s"><input type="checkbox" data-cd="dracOn" style="width:auto"> Dracula (<input data-cd="dracPct" type="number" style="width:56px">% · <input data-cd="dracSp" type="number" style="width:56px"> SP/s)</label>
+        <label class="bar" style="flex-direction:row;gap:4px" id="dpWrap" title="Dark Priest Card, when a Sage wears it: 1 SP each time a physical attack hits (Spell Fist's physical hit too)"><input type="checkbox" data-cd="dpOn" style="width:auto"> Dark Priest (+1 SP per physical hit)</label>
+        <span title="Weapon cards: 5 SP when a melee physical attack kills a monster of that race. Not counted with Spell Fist or a bow, instrument or whip">+5 SP per melee kill:</span>
+        <span id="killSpBoxes" class="bar" style="gap:8px"></span>
+        <span id="spCardInfo"></span>
+      </div>
+      <div class="bar note" id="ecRow"><span title="The Mage quest skill: Wizards and Sages have it too">Energy Coat (Mage, Wizard, Sage):</span>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Cuts damage taken by 6–30% and costs 1–3% of Max SP per hit taken; the fuller your SP, the bigger both"><input type="checkbox" data-ec="on" style="width:auto"> on</label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="When regen can't keep your SP up, SP items hold it around this level (sets the damage cut); without items your SP runs low">with SP items, SP kept at <input data-ec="spPct" type="number" min="1" max="100" style="width:56px">%</label>
+        <span id="ecInfo"></span>
+      </div>
       <div class="form" style="grid-template-columns:repeat(4,minmax(0,1fr))">
         <label>Fixed share of cast %<input id="fixedShare" type="number" step="1" min="0" max="100" placeholder="0"></label>
         <label>Variable cast −%<input id="vctPct" type="number" step="1" placeholder="0"></label>
@@ -202,13 +223,6 @@
         <span>Double Bolt:</span>
         <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="dbOn" style="width:auto"> on</label>
         <label class="bar" style="flex-direction:row;gap:4px">Lv <input data-sg="dbLv" type="number" min="1" max="5" style="width:56px"></label>
-      </div>
-      <div class="bar note"><span>Cards &amp; skills:</span>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="vitata" style="width:auto" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking"> Vitata (+<input data-sg="spBonus" type="number" style="width:50px">% SP cost; you cast Heal Lv1: <input data-sg="healSp" type="number" style="width:50px"> SP → <input data-sg="healHp" type="number" style="width:64px"> HP each)</label>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="ecOn" style="width:auto"> Energy Coat</label>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="hfOn" style="width:auto"> Hunter Fly (<input data-sg="hfPct" type="number" style="width:50px">% · <input data-sg="hfHp" type="number" style="width:60px"> HP/s)</label>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-sg="daSF" style="width:auto"> Side Winder double attack <input data-sg="daPct" type="number" style="width:50px">% (the 2nd hit also procs Spell Fist)</label>
-        <label class="bar" style="flex-direction:row;gap:4px">SP items at <input data-sg="autoSpPct" type="number" style="width:56px">% SP</label>
       </div>
       <div class="note" id="sageInfo"></div>
       <div class="note">SP items (below) only count with Hindsight on: regen pays SP first, items cover the rest.</div>
@@ -353,7 +367,7 @@
       <label id="huntMinWrap">Min monsters on map<input id="huntMin" type="number" value="20" style="width:90px"></label>
       <label>Show<select id="huntN"><option>10</option><option>20</option><option>50</option></select></label>
       <label id="huntAutoWrap"><span>&nbsp;</span><span class="bar"><input type="checkbox" id="huntAuto" style="width:auto"> Hunt only the best-paying monsters</span></label>
-      <label title="what one teleport costs: a Fly Wing from the shop (250 z), or 0 if you use the Teleport skill">Fly Wing z<input id="flyPrice" type="number" min="0" step="10" style="width:90px"></label>
+      <label title="what one teleport costs: a Fly Wing from the shop (250 z), or 0 if you use the Teleport skill. Ticking Creamy in the Character tab's Cards row makes it 0">Fly Wing z<input id="flyPrice" type="number" min="0" step="10" style="width:90px"></label>
       <label title="seconds lost per teleport (casting, loading the screen)">Sec / teleport<input id="teleSec" type="number" min="0" step="0.5" style="width:90px"></label>
     </div>
     <div class="bar" id="autoLoot" style="align-items:center"><b>Auto loot</b></div>
