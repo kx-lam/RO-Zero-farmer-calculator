@@ -3,6 +3,8 @@
 // Formulas follow the roz.prontera.info stat planner (Zero): status values, ×VIT/×INT HP/SP, %ATK on the gear side only,
 // ASPD % pivoting on 195 with a 190 cap. Pure functions: everything comes in as arguments, nothing touches the page.
 const BUILD=(()=>{
+  // 2nd job -> 1st job
+  const FIRST_OF={Knight:"Swordsman",Crusader:"Swordsman",Wizard:"Mage",Sage:"Mage",Hunter:"Archer",Bard:"Archer",Dancer:"Archer",Priest:"Acolyte",Monk:"Acolyte",Blacksmith:"Merchant",Alchemist:"Merchant",Assassin:"Thief",Rogue:"Thief"};
   const STAT6=["str","agi","vit","int","dex","luk"];
   // the gear grid; "takes" lists the item slots (prontera equip_slot) that may go in it
   const SLOTS=[
@@ -44,7 +46,7 @@ const BUILD=(()=>{
   // ---- bonus accumulation ----
   const blank=()=>({st:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},atk:0,matk:0,atkPct:0,matkPct:0,hit:0,flee:0,crit:0,critDmg:0,aspd:0,aspdPct:0,
     hp:0,hpPct:0,sp:0,spPct:0,def:0,mdef:0,ranged:0,melee:0,skill:0,skillOf:{},vct:0,fct:0,acd:0,vctOf:{},fctOf:{},ignDef:0,ignMdef:0,
-    phys:{all:0,race:{},size:{},ele:{},kind:{}},magic:{all:0,race:{},size:{},ele:{},kind:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},spCost:0,wEle:null,unmodelled:[]});
+    phys:{all:0,race:{},size:{},ele:{},kind:{}},magic:{all:0,race:{},size:{},ele:{},kind:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},critRace:{},spCost:0,wEle:null,unmodelled:[]});
   // lines that only matter for PvP survival, healing or status resistance: not part of the farming maths, so not reported either
   const QUIET=["resistance_percent","heal_amount_percent","item_heal_percent","sp_recovery_percent","hp_recovery_percent","perfect_dodge","perfect_hit","magic_damage_taken_percent","sp_per_hit","hp_per_hit"];
   const addTo=(o,k,v)=>{o[k]=(o[k]||0)+v};
@@ -61,6 +63,8 @@ const BUILD=(()=>{
     if(type==="sp_cost_percent"&&!kind){A.spCost+=v;return true}
     if(STAT6.includes(type)){A.st[type]+=v;return true}
     if(type==="all_stats"){STAT6.forEach(k=>A.st[k]+=v);return true}
+    // "When attacking Brute monsters, CRIT +7": counted only against that race
+    if(type==="crit"&&kind==="race"){addTo(A.critRace,tgt(kind,target),v);return true}
     const flat={atk:"atk",matk:"matk",atk_percent:"atkPct",matk_percent:"matkPct",hit:"hit",flee:"flee",crit:"crit",crit_damage_percent:"critDmg",
       aspd:"aspd",aspd_percent:"aspdPct",hp:"hp",hp_percent:"hpPct",sp:"sp",sp_percent:"spPct",def:"def",mdef:"mdef",
       ranged_damage_percent:"ranged",melee_damage_percent:"melee"}[type];
@@ -87,7 +91,8 @@ const BUILD=(()=>{
     if(!k){bad.push(p);return}const v=parseFloat(m[2].replace(/\s/g,""));
     if(m[3]){if(PCT[k])out.push([PCT[k],null,null,v]);else bad.push(p)}else out.push([k,null,null,v])});return {lines:out,bad}}
   // does a bonus group apply? r: item refine, rs: combined refine of a set, lv: base level, cls: job slugs
-  const groupOn=(g,ctx)=>(g.r==null||ctx.refine>=g.r)&&(g.rs==null||ctx.refineSum>=g.rs)&&(g.lv==null||ctx.baseLv>=g.lv)&&(!g.cls||!g.cls.length||g.cls.includes(ctx.jobSlug));
+  // ("Acolyte Class" in game covers Priest and Monk, so a 2nd job also matches its 1st job)
+  const groupOn=(g,ctx)=>(g.r==null||ctx.refine>=g.r)&&(g.rs==null||ctx.refineSum>=g.rs)&&(g.lv==null||ctx.baseLv>=g.lv)&&(!g.cls||!g.cls.length||g.cls.includes(ctx.jobSlug)||g.cls.includes(ctx.firstSlug));
   function applyGroups(A,gs,ctx,src){(gs||[]).forEach(g=>{if(!groupOn(g,ctx))return;
     if(g.proc||g.text){A.unmodelled.push(`${src}: ${g.proc||g.text}`);}
     (g.b||[]).forEach(b=>{const per=b[4];const k=per?Math.floor(ctx.refine/per):1;if(k<=0)return;const bb=b.slice();bb[3]=(+b[3]||0)*k;apply(A,bb,src)})})}
@@ -95,7 +100,7 @@ const BUILD=(()=>{
   // ---- the whole build ----
   // b = {baseLv, jobLv, base:{str..luk}, gear:{slot:{id, refine, cards:[ids]}}, hpBase?, spBase?}; job = "Knight"
   function compute(b,job,aspdBase){
-    const A=blank(),lv=Math.max(1,+b.baseLv||1),jobLv=Math.max(1,+b.jobLv||1),ctxBase={baseLv:lv,jobSlug:String(job).toLowerCase(),refineSum:0};
+    const A=blank(),lv=Math.max(1,+b.baseLv||1),jobLv=Math.max(1,+b.jobLv||1),ctxBase={baseLv:lv,jobSlug:String(job).toLowerCase(),firstSlug:String(FIRST_OF[job]||job).toLowerCase(),refineSum:0};
     const gear=b.gear||{},worn=[];let wpn=null,shield=false,weaponAtk=0,gearAtk=0,gearMatk=0,refAtk=0,refMatk=0,refDef=0,gearDef=0,gearMdef=0;
     SLOTS.forEach(s=>{const g=gear[s.k];const it=g&&item(g.id);if(!it)return;const r=Math.max(0,+g.refine||0);
       if(worn.some(w=>w.it===it&&s.k!=="acc2"&&s.k!=="acc1"))return; // a multi-slot headgear counts once
@@ -127,5 +132,5 @@ const BUILD=(()=>{
       vctPct:A.vct,fctPct:A.fct,acdPct:A.acd,ignDef:A.ignDef,ignMdef:A.ignMdef};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
 if(typeof module!=="undefined")module.exports=BUILD;

@@ -29,7 +29,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Monster soft DEF","⌊(monster Lv + VIT) / 2⌋",()=>need(x=>`${mobSoftDef(x)}${mn}`))+
    R("Monster soft MDEF","⌊(monster Lv + INT) / 4⌋",()=>need(x=>`${mobSoftMdef(x)}${mn}`))+
    R("Hit chance","100 + HIT − monster's 100%-hit value, 5–100%; magic always hits",()=>need(x=>`${Math.round(hitChance(x))}%${mn}`))+
-   R("Critical hit","chance = CRIT (basic attacks only), always hits, damage × 1.4 × (1 + crit damage %)",()=>c.a.type==="auto"?`${(critChance()*100).toFixed(1)}%`:null)+
+   R("Critical hit","chance = CRIT (+ gear CRIT vs the monster's race; basic attacks only), always hits, damage × 1.4 × (1 + crit damage %)",()=>c.a.type==="auto"?`${(critChance(m)*100).toFixed(1)}%${mn}`:null)+
    grp("Defence and SP")+
    R("Dodge","95 + FLEE − monster's 95%-flee value, 0–95%",()=>need(x=>dodge(x)==null?null:`${Math.round(dodge(x))}%${mn}`))+
    R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + damage taken % from its race) × (1 + from its element) × (1 + from boss/normal), at least 1",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`))+

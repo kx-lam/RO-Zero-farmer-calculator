@@ -12,7 +12,7 @@ function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqTo
   const nm=String(c.a.name||"").toLowerCase(),match=o=>Object.entries(o).reduce((t,[k,v])=>t+(nm.includes(k.toLowerCase())?v:0),0);
   Object.assign(c,{atkTxt:F.atkTxt,matkTxt:F.matkTxt,hitTxt:F.hitTxt,fleeTxt:F.fleeTxt,defTxt:F.defTxt,intTxt:F.intTxt,wAtk:F.wAtk,crit:F.crit,critDmg:F.critDmg,
     rangePct:F.rangePct,skillPct:A.skill+match(A.skillOf),vctPct:F.vctPct+match(A.vctOf),fctPct:F.fctPct+match(A.fctOf),acdPct:F.acdPct,ignDef:F.ignDef,ignMdef:F.ignMdef,
-    weapon:F.weapon,wElem:F.wElem,st:{...(c.st||{}),...F.st},bx:{phys:A.phys,magic:A.magic,myEle:A.myEle,taken:A.taken,exp:A.exp,spCost:A.spCost}});
+    weapon:F.weapon,wElem:F.wElem,st:{...(c.st||{}),...F.st},bx:{phys:A.phys,magic:A.magic,myEle:A.myEle,taken:A.taken,exp:A.exp,critRace:A.critRace,spCost:A.spCost}});
   if(F.aspd!=null)c.aspd=F.aspd;if(F.maxHp!=null)c.maxHp=F.maxHp;if(F.maxSp!=null)c.maxSp=F.maxSp;
   // the exported base HP/SP tables don't match Zero yet, so in-game Max HP / SP typed under "Check against the game" win
   const ck=buildOf(c).check||{};if(num(ck.hp)>0)c.maxHp=num(ck.hp);if(num(ck.sp)>0)c.maxSp=num(ck.sp)}
@@ -79,7 +79,7 @@ $("eqList").addEventListener("input",e=>{if(e.target.dataset.f!=="v")return;eqOf
 // item picker labels: the name, plus the id when two items share a name
 const jobSlug=()=>state.job.toLowerCase();
 // gear lists the job family ("swordsman" covers Knight and Crusader), so a 2nd job also matches its 1st job
-const FIRST_OF={Knight:"Swordsman",Crusader:"Swordsman",Wizard:"Mage",Sage:"Mage",Hunter:"Archer",Bard:"Archer",Dancer:"Archer",Priest:"Acolyte",Monk:"Acolyte",Blacksmith:"Merchant",Alchemist:"Merchant",Assassin:"Thief",Rogue:"Thief"};
+const FIRST_OF=BUILD.FIRST_OF;
 const canWear=it=>!it.jobs||!it.jobs.length||it.jobs.includes(jobSlug())||(FIRST_OF[state.job]&&it.jobs.includes(FIRST_OF[state.job].toLowerCase()));
 const labelOf=(it,list)=>list.filter(x=>x.name===it.name).length>1?`${it.name} #${it.id}`:it.name;
 const pickList=(list)=>{const m=new Map();list.forEach(it=>m.set(labelOf(it,list),it.id));return m};

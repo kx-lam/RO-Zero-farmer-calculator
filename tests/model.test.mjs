@@ -438,4 +438,21 @@ t("spawn counts come from the client's navigation table (normal channels)", () =
   assert.equal(run(`MAPMOBS.prt_f08.find(x=>x.m.id===1002).n`), 20);      // the app uses the normal-channel count
 });
 
+t("gear CRIT against a race only counts against that race", () => {
+  setup("Knight", { a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 }, st: {} });
+  run(`C().bx={critRace:{Brute:7}}`);
+  const base = run(`critChance({race:"Plant"})`);
+  near(run(`critChance({race:"Brute"})`) - base, 0.07);
+  near(run(`critChance()`), base);                     // no monster: your plain CRIT
+  run(`delete C().bx`);
+});
+
+t("gear from the client check: Guild options are GvG-only, race CRIT and damage taken are in", () => {
+  const g = id => run(`JSON.stringify((EQUIP.concat(CARDS).find(e=>e.id===${id})||{}).g||null)`);
+  assert.equal(g(560003), "null");                     // Advanced Guild Fist: Guillotine Fist cast -30% in Siege only
+  assert.ok(g(4297).includes('["crit","race","brute",7]'));   // Cruiser Card
+  assert.ok(g(2254).includes('["damage_taken_percent","race","demon",-3]'));   // Angel Wing
+  assert.ok(g(4312).includes('"cls":["acolyte"]'));    // Fur Seal Card: Acolyte Class vs Demon/Undead
+});
+
 console.log(`${n} tests passed`);

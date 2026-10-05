@@ -14,6 +14,8 @@ Object.assign(globalThis, {
   CARDS: [
     { id: 10, slug: "hydra", name: "Hydra Card", slot: ["weapon"], g: [{ b: [["damage_percent", "race", "demi_human", 20]] }] },
     { id: 11, slug: "proc", name: "Proc Card", slot: ["weapon"], g: [{ proc: "Chance to autocast Bash" }] },
+    { id: 12, slug: "cruiser", name: "Cruiser Card", slot: ["weapon"], g: [{ b: [["crit_damage_percent", null, null, 10]] }, { b: [["crit", "race", "brute", 7]] }] },
+    { id: 13, slug: "seal", name: "Seal Card", slot: ["weapon"], g: [{ cls: ["acolyte"], b: [["hit", null, null, 10]] }] },
   ],
   SETS: [{ slug: "s", name: "Coat Set", pieces: ["coat", "boots"], g: [{ rs: 10, b: [["hp", null, null, 500]] }, { b: [["vit", null, null, 3]] }] }],
   REFINE: { weapon_lv2: Array.from({ length: 20 }, (_, i) => [3 * (i + 1), 3 * (i + 1), 0]),
@@ -73,6 +75,21 @@ t("status formulas match the verified Zero formulas", () => {
   assert.equal(S.hit, 175 + 70 + 45 + 4);
   assert.equal(S.flee, 100 + 70 + 50 + 2);
   assert.equal(S.softDef, 35 + 20 + 10);
+});
+
+t("CRIT against one race is kept apart from your CRIT", () => {
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, refine: 0, cards: [12] } } }, "Knight", aspdBase);
+  assert.equal(r.acc.crit, 0);                         // not on the status window
+  assert.deepEqual(r.acc.critRace, { Brute: 7 });      // only when hitting a Brute
+  assert.equal(r.acc.critDmg, 10);
+});
+
+t("a 1st-job condition (\"Acolyte Class\") also applies to its 2nd jobs", () => {
+  const hit = job => BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, refine: 0, cards: [13] } } }, job, aspdBase).acc.hit;
+  assert.equal(hit("Acolyte"), 10);
+  assert.equal(hit("Priest"), 10);
+  assert.equal(hit("Monk"), 10);
+  assert.equal(hit("Knight"), 0);
 });
 
 console.log(`${n} tests passed`);
