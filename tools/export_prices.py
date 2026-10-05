@@ -123,9 +123,12 @@ def main():
         print(f"{len(w)} of {len(ids)} items weighed (rozerodb weight / {jel:g})" + (f"; no weight: {' '.join(nw)}" if nw else ""))
 
     # check: each monster's drops at these prices should give rozerodb's loot value per kill
+    # monsters with no loot value (null: none of their drops has a published rate) are skipped
     rows = []
     for mob, (val, priced, n, drops) in loot.items():
-        calc = sum((sell.get(str(i)) or 0) * ch / 100 for i, ch in drops)
+        if val is None:
+            continue
+        calc = sum((sell.get(str(i)) or 0) * (ch or 0) / 100 for i, ch in drops)
         rows.append((abs(calc - val), mob, val, calc))
     ok = sum(1 for d, *_ in rows if d <= 1)
     print(f"{ok} of {len(rows)} monsters' loot values match within 1 zeny")
