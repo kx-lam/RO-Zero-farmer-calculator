@@ -83,12 +83,14 @@ t("cast time: variable part shrinks with DEX and INT, fixed part doesn't", () =>
 });
 
 t("party Even Share and EXP bonus", () => {
-  run(`state.bonus=50;cur().partyN=3`);
-  near(run(`expMul()`), 1.5 * 2.15 / 3);
-  const total = [100, 160, 215, 265, 310, 350, 385, 415, 440, 460, 475, 485];
-  total.forEach((p, i) => { run(`cur().partyN=${i + 1}`); near(run(`partyBonus()`), p - 100); });
+  // in-game kills with +10% EXP item and +10% EXP gear
+  run(`state.bonus=10;C().bx={exp:{all:10,race:{}}};cur().partyN=3`);
+  assert.equal(run(`killExp({exp:32822})`), 15753);                             // Boulder Dwarf Captain, party of 3
+  run(`cur().partyN=2`);
+  assert.equal(run(`killExp({exp:33361})`), 22017);                             // Boulder Dwarf Squad Leader, party of 2
   run(`cur().partyN=1`);
-  near(run(`expMul()`), 1.5);
+  assert.equal(run(`killExp({exp:32822})`), 39386);                             // solo: 32,822 × 1.20, rounded down
+  [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110].forEach((p, i) => { run(`cur().partyN=${i + 1}`); assert.equal(run(`partyBonus()`), p); });
 });
 
 t("tracker: EXP rate across a level-up, with paused time left out", () => {

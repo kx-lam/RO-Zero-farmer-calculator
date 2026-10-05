@@ -37,8 +37,8 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Overcharge / Discount","NPC sell price × (1 + Overcharge %), rounded down; NPC buy price × (1 − Discount %). Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%",()=>{const o=skRate("overcharge"),d=skRate("discount");return o||d?`+${o}% / −${d}%`:null})+
    R("Weight","at 70% of Max Weight HP and SP stop regenerating; at 90% you can't attack or use skills. Kills per trip = (Max Weight × sell point − weight now) / weight per kill; seconds per kill + town trip / kills per trip",()=>{if(!wOn())return "type your Max Weight";const t=m&&tripInfo(m,walkSec());return t&&t.wk>0?(isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills a trip${mn}`:"sell first"):`${fmtN(num(c.curW))} / ${fmtN(num(c.maxW))}`})+
    grp("EXP")+
-   R("Your EXP per kill","monster EXP × (1 + gear EXP % + gear EXP % vs its race) × (1 + EXP bonus %) × (1 + party bonus %) / members",()=>need(x=>`${fmtN(x.exp*expRace(x)*expMul())}${mn}`))+
-   R("Even Share party","party bonus % = (members − 1) × (130 − 5 × members) / 2: the 2nd member adds 60%, each after adds 5% less (2: 160%, 3: 215%, 4: 265%, 5: 310% … 12: 485%), split evenly",()=>`× ${expMul().toFixed(2)} of a solo kill`)+
+   R("Your EXP per kill","⌊monster EXP × (1 + party bonus %) / members⌋ × (1 + gear EXP % + gear EXP % vs its race + EXP bonus %), rounded down: the bonuses add up, they don't multiply",()=>need(x=>`${fmtN(killExp(x))}${mn}`))+
+   R("Even Share party","party bonus % = 10% × (members − 1), split evenly: 2 members 110% (55% each), 3: 120% (40%), 4: 130% (32%) … 12: 210% (17%)",()=>`${100+partyBonus()}% ÷ ${partyN()} = ${Math.floor(partyShare()*100)}% each`)+
    R("EXP / hour","EXP per kill × 3600 / (fight seconds + walking seconds)",()=>null)+
    grp("Loot")+
    R("Drop level penalty","level gap = monster Lv − your base Lv: −19 or more, no penalty; −40 or less, drops −50%; −20 to −39 isn't in the official guide, so no penalty is counted",()=>need(x=>dropGap(x)==null?null:`gap ${String(dropGap(x)).replace("-","−")}: ${penNote(x)||"no penalty"}${mn}`))+
@@ -46,7 +46,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Zeny Hunter walking","walking per kill × √(spawns of monsters you can hurt on the map / spawns of the ones you hunt): the nearest target is about 1 / √density away",()=>`${walkSec().toFixed(1)}s with every monster hunted`)+
    R("Zeny Hunter teleporting","extra teleports per kill = spawns you can hurt / spawns you hunt − 1; each adds the Fly Wing price and seconds per teleport. Maps marked \"no teleport\" only walk",()=>`${fmtN(flyPrice())} z and ${teleSec()}s per teleport`);
 }
-function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?m.exp*expRace(m)*expMul():0;
+function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?killExp(m):0;
   const kills=e=>per>0?fmtN(Math.ceil(e/per)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";
   $("refExpNote").textContent=m?(m.expUnknown?`rozerodb has no EXP for ${m.name} yet`:`${fmtN(per)} base EXP per ${m.name}`):"Pick a monster to see kills per level";
   let tot=0;const base=Object.keys(EXP_TABLE).map(Number).sort((a,b)=>a-b).map(l=>{const e=EXP_TABLE[l],row=`<tr${l===blv?' class="sel"':""}><td>${l}</td><td>${fmtN(e)}</td><td>${fmtN(tot)}</td>${m?`<td>${kills(e)}</td>`:""}</tr>`;tot+=e;return row}).join("");
