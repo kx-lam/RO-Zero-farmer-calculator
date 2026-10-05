@@ -10,6 +10,7 @@ Object.assign(globalThis, {
     { id: 2, slug: "coat", name: "Coat", slot: ["armor"], refine: "armor", def: 10, g: [] },
     { id: 3, slug: "boots", name: "Boots", slot: ["footgear"], refine: "armor", def: 2, g: [] },
     { id: 5, slug: "guard", name: "Guard", slot: ["shield"], refine: "armor", def: 3, g: [] },
+    { id: 6, slug: "knife", name: "Knife", slot: ["weapon"], type: "dagger", wlv: 2, refine: "weapon", atk: 40, el: "fire", slots: 1, g: [] },
     { id: 4, slug: "hat", name: "Hat", slot: ["head_upper", "head_middle"], refine: "armor", def: 1, g: [{ b: [["aspd_percent", null, null, 10]] }] },
   ],
   CARDS: [
@@ -17,6 +18,8 @@ Object.assign(globalThis, {
     { id: 11, slug: "proc", name: "Proc Card", slot: ["weapon"], g: [{ proc: "Chance to autocast Bash" }] },
     { id: 12, slug: "cruiser", name: "Cruiser Card", slot: ["weapon"], g: [{ b: [["crit_damage_percent", null, null, 10]] }, { b: [["crit", "race", "brute", 7]] }] },
     { id: 13, slug: "seal", name: "Seal Card", slot: ["weapon"], g: [{ cls: ["acolyte"], b: [["hit", null, null, 10]] }] },
+    { id: 14, slug: "captain", name: "Captain Card", slot: ["weapon"], g: [{ b: [["physical_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
+    { id: 15, slug: "leader", name: "Leader Card", slot: ["weapon"], g: [{ b: [["magic_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
   ],
   SETS: [{ slug: "s", name: "Coat Set", pieces: ["coat", "boots"], g: [{ rs: 10, b: [["hp", null, null, 500]] }, { b: [["vit", null, null, 3]] }] }],
   REFINE: { weapon_lv2: Array.from({ length: 20 }, (_, i) => [3 * (i + 1), 3 * (i + 1), 0]),
@@ -49,6 +52,15 @@ t("weapon stats, per-refine bonus, refine threshold and cards", () => {
 t("consumable STR +10%: a share of base + job + flat bonuses, rounded down", () => {
   const r = BUILD.compute({ baseLv: 50, jobLv: 10, base, gear: {}, extra: [["str", null, null, 5], ["str_percent", null, null, 10]] }, "Knight", aspdBase);
   assert.equal(r.total.str, 57 + Math.floor(57 * 0.10));                  // 50 + job 2 + 5 = 57, then +5
+});
+
+t("damage against a monster group (Boulder Dwarf Captain / Squad Leader cards)", () => {
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, refine: 0, cards: [14, 15] } } }, "Knight", aspdBase);
+  assert.equal(r.acc.phys.group["Boulder Dwarf"], 30);                    // Captain: physical only
+  assert.equal(r.acc.magic.group["Boulder Dwarf"], 30);                   // Squad Leader: magic only
+  const one = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, refine: 0, cards: [14] } } }, "Knight", aspdBase);
+  assert.equal(one.acc.magic.group["Boulder Dwarf"], undefined);
+  assert.equal(one.unmodelled.length, 0);
 });
 
 t("refine threshold not reached", () => {
@@ -114,6 +126,27 @@ t("potion/skill values add value × AGI/200 to ASPD1 (RO樂園攻速計算機's 
   assert.equal(r.fields.aspd, 190);
   const a1 = Math.floor(156 - 3 - 3 + r.status.aspdTerm + 4 * 128 / 200);
   assert.equal(a1, 177);
+});
+
+t("Assassin left-hand weapon in the Shield row: dual wield ATK, element and ASPD", () => {
+  const ab = (job, w) => ({ "One-handed sword": 146, Dagger: 154 })[w] ?? 156;
+  const gear = { weapon: { id: 1, refine: 0, cards: [] }, shield: { id: 6, refine: 2, cards: [10] } };
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear }, "Assassin", ab);
+  assert.equal(r.fields.lw, "Dagger");
+  assert.equal(r.fields.lwAtk, 40 + 6);                                     // left weapon ATK incl. its refine (3 per refine)
+  assert.equal(r.fields.lwElem, "Fire");
+  assert.equal(r.fields.atkTxt, `${r.status.atk}+${100 + 40 + 6}`);          // both weapons on the gear side, like the status window
+  assert.equal(r.shield, false);                                            // not a shield: no shield ASPD penalty
+  assert.equal(r.fields.aspd, Math.floor(146 - 10 + r.status.aspdTerm));    // dagger in the left hand: −10
+  assert.equal(r.acc.phys.race["Demi-Human"], 20);                          // its card counts
+  // the same dagger in both hands is two items
+  const two = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 6, refine: 0 }, shield: { id: 6, refine: 0 } } }, "Assassin", ab);
+  assert.equal(two.fields.lw, "Dagger");
+  assert.equal(two.fields.atkTxt, `${two.status.atk}+${40 + 40}`);
+  // not an Assassin: the left weapon isn't dual wield
+  const k = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear }, "Knight", ab);
+  assert.equal(k.fields.lw, "");
+  assert.ok(k.unmodelled.some(x => x.includes("left-hand weapon")));
 });
 
 console.log(`${n} tests passed`);
