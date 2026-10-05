@@ -7,7 +7,7 @@ const BUILT_IDS=["atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","
 let BUILD_LAST=null;
 const buildOf=c=>{if(!c.build)c.build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{}};return c.build};
 function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqToBx(c);return}
-  const r=BUILD.compute({...buildOf(c),baseLv:c.baseLv,jobLv:c.jobLv,extra:[...consLines().lines,...(SKFX?[...SKFX.stat,...SKFX.buffStat]:[])]},state.job,aspdBase);BUILD_LAST=r;const F=r.fields,A=r.acc;
+  const r=BUILD.compute({...buildOf(c),baseLv:c.baseLv,jobLv:c.jobLv,extra:[...consLines().lines,...(SKFX?[...SKFX.stat,...SKFX.buffStat]:[]),...aspdBuffLines(c)]},state.job,aspdBase);BUILD_LAST=r;const F=r.fields,A=r.acc;
   // skill-specific gear lines count when the attack's name contains the skill
   const nm=String(c.a.name||"").toLowerCase(),match=o=>Object.entries(o).reduce((t,[k,v])=>t+(nm.includes(k.toLowerCase())?v:0),0);
   Object.assign(c,{atkTxt:F.atkTxt,matkTxt:F.matkTxt,hitTxt:F.hitTxt,fleeTxt:F.fleeTxt,defTxt:F.defTxt,intTxt:F.intTxt,wAtk:F.wAtk,crit:F.crit,critDmg:F.critDmg,
@@ -19,8 +19,39 @@ function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqTo
 // ---- consumables & buffs: rows {on, name, eff, price, min}; effects are typed like random options ("STR +10, ATK +20, ASPD +10%") ----
 const consOf=c=>{if(!Array.isArray(c.cons))c.cons=[];return c.cons};
 const consLines=()=>{const lines=[],bad=[];consOf(C()).filter(r=>r.on).forEach(r=>{const o=BUILD.parseOptions(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||"Consumable"}: ${x}`))});return {lines,bad}};
+// ---- ASPD potions and buffs from others, from the RO樂園攻速計算機 sheet (2026-09-07, "增益"). "aspd_mod" is the sheet's potion/skill
+// value: it adds value × AGI/200 to ASPD1 (see build.js) ----
+const ASPD_POT={conc:{name:"Concentration Potion",mod:4},awak:{name:"Awakening Potion",mod:6,no:["Novice","Acolyte","Priest","Bard","Dancer"]},
+  bers:{name:"Berserk Potion",mod:9,only:["Mage","Merchant","Swordsman","Wizard","Blacksmith","Alchemist","Knight","Crusader","Rogue"]}};
+const potOk=(k,job=state.job)=>{const p=ASPD_POT[k];return !!p&&!(p.no||[]).includes(job)&&(!p.only||p.only.includes(job))};
+// the potion in use: the one picked, else the strongest this job can drink (older saves had a flat "+ASPD" box instead)
+const potKey=c=>potOk(c.potType)?c.potType:["bers","awak","conc"].find(k=>potOk(k));
+const AXE_MACE=["One-handed axe","Two-handed axe","One-handed mace","Two-handed mace"];
+// lv: [min, max, default, label]; fx(level) -> bonus lines; eff: what it does, when the lines don't say it plainly
+const PBUFF=[
+  {k:"blessing",name:"Blessing",lv:[1,10,10],fx:l=>[["str",l],["int",l],["dex",l],["hit",2*l]]},
+  {k:"clementia",name:"Clementia (Priest)",lv:[1,70,50,"Priest Job Lv"],fx:j=>{const v=10+Math.floor(j/10);return [["str",v],["int",v],["dex",v]]},
+    eff:"Blessing Lv 10 + Priest Job Lv/10 to STR, INT, DEX"},
+  {k:"incAgi",name:"Increase AGI",lv:[1,10,10],fx:l=>[["agi",2+l],["aspd_percent",l]]},
+  {k:"canto",name:"Canto Candidus (Priest)",fx:()=>[["agi",19],["aspd_percent",17]]},
+  {k:"riff",name:"Impressive Riff (Bard)",lv:[1,10,10],fx:l=>[["aspd_percent",l===10?20:1+2*(l-1)]]},
+  {k:"adren",name:"Adrenaline Rush (from a Blacksmith)",w:AXE_MACE,fx:()=>[["aspd_mod",6],["aspd_percent",10]],eff:"potion/skill value 6, ASPD +10%; axes and maces"},
+  {k:"agiFood",name:"AGI food",lv:[1,10,10],fx:l=>[["agi",l]]},
+  {k:"dexFood",name:"DEX food",lv:[1,10,10],fx:l=>[["dex",l]]},
+  {k:"bandage",name:"Yggdrasil's Blessing (Battle Bandage)",fx:()=>[["agi",7],["dex",7]]}];
+const pbuffOf=c=>{if(!c.pbuffs||typeof c.pbuffs!=="object")c.pbuffs={};return c.pbuffs};
+const pbLv=(b,o)=>b.lv?Math.min(b.lv[1],Math.max(b.lv[0],num(o.lv,b.lv[2]))):0;
+const pbEff=b=>b.eff||b.fx(b.lv?b.lv[2]:0).map(([t,v])=>t==="aspd_percent"?`ASPD +${v}%`:t==="aspd_mod"?`potion/skill value ${v}`:`${t.toUpperCase()} +${v}`).join(", ");
+// a buff counts when ticked and it fits your weapon. It doesn't stack with the same buff switched on in your Skills card, and
+// Clementia replaces Blessing, Canto Candidus replaces Increase AGI
+const PB_SELF={blessing:"blessing",incAgi:"increase-agility",adren:"adrenaline-rush"},PB_OVER={blessing:"clementia",incAgi:"canto"};
+const pbTicked=(k,c)=>!!(pbuffOf(c)[k]||{}).on;
+const pbOn=(b,c)=>{if(!pbTicked(b.k,c)||(b.w&&!b.w.includes(c.weapon)))return false;const own=PB_SELF[b.k];
+  if(own&&(c.buffs||{})[own]&&skLv(c,own))return false;return !(PB_OVER[b.k]&&pbTicked(PB_OVER[b.k],c))};
+function aspdBuffLines(c=C()){const out=[];if(c.potOn){const k=potKey(c);if(k)out.push(["aspd_mod",null,null,ASPD_POT[k].mod])}
+  PBUFF.forEach(b=>{if(pbOn(b,c))b.fx(pbLv(b,pbuffOf(c)[b.k])).forEach(([t,v])=>out.push([t,null,null,v]))});return out}
 // status-window mode: the typed numbers are read with consumables off, so their effect is added here into EFF (see cf)
-function applyConsumables(){EFF=null;const c=C();if(c.mode==="build")return;const lines=[...consLines().lines,...(SKFX?SKFX.buffStat:[])];if(!lines.length)return;
+function applyConsumables(){EFF=null;const c=C();if(c.mode==="build")return;const lines=[...consLines().lines,...(SKFX?SKFX.buffStat:[]),...aspdBuffLines(c)];if(!lines.length)return;
   const A={};lines.forEach(([t,,,v])=>A[t]=(A[t]||0)+v);const g=k=>A[k]||0,f=Math.floor;
   // stat buffs move status ATK / MATK / HIT / FLEE / DEF / CRIT / ASPD through the same formulas (only for stats you typed)
   const tmp={...c,st:{...(c.st||{})},intTxt:c.intTxt};STATS.forEach(k=>{if(g(k)&&statVal(c,k)!=null)tmp.st[k]=`${c.st[k]}+${g(k)}`});if(g("int"))tmp.intTxt=`${c.intTxt||0}+${g("int")}`;
@@ -29,7 +60,8 @@ function applyConsumables(){EFF=null;const c=C();if(c.mode==="build")return;cons
   const [as,ag]=parts(c.atkTxt),[ms,mg]=parts(c.matkTxt),[ds,dh]=parts(c.defTxt);
   const atkSt=as+d("atk"),atkGear=f((ag+g("atk"))*(1+g("atk_percent")/100));
   const matkSt=ms+d("matk"),matkTot=f((matkSt+mg+g("matk"))*(1+g("matk_percent")/100));
-  let aspd=num(c.aspd,170)+d("aspdTerm")+g("aspd");aspd=Math.min(190,Math.round((aspd+(195-aspd)*g("aspd_percent")/100)*10)/10);
+  // ASPD as in build.js: stat term and potion/skill value × AGI/200 go into ASPD1, then ASPD % and flat ASPD, rounded down
+  let aspd=num(c.aspd,170)+d("aspdTerm")+g("aspd_mod")*(statVal(tmp,"agi")||0)/200;aspd=Math.min(190,Math.floor(aspd+(195-aspd)*g("aspd_percent")/100+g("aspd")));
   const vit0=statVal(c,"vit"),vit1=statVal(tmp,"vit"),int0=statVal(c,"int"),int1=statVal(tmp,"int");
   const hp=num(c.maxHp)>0?f((num(c.maxHp)*(vit0!=null?(100+vit1)/(100+vit0):1)+g("hp"))*(1+g("hp_percent")/100)):c.maxHp;
   const sp=num(c.maxSp)>0?f((num(c.maxSp)*(100+int1)/(100+int0)+g("sp"))*(1+g("sp_percent")/100)):c.maxSp;
@@ -42,6 +74,16 @@ function renderCons(){const c=C();$("consList").innerHTML=consOf(c).map((r,i)=>`
     <input data-f="price" type="number" value="${esc(r.price??"")}" placeholder="price" style="width:90px"> z, lasts
     <input data-f="min" type="number" value="${esc(r.min??"")}" placeholder="min" style="width:64px"> min
     <button type="button" class="small danger" data-del aria-label="Remove">✕</button></div>`).join("")||'<div class="note">None yet.</div>';consNote()}
+// redrawn on every render (job and weapon change what's allowed), except while you're typing in it
+function renderAspdBuffs(){const c=C(),k=potKey(c),act=document.activeElement;
+  if(act!==$("potType"))$("potType").innerHTML=Object.entries(ASPD_POT).filter(([key])=>potOk(key)).map(([key,p])=>`<option value="${key}"${key===k?" selected":""}>${p.name} (${p.mod})</option>`).join("");
+  if(!$("pbuffList").contains(act))$("pbuffList").innerHTML=PBUFF.map(b=>{const o=pbuffOf(c)[b.k]||{},off=b.w&&!b.w.includes(c.weapon),own=PB_SELF[b.k]&&(c.buffs||{})[PB_SELF[b.k]]&&skLv(c,PB_SELF[b.k]);
+    return `<div class="eqrow" data-pb="${b.k}"><label class="bar" style="flex-direction:row;gap:6px;min-width:250px"><input type="checkbox" data-f="on" ${o.on?"checked":""} style="width:auto">${esc(b.name)}</label>
+    ${b.lv?`<label class="bar" style="flex-direction:row;gap:4px">${b.lv[3]||"Lv"} <input data-f="lv" type="number" min="${b.lv[0]}" max="${b.lv[1]}" value="${pbLv(b,o)}" style="width:60px"></label>`:""}
+    <span class="note">${esc(pbEff(b))}${off?' · <span class="warnc">not with this weapon</span>':own?" · on in your Skills card, counted there":""}</span></div>`}).join("")}
+$("pbuffList").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.target.closest("[data-pb]");if(!f||!row)return;const o=pbuffOf(C())[row.dataset.pb]||(pbuffOf(C())[row.dataset.pb]={});
+  o[f]=f==="on"?e.target.checked:num(e.target.value);save();renderAll()});
+$("potType").addEventListener("change",e=>{C().potType=e.target.value;save();renderAll()});
 const consNote=()=>{const {bad}=consLines(),cost=potCostHr()-potOnlyHr();$("consNote").innerHTML=(cost>0?`~${fmtN(cost)} z/hr while farming. `:"")+(bad.length?`<span class="bad">Not understood: ${bad.map(esc).join(", ")}</span>`:"")};
 $("consAdd").addEventListener("click",()=>{consOf(C()).push({on:true,name:"",eff:"",price:"",min:""});save();renderCons();renderAll()});
 $("consList").addEventListener("click",e=>{if(!e.target.closest("[data-del]"))return;consOf(C()).splice(+e.target.closest(".eqrow").dataset.i,1);save();renderCons();renderAll()});

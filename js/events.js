@@ -48,9 +48,9 @@ $("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?
   if(k==="weapon"){const a0=aspdBase(state.job,c.weapon),a1=aspdBase(state.job,e.target.value);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}}
   c[k]=e.target.value;save();renderAll();if(k==="weapon")renderSkills()}));
 $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
-const potInfo=()=>{const c=C();$("potInfo").textContent=c.potOn?`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`:""};
+const potInfo=()=>{const c=C();$("potInfo").textContent=!c.potOn?"":c.mode!=="build"&&statVal(c,"agi")==null?"type your AGI above to count it (value × AGI/200)":`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`};
 $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});
-["potAspd","potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
+["potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
 ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
   if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));

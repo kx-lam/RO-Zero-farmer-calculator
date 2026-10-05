@@ -9,7 +9,8 @@ const elTag=el=>el&&(convOn()||C().a.type==="spellfist")?` <span class="el ${el}
 // ASPD potion adds a flat bonus to your status window ASPD (Zero cap 190); its cost counts against zeny/hr
 // damage maths read cf(k): the typed (or built) stat plus consumables, see applyConsumables
 let EFF=null;const cf=k=>EFF&&EFF[k]!==undefined?EFF[k]:C()[k];
-const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)+(C().potOn?num(C().potAspd):0)));
+// the potion and buffs reach ASPD through their bonus lines (build-ui.js aspdBuffLines), so cf("aspd") already has them
+const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)));
 // Merchant line: Overcharge raises what NPCs pay you, Discount cuts what NPCs charge you; Lv 1–10 give 7, 9, … 23, 24% in Zero,
 // read from the learned level's description in data/skills.js ("Markup rate: 24%", "Discount rate: 24%")
 const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILLS[state.job]||[])for(const s of t.skills)if(s.slug===slug){const r=String((s.lv[lv-1]||[])[7]||"").match(/(\d+)%/);return r?+r[1]:0}return 0};

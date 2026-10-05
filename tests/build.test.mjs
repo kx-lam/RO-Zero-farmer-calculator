@@ -100,4 +100,15 @@ t("a 1st-job condition (\"Acolyte Class\") also applies to its 2nd jobs", () => 
   assert.equal(hit("Knight"), 0);
 });
 
+t("potion/skill values add value × AGI/200 to ASPD1 (RO樂園攻速計算機's own Priest example)", () => {
+  // Priest, mace + shield: 156 − 3 − 3; AGI 128 (109 + Canto Candidus 19), DEX 85; gear ASPD +45% and +2,
+  // Canto Candidus +17%, Concentration Potion 4: ASPD1 floor(150 + 24.54 + 2.56) = 177, ASPD floor(177 + 18 × 0.62 + 2) = 190
+  const r = BUILD.compute({ baseLv: 1, jobLv: 1, base: { str: 1, agi: 109, vit: 1, int: 1, dex: 85, luk: 1 }, gear: { shield: { id: 5 } },
+    extra: [["agi", null, null, 19], ["aspd_percent", null, null, 45], ["aspd", null, null, 2], ["aspd_percent", null, null, 17], ["aspd_mod", null, null, 4]] },
+    "Priest", () => 156 - 3);
+  assert.equal(r.fields.aspd, 190);
+  const a1 = Math.floor(156 - 3 - 3 + r.status.aspdTerm + 4 * 128 / 200);
+  assert.equal(a1, 177);
+});
+
 console.log(`${n} tests passed`);

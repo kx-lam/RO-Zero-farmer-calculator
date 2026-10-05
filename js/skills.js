@@ -33,9 +33,13 @@ const SK_PASSIVE={"sword-mastery":{w:["Dagger","One-handed sword"]},"two-handed-
   "dance-lessons":{w:["Whip"]},"weaponry-research":{},"demon-bane":{races:["Undead","Demon"]},"beastbane":{races:["Brute","Insect"]},"owls-eye":{},"vultures-eye":{},
   "improve-dodge":{},"flee":{},"faith":{},"soul-drain":{},"meditation":{},"spiritual-thrift":{},"plagiarism":{},"hilt-binding":{}};
 // self-buffs you can switch on; added on top of the status window like consumables
-const SK_BUFF={"two-hand-quicken":{w:["Two-handed sword"]},"spear-quicken":{w:["Two-handed spear"]},"adrenaline-rush":{w:["One-handed axe","Two-handed axe","One-handed mace","Two-handed mace"]},
+const SK_BUFF={"two-hand-quicken":{w:["Two-handed sword"]},"spear-quicken":{w:["One-handed spear","Two-handed spear"]},"adrenaline-rush":{w:["One-handed axe","Two-handed axe","One-handed mace","Two-handed mace"]},
   "power-thrust":{},"improve-concentration":{},"increase-agility":{},"blessing":{},"falcon-eyes":{},"fury":{},"impositio-manus":{},"endow-quake":{},"endow-tsunami":{},
   "endow-tornado":{},"endow-blaze":{},"volcano":{},"deluge":{},"whirlwind":{},"battle-theme":{},"lady-luck":{},"focus-ballet":{},"perfect-tablature":{}};
+// ASPD the skill descriptions leave out, from the RO樂園攻速計算機 sheet ("增益"): potion/skill value (× AGI/200 into ASPD1) and ASPD %.
+// Study's "ASPD +x%" is really a potion/skill value of 0.5 per level (the sheet's Book of Evolution, books only)
+const SK_ASPD={"two-hand-quicken":l=>[["aspd_mod",null,null,7],["aspd_percent",null,null,10]],"spear-quicken":l=>[["aspd_mod",null,null,7],["aspd_percent",null,null,10]],
+  "adrenaline-rush":l=>[["aspd_mod",null,null,7],["aspd_percent",null,null,10]],"study":l=>[["aspd_mod",null,null,0.5*l]]};
 const SECOND=job=>!["Novice",...FIRST_JOBS].includes(job);
 // description -> effects: {mastery, pct (physical damage %), spCost, myEle {el: %} (your spells of that element), physEle {el: %} (your physical
 // attacks of that element), stat: bonus lines (shown in the status window)}
@@ -61,6 +65,7 @@ function skillFx(desc,c){const d=String(desc||""),o={mastery:0,pct:0,spCost:0,my
 // all effects from learned passives and switched-on buffs, for the current weapon
 function skillEffects(c){const out={mastery:[],pct:0,spCost:0,myEle:{},physEle:{},stat:[],buffStat:[]};if(!hasTree(c))return out;const S=skOf(state.job),w=c.weapon;
   const take=(slug,cond,isBuff)=>{const s=S[slug],lv=skLv(c,slug);if(!s||lv<=0)return;if(cond.w&&!cond.w.includes(w))return;const fx=skillFx(skRow(s,lv)[7],c);
+    if(SK_ASPD[slug]){if(slug==="study")fx.stat=fx.stat.filter(b=>b[0]!=="aspd_percent");fx.stat.push(...SK_ASPD[slug](lv))}
     if(fx.mastery)out.mastery.push({v:fx.mastery,races:cond.races||null});out.pct+=fx.pct;out.spCost+=fx.spCost;for(const k in fx.myEle)out.myEle[k]=(out.myEle[k]||0)+fx.myEle[k];for(const k in fx.physEle)out.physEle[k]=(out.physEle[k]||0)+fx.physEle[k];
     (isBuff?out.buffStat:out.stat).push(...fx.stat);(s.g||[]).forEach(g=>(g.b||[]).forEach(b=>(isBuff?out.buffStat:out.stat).push(b)))};
   for(const k in SK_PASSIVE)take(k,SK_PASSIVE[k],false);for(const k in SK_BUFF)if((c.buffs||{})[k])take(k,SK_BUFF[k],true);return out}

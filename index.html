@@ -208,7 +208,7 @@
     <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="converters" style="width:auto"> Use elemental converters (Fire / Water / Earth / Wind) on basic attacks and weapon-element skills: picks the best one per monster and per map</label> <span id="convNote" class="warnc"></span></div>
     <div class="bar note"><span>ASPD potion:</span>
       <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="potOn" style="width:auto"> using one</label>
-      <label class="bar" style="flex-direction:row;gap:4px">+<input id="potAspd" type="number" step="1" style="width:56px"> ASPD</label>
+      <select id="potType" aria-label="Which potion" style="width:auto"></select>
       <label class="bar" style="flex-direction:row;gap:4px"><input id="potPrice" type="number" step="100" style="width:80px"> z each</label>
       <label class="bar" style="flex-direction:row;gap:4px">lasts <input id="potMin" type="number" step="1" style="width:56px"> min</label>
       <span id="potInfo"></span>
@@ -217,6 +217,10 @@
       <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they add on top and cost zeny/hr</span></summary>
       <div id="consList" class="eqlist"></div>
       <div class="bar"><button type="button" class="small" id="consAdd">+ Add</button><span class="note" id="consNote"></span></div>
+    </details>
+    <details class="card sub" id="pbuffPanel">
+      <summary><b>Buffs from others &amp; food</b> <span class="note">ASPD and stats from the RO樂園攻速計算機 sheet; added on top like consumables</span></summary>
+      <div id="pbuffList" class="eqlist"></div>
     </details>
     <div class="bar note"><span>SP items:</span>
       <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
