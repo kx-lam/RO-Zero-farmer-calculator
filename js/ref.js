@@ -36,6 +36,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + race %) × (1 + element %) × (1 + boss/normal %)",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`),"% is your damage taken from its race, element and boss/normal; at least 1")+
    R("SP regen","1 + floor(Max SP/100) + floor(INT/6) every 8 s",()=>`${fmtN(spRegen8())} / 8 s`,"none at 70% weight or more")+
    R("Overcharge / Discount","sell = floor(NPC price × (1 + Overcharge %)); buy = NPC price × (1 − Discount %)",()=>{const o=skRate("overcharge"),d=skRate("discount");return o||d?`+${o}% / −${d}%`:null},"Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%")+
+   R("Max Weight","2000 + job bonus + 30 × STR + 200 × Enlarge Weight Limit Lv + KP shop items",()=>{const w=maxWCalc(c);return w?`${fmtN(w.total)} + KP shop (job +${w.jb})`:null},"only STR points you put in count, not job, gear or buff STR; KP shop items stay forever once used")+
    R("Weight","kills per trip = (Max Weight × sell point − weight now) / weight per kill; time per kill = seconds per kill + town trip / kills per trip",()=>{if(!wOn())return "type your Max Weight";const t=m&&tripInfo(m,walkSec());return t&&t.wk>0?(isFinite(t.kills)?`${fmtN(Math.floor(t.kills))} kills a trip${mn}`:"sell first"):`${fmtN(num(c.curW))} / ${fmtN(num(c.maxW))}`},"at 70% weight HP and SP don't regenerate; at 90% you can't attack or use skills")+
    grp("EXP")+
    R("Even Share party","share = floor(monster EXP × (100% + 10% × (members − 1)) / members)",()=>`${100+partyBonus()}% ÷ ${partyN()} = ${partyPct()}% each`,"same map, within 15 base levels; the game splits by damage dealt, so a kill can be 1 EXP off")+
@@ -51,7 +52,7 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
 // Even Share by party size, with your base and job EXP per kill of the picked monster for each size
 function renderPartyTable(m){const s=cur(),n0=partyN(s),known=m&&!m.expUnknown,sz=n=>({...s,partyN:n});
   $("refPartyNote").textContent=known?`per ${m.name} with your EXP bonuses`:"pick a monster to see your EXP per kill";
-  $("refPartyTable").tHead.innerHTML=`<tr><th>Members</th><th>Party total</th><th>Each</th>${known?"<th>Your base EXP</th><th>Your job EXP</th>":""}</tr>`;
+  $("refPartyTable").tHead.innerHTML=`<tr><th>Members</th><th>Party total</th><th>Each</th>${known?"<th>Base EXP</th><th>Job EXP</th>":""}</tr>`;
   $("refPartyTable").tBodies[0].innerHTML=Array.from({length:12},(_,i)=>i+1).map(n=>`<tr${n===n0?' class="sel"':""}><td>${n===1?"Solo":n}</td><td>${100+partyBonus(sz(n))}%</td><td>${partyPct(sz(n))}%</td>${known?`<td>${fmtN(killExp(m,sz(n)))}</td><td>${fmtN(killJobExp(m,sz(n)))}</td>`:""}</tr>`).join("")}
 function renderRef(){const c=C(),m=calcMob(),blv=num(c.baseLv),jl=num(c.jobLv),per=m?killExp(m):0,jper=m?killJobExp(m):0;
   const kills=(e,p=per)=>p>0?fmtN(Math.ceil(e/p)):"–",kh=m?`<th>Kills of ${esc(m.name)}</th>`:"";
