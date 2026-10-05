@@ -234,15 +234,14 @@ function renderBest(){
   const min=num($("bestMin").value),lim=num($("bestN").value,10);const w=walkSec();const s=cur(),st=stats(s);const curMap=currentMap();
   const curEpm=curMap?sessEpm(s,w):null;
   const rows=Object.keys(MAPMOBS).filter(mp=>!isClosed(mp)).map(mp=>mapStats(mp,w)).filter(r=>r&&r.N>=min);
-  rows.sort((a,b)=>b.epm-a.epm);rows.forEach((r,i)=>r.rank=i+1);rows.splice(lim);
-  const bk=state.bestSort||"epm",bd=state.bestDir||-1;const val=r=>bk==="mp"?mapCode(r.mp):r[bk];
-  rows.sort((a,b)=>{const x=val(a),y=val(b);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*bd});
-  document.querySelectorAll("#bestTable th").forEach(th=>th.classList.toggle("on",th.dataset.bk===bk&&th.textContent!=="Projected"));
-  $("bestBasis").textContent=`${state.job} · ${C().a.name||"attack"} · ${convOn()?"best converter per map":atkEl()} · walking ~${w.toFixed(1)}s/kill`+(curEpm&&st?` · compared with your session on ${mapCode(curMap)} at ${pct(st.avgPct)}/hr`:"");
   const sameJob=(s.job||state.job)===state.job;
-  $("bestTable").querySelector("tbody").innerHTML=rows.map(r=>{
+  // rank every open map by EXP / min, then filter, keep the top N and sort by the picked column
+  rows.sort((a,b)=>b.epm-a.epm);rows.forEach((r,i)=>{r.rank=i+1;r.proj=st&&sameJob&&curEpm?st.avgPct*r.epm/curEpm:null});
+  const shown=sortRows("bestTable",filterRows("bestTable",rows).slice(0,lim));
+  $("bestBasis").textContent=`${state.job} · ${C().a.name||"attack"} · ${convOn()?"best converter per map":atkEl()} · walking ~${w.toFixed(1)}s/kill`+(curEpm&&st?` · compared with your session on ${mapCode(curMap)} at ${pct(st.avgPct)}/hr`:"");
+  $("bestTable").querySelector("tbody").innerHTML=shown.map(r=>{
     const main=MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>`<div>${esc(x.m.name)} <span class="note">×${x.n}</span>${x.m.expUnknown?UNK_PILL:""}</div>`).join("");
-    const proj=st&&sameJob&&curEpm?st.avgPct*r.epm/curEpm:null;
+    const proj=r.proj;
     return `<tr data-map="${r.mp}" class="${r.mp===curMap?"sel":""}"><td>${r.rank}</td><td class="name"><b class="mono">${mapCode(r.mp)}</b> <span class="note">${esc(mapName(r.mp))}</span>${r.mp===curMap?' <span class="pill">current</span>':""}${elTag(r.el2)}</td><td class="name mainmobs">${main}</td><td><b>${fmtN(r.epm)}</b></td><td>${r.sec.toFixed(1)}s + ${r.walk.toFixed(1)}s${sellTxt(r.sell," + ")}</td><td>${fmtN(r.epk)}</td><td>${fmtN(r.zph)}</td><td>${r.hpm==null?"–":fmtN(r.hpm)}</td><td>${r.skip?`<span class="pill down" title="${esc(r.skipNames.join(", "))}">${r.skip}</span>`:"–"}</td><td>≈${r.N}</td><td>${proj==null?"–":"~"+proj.toFixed(1)+"%/hr"}</td></tr>`}).join("")
     ||'<tr><td colspan="11" class="name muted">No open maps match.</td></tr>';
 }
@@ -271,21 +270,24 @@ function renderPrices(){
 const GROUP_NAME=Object.fromEntries(LOOT_GROUPS);
 const groupOf=id=>ITEMTYPE[id]||"e";
 const yourCh=(m,ch)=>+Math.min(100,ch*dropMul()*penMul(m)).toFixed(2);
-// Monster info, Item info and Market tables: click a header (th data-sk) to sort, type in the row under it (data-tf) to filter, with the Monsters table's filters.
-// Each column reads a row as a number (n: sorting, <, >, ranges) and/or as text (t: text filters, and sorting when there's no n); def is the starting sort
+// Monster info, Item info, Market and the two Hunter tables: click a header (th data-sk) to sort, type in the row under it (data-tf) to filter, with the Monsters table's filters.
+// Each column reads a row as a number (n: sorting, <, >, ranges) and/or as text (t: text filters, and sorting when there's no n); asc: a number column whose first click sorts low to high; def is the starting sort
 const mapTxt=mp=>`${mapCode(mp)} ${mapName(mp)}${isClosed(mp)?" closed":""}`;
 const TABLES={
   mobInfoDrops:{def:["z",-1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},group:{t:r=>GROUP_NAME[groupOf(r.id)]+(looted(r.id)?"":" not looted")},ch:{n:r=>r.ch},your:{n:r=>r.your},npc:{n:r=>r.npc},pl:{n:r=>r.pl},z:{n:r=>r.z}}},
   mobInfoMaps:{def:["n",-1],cols:{map:{t:r=>mapTxt(r.mp)},n:{n:r=>r.n},others:{t:r=>r.others.map(x=>x.m.name).join(", ")}}},
   itemTable:{def:["npc",-1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},group:{t:r=>GROUP_NAME[groupOf(r.id)]+(looted(r.id)?"":" not looted")},npc:{n:r=>r.npc},pl:{n:r=>r.pl},best:{n:r=>r.b.ch,t:r=>r.b.m.name},cnt:{n:r=>r.cnt}}},
   itemDropTable:{def:["ch",-1],cols:{name:{t:r=>r.m.name+(r.m.boss?" boss":"")},lv:{n:r=>r.m.lv},ch:{n:r=>r.ch},your:{n:r=>r.your},z:{n:r=>r.z},map:{t:r=>r.om.length?mapTxt(r.om[0][0]):""}}},
+  bestTable:{def:["epm",-1],cols:{rank:{n:r=>r.rank,asc:1},mp:{t:r=>mapTxt(r.mp)},main:{t:r=>MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).map(x=>x.m.name).join(", ")},epm:{n:r=>r.epm},secT:{n:r=>r.secT,asc:1},epk:{n:r=>r.epk},zph:{n:r=>r.zph},hpm:{n:r=>r.hpm,asc:1},skip:{n:r=>r.skip,asc:1},N:{n:r=>r.N},proj:{n:r=>r.proj}}},
+  huntTable:{def:["net",-1],cols:{rank:{n:r=>r.rank,asc:1},name:{t:r=>r.mp?mapTxt(r.mp):`${r.m.name} Lv ${r.m.lv}`},from:{t:r=>r.mp?r.earn.map(x=>x.m.name).join(", "):[mapTxt(openMaps(r.m)[0][0]),...(r.m.drops||[]).map(([id])=>itemName(id))].join(", ")},net:{n:r=>r.net},loot:{n:r=>r.loot},cost:{n:r=>r.cost,asc:1},kph:{n:r=>r.kph},zk:{n:r=>r.zk},epm:{n:r=>r.epm},hpm:{n:r=>r.hpm,asc:1}}},
   priceTable:{def:["name",1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},pl:{n:r=>r.pl},npc:{n:r=>r.npc},best:{n:r=>r.d?r.d.ch:null,t:r=>r.d?r.d.m.name:""}}},
 };
 const tblSort=id=>{const s=state.tsort[id];return s&&Object.hasOwn(TABLES[id].cols,s[0])?s:TABLES[id].def};
-function tableRows(id,rows){
-  const T=TABLES[id],F=state.tfilt[id]||{};
-  rows=rows.filter(r=>Object.entries(F).every(([k,v])=>{const c=T.cols[k];return !v||!c||matchF(v,c.n?c.n(r):null,c.t?c.t(r):null)}));
-  const [k,d]=tblSort(id),c=T.cols[k];
+const filterRows=(id,rows)=>{const T=TABLES[id],F=state.tfilt[id]||{};
+  return rows.filter(r=>Object.entries(F).every(([k,v])=>{const c=Object.hasOwn(T.cols,k)&&T.cols[k];return !v||!c||matchF(v,c.n?c.n(r):null,c.t?c.t(r):null)}))};
+const tableRows=(id,rows)=>sortRows(id,filterRows(id,rows));
+function sortRows(id,rows){
+  const [k,d]=tblSort(id),c=TABLES[id].cols[k];
   const val=r=>{const v=c.n?c.n(r):c.t(r).toLowerCase();return v==null||v===""||(typeof v==="number"&&!isFinite(v))?null:v};
   rows.sort((a,b)=>{const x=val(a),y=val(b);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*d});
   ROOTQ(`#${id} th[data-sk]`).forEach(th=>th.classList.toggle("on",th.dataset.sk===k));
@@ -337,17 +339,16 @@ function renderHunt(){
   ROOTQ("[data-loot]").forEach(i=>i.checked=looted0(i.dataset.loot));$("huntMinWrap").firstChild.textContent=mode==="maps"?"Min monsters on map":"Min spawns on its map";
   const rows=mode==="maps"?Object.keys(MAPMOBS).filter(mp=>!isClosed(mp)).map(mp=>huntMap(mp,w,min)).filter(r=>r&&r.N>=min)
     :MOBS.filter(m=>!m.boss&&!isSkipped(m)&&hasLoot(m)&&openMaps(m).length&&openMaps(m)[0][1]>=min).map(m=>huntMob(m,w)).filter(Boolean);
-  rows.sort((a,b)=>b.net-a.net);rows.forEach((r,i)=>r.rank=i+1);rows.splice(lim);
-  const hk=state.huntSort||"net",hd=state.huntDir||-1;const val=r=>hk==="name"?(r.mp?mapCode(r.mp):r.m.name):r[hk];
-  rows.sort((a,b)=>{const x=val(a),y=val(b);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*hd});
-  document.querySelectorAll("#huntTable th").forEach(th=>th.classList.toggle("on",th.dataset.hk===hk));
+  // rank everything by net zeny / hr, then filter, keep the top N and sort by the picked column
+  rows.sort((a,b)=>b.net-a.net);rows.forEach((r,i)=>r.rank=i+1);
+  const shown=sortRows("huntTable",filterRows("huntTable",rows).slice(0,lim));
   $("huntBasis").textContent=`${state.job} · ${C().a.name||"attack"} · ${convOn()?"best converter by zeny":atkEl()} · walking ~${w.toFixed(1)}s/kill`+(num(state.dropBonus)?` · drop rate +${num(state.dropBonus)}%`:"")+(num(C().baseLv)>39?` · drops −50% from monsters Lv ${num(C().baseLv)-40} and below`:"");
-  const top=[...rows].sort((a,b)=>b.net-a.net)[0];
+  const top=[...shown].sort((a,b)=>b.net-a.net)[0];
   $("huntTiles").innerHTML=top?`<div class="tile now"><div class="k">Best ${mode==="maps"?"map":"monster"} for zeny</div><div class="v mono">${mode==="maps"?mapCode(top.mp):esc(top.m.name)}</div><div class="s">${fmtN(top.net)} z/hr net${top.el2&&convOn()?` · bring ${top.el2} converters`:""}${mode==="maps"?` · ${esc(mapName(top.mp))}`:` · on ${esc(mapLabel(openMaps(top.m)[0][0]))}`}</div></div>
    <div class="tile"><div class="k">Per hour</div><div class="v mono">${fmtN(top.kph)} kills</div><div class="s">${fmtN(top.loot)} z loot · ${fmtN(top.zk)} z/kill${(()=>{const p=(top.m?[top.m]:top.earn.map(x=>x.m)).filter(m=>penNote(m));return p.length?` · ${esc(p.length===1?`${p[0].name}: ${penNote(p[0])}`:`level penalty on ${p.map(m=>m.name).join(", ")}`)}`:""})()}</div></div>
    <div class="tile"><div class="k">Costs / hr</div><div class="v mono">${fmtN(top.cost)}</div><div class="s">SP items, ASPD potion, consumables${top.tele?` &amp; ~${fmtN(top.tele*top.kph)} Fly Wings`:""}${num(C().a.zeny)?" (skill zeny is taken off each kill)":""}</div></div>`:"";
   const sel=currentMap(),selMob=(calcMob()||{}).id;
-  $("huntTable").querySelector("tbody").innerHTML=rows.map(r=>{
+  $("huntTable").querySelector("tbody").innerHTML=shown.map(r=>{
     const name=r.mp?`<b class="mono">${mapCode(r.mp)}</b> <span class="note">${esc(mapName(r.mp))}</span>${r.mp===sel?' <span class="pill">current</span>':""}`:`<b title="${esc(dropNames(r.m))}">${esc(r.m.name)}</b> <span class="note">Lv ${r.m.lv}</span>`;
     const from=r.mp?huntPicker(r,w)+(r.skip?`<div class="note" title="${esc(r.skipNames.join(", "))}">can't hurt ${r.skip}</div>`:"")
       :(()=>{const om=openMaps(r.m);return `<div><span class="mono">${mapCode(om[0][0])}</span> <span class="note">≈${om[0][1]}${penNote(r.m)?` · ${esc(penNote(r.m))}`:""}</span></div>${dropList(r.m)}`})();

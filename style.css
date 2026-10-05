@@ -66,7 +66,6 @@ td.name{font-family:var(--body)}
 tr.sel td{background:var(--accent-soft)}
 tbody tr{cursor:pointer}
 #bestTable td b{font-weight:500}
-#bestTable th[data-bk]{cursor:pointer}
 #bestTable td.mainmobs{white-space:normal;min-width:170px;line-height:1.35}
 #bestTable td{vertical-align:top}
 #huntTable td{vertical-align:top}

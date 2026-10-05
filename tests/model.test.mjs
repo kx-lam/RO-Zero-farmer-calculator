@@ -238,6 +238,14 @@ t("info and market tables: filters, header sort, blanks last, saved sort on a mi
   run(`state.tsort={}`);
 });
 
+t("Hunter tables: an older save's sort carries over to the shared table sort", () => {
+  const r = load({ bestSort: "secT", bestDir: 1, huntSort: "cost", huntDir: -1 });
+  assert.equal(r(`tblSort("bestTable").join()`), "secT,1");
+  assert.equal(r(`tblSort("huntTable").join()`), "cost,-1");
+  assert.equal(r(`"bestSort" in state||"huntDir" in state`), false);
+  assert.equal(run(`tblSort("huntTable").join()`), "net,-1");          // a new save starts on net zeny / hr
+});
+
 t("map names: in-game codes, rozerodb codes and unique names all find the same map", () => {
   assert.equal(run(`mapCode("sp_d05")`), "in_sphinx5");
   assert.equal(run(`mapName("sp_d05")`), "Sphinx B5F");
