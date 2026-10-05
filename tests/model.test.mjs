@@ -86,6 +86,8 @@ t("party Even Share and EXP bonus", () => {
   // in-game kills with +10% EXP item and +10% EXP gear
   run(`state.bonus=10;C().bx={exp:{all:10,race:{}}};cur().partyN=3`);
   assert.equal(run(`killExp({exp:32822})`), 15753);                             // Boulder Dwarf Captain, party of 3
+  run(`cur().partyN=4`);
+  assert.equal(run(`killExp({exp:32822})`), 12800);                   // Boulder Dwarf Captain, party of 4
   run(`cur().partyN=2`);
   assert.equal(run(`killExp({exp:33361})`), 22017);                             // Boulder Dwarf Squad Leader, party of 2
   run(`cur().partyN=1`);

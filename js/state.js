@@ -71,7 +71,7 @@ const num=(v,d=0)=>{const x=+v;return isFinite(x)?x:d};
 const dbUrl=m=>`https://rozerodb.com/monsters/${m.id}`;
 const lvExp=lv=>EXP_TABLE[lv]||null;
 // Even Share: a kill gives the party 100% + 10% per member beyond the first, split evenly (110% for 2, 120% for 3 ... 210% for 12).
-// Checked in game: 3 members, Boulder Dwarf Captain (32,822) → 15,753 each; 2 members, Squad Leader (33,361) → 22,017, both with +20% EXP
+// Checked in game with +20% EXP: Boulder Dwarf Captain (32,822) → 15,753 each for 3 members, 12,800 for 4; Squad Leader (33,361) → 22,017 for 2
 const partyN=(s=cur())=>Math.min(12,Math.max(1,Math.round(num(s&&s.partyN,1))));
 const partyBonus=(s=cur())=>10*(partyN(s)-1);
 const partyShare=(s=cur())=>(1+partyBonus(s)/100)/partyN(s);
