@@ -621,6 +621,9 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`statVal(C(),"agi")`), 87);                              // AGI food Lv 7 from an old save
   assert.equal(run(`JSON.stringify(C().pbuffs)`), "{}");
   assert.equal(run(`potCostHr()`), 0);                                       // consumables carry no zeny cost
+  run(`C().pbuffs={bandage:{on:true}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
+  assert.equal(run(`statVal(C(),"luk")`), 8);                               // Yggdrasil's Blessing: all stats +7
+  assert.equal(run(`sumStat(cf("hitTxt"))-sumStat(C().hitTxt)`), 5 + 7 + 2); // HIT +5, DEX +7, and LUK 1 → 8 adds floor(8/3)
   const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
   assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
 });
