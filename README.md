@@ -26,9 +26,10 @@ It's a single page that runs entirely in your browser. There's no server, no log
 - **Every 2nd job:** pick a job and an attack. The presets use max-level Ragnarok Zero skill data, including cast time, delay, base-level scaling and stat bonuses.
 - **Build mode:** works out ATK, MATK, HIT, FLEE, ASPD, DEF, HP and SP from base stats, job level, gear, refine and cards, matching the in-game status window.
 - **Damage model:** status ATK/MATK, weapon size penalty, the element table, monster DEF/MDEF, hit and dodge chance, crits, mastery ATK, gear % bonuses, cast and delay reduction, ASPD potions and elemental converters.
+- **Consumables & buffs:** read your status window with these off; they add on top. Type food and other consumables as + and +% per main stat (STR … LUK; +% is a share of the total stat, rounded down), anything else as effect lines ("ATK +20, ASPD +10%"), and tick buffs from others (Blessing, Increase AGI, Impressive Riff…). Consumables carry no zeny cost.
 - **Auto-cast spells:** any job, Mages included, can add a spell from a card, weapon or scroll that procs on basic attacks with your MATK. Sage Spell Fist counts the basic attack's own physical hit as well as the procs.
 - **Sage options:** Spell Fist with the best bolt per monster, Hindsight (switched on or off automatically against your zeny limit), Double Bolt, Vitata, Energy Coat, Hunter Fly, Side Winder and SP items. Vitata counts the Heal Lv1 you cast, which costs SP and time you aren't attacking.
-- **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for SP items, the ASPD potion and consumables; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10.
+- **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for SP items and the ASPD potion; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10.
 - **Weight:** enter what you carry when you leave town (gear, potions, scrolls), your Max Weight, where you sell (any % up to 90, such as 65% to stay clear of 70%) and how long a town trip takes.
   - At 70% weight HP and SP stop regenerating, and at 90% you can't attack or use skills, so each trip ends at your sell point. Only the room above your starting weight fills with loot.
   - Kills per trip come from each drop's weight × chance. The trip time is spread over those kills in every EXP/min and zeny/hr figure.
@@ -49,7 +50,7 @@ It's a single page that runs entirely in your browser. There's no server, no log
   - Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F). You can also type the database code (`sp_d05`).
   - Monsters with no EXP data yet (Myst, Isis, Anubis…) show EXP `?` and are left out of EXP/min.
   - Skip monsters you don't want to fight, and mark regions that aren't open yet as closed.
-- **Zeny Hunter:** open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite), SP items and consumables you've switched on.
+- **Zeny Hunter:** open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite), SP items and the ASPD potion.
   - Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
   - Converters are picked by zeny rather than EXP. Monsters with no EXP data still count, since they drop loot.
   - Monsters mode lists every drop with your chance and what it adds per kill.

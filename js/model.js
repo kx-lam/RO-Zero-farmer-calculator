@@ -19,8 +19,8 @@ const ocMul=()=>1+skRate("overcharge")/100;
 const discMul=()=>C().npcBuy===false?1:1-skRate("discount")/100;
 const spItemPrice=()=>num(C().itemPrice)*discMul();
 const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
-// zeny per hour spent on the ASPD potion plus the consumables that are switched on
-const potCostHr=()=>potOnlyHr()+(C().cons||[]).filter(r=>r.on&&num(r.min)>0).reduce((a,r)=>a+60/num(r.min)*num(r.price)*discMul(),0);
+// zeny per hour spent on the ASPD potion (consumables carry no price)
+const potCostHr=()=>potOnlyHr();
 const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 // seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
 // variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)
@@ -367,7 +367,7 @@ const tripEarly=()=>Math.max(0,num(state.tripEarly))*6e4;
 
 
 // ---- Zeny Hunter: maps and monsters ranked by net zeny per hour ----
-// loot per hour (with your drop bonus, less skill costs such as Mammonite) minus SP items and the consumables that are switched on.
+// loot per hour (with your drop bonus, less skill costs such as Mammonite) minus SP items and the ASPD potion.
 // Unlike the EXP rankings, monsters with no EXP in rozerodb still count here: they drop loot all the same
 const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*spItemPrice()+potCostHr()}finally{SG_MOB=k}};
 // the monsters you hunt on a map (in-game Monster tab): state.huntOff[map] lists the ones you pass by, set by hand in the Zeny Hunter.

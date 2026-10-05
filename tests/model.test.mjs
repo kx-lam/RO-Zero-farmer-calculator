@@ -613,4 +613,16 @@ t("ASPD potion and buffs from others (RO樂園攻速計算機 values)", () => {
   assert.equal(run(`SKFX.buffStat.filter(b=>["agi","dex"].includes(b[0])).reduce((a,b)=>a+b[3],0)`), 10);   // Falcon Eyes (True Sight): AGI, DEX +5
 });
 
+t("consumables: + and +% per main stat, old food buffs move into the table", () => {
+  setup("Knight", { atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
+    potOn: false, cons: [], consStat: { str: { n: 10, p: 10 } }, pbuffs: { agiFood: { on: true, lv: 7 }, dexFood: { on: false, lv: 5 } }, buffs: {}, skills: {},
+    a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  assert.equal(run(`statVal(C(),"str")`), 50 + 10 + Math.floor(60 * 0.10));  // +10, then 10% of 60
+  assert.equal(run(`statVal(C(),"agi")`), 87);                              // AGI food Lv 7 from an old save
+  assert.equal(run(`JSON.stringify(C().pbuffs)`), "{}");
+  assert.equal(run(`potCostHr()`), 0);                                       // consumables carry no zeny cost
+  const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
+  assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
+});
+
 console.log(`${n} tests passed`);
