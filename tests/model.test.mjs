@@ -224,6 +224,20 @@ t("monster table filters", () => {
   assert.ok(m("<10 or >100", 150) && !m("<10 or >100", 50));
 });
 
+t("info and market tables: filters, header sort, blanks last, saved sort on a missing column falls back", () => {
+  const rows = `[{id:"909",pl:500,npc:3,d:null},{id:"910",pl:null,npc:10,d:null},{id:"911",pl:2000,npc:null,d:null}]`;
+  const ids = () => run(`tableRows("priceTable",${rows}).map(r=>r.id).join()`);
+  run(`state.tfilt={};state.tsort={priceTable:["pl",-1]}`);
+  assert.equal(ids(), "911,909,910");                                   // no player price sorts last either way
+  run(`state.tsort={priceTable:["pl",1]}`);
+  assert.equal(ids(), "909,911,910");
+  run(`state.tfilt={priceTable:{npc:"<5 or -"}}`);
+  assert.equal(ids(), "909,911");
+  run(`state.tfilt={};state.tsort={priceTable:["constructor",1]}`);     // not a column: the table's own default (name)
+  assert.equal(run(`tblSort("priceTable").join()`), "name,1");
+  run(`state.tsort={}`);
+});
+
 t("map names: in-game codes, rozerodb codes and unique names all find the same map", () => {
   assert.equal(run(`mapCode("sp_d05")`), "in_sphinx5");
   assert.equal(run(`mapName("sp_d05")`), "Sphinx B5F");

@@ -378,8 +378,8 @@
     </div>
     <datalist id="priceList"></datalist>
     <div class="note bad" id="priceMsg"></div>
-    <div class="scroll"><table id="priceTable"><thead><tr><th>Item</th><th>Players pay</th><th>NPC pays</th><th>Best drop</th><th></th></tr></thead><tbody></tbody></table></div>
-    <div class="note">For items you sell to players instead of an NPC: the item then counts at the player price in every zeny figure (Zeny Hunter, the Monsters table and the Session zeny / hr). The loot value from rozerodb already counts each drop at its NPC price, so what the NPC pays is taken off. The NPC box shows rozerodb's NPC price for the item; type a number to override it (blank goes back to rozerodb's). Prices are saved per account. Click any drop in the Zeny Hunter, Monster info or Item info to add it here.</div>
+    <div class="scroll"><table id="priceTable"><thead><tr><th data-sk="name">Item</th><th data-sk="pl">Players pay</th><th data-sk="npc">NPC pays</th><th data-sk="best" title="the monster with the best drop chance; sorts and filters by that chance, or by its name">Best drop</th><th></th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="pl" placeholder=">1000"></td><td><input type="search" data-tf="npc" placeholder=">100"></td><td><input type="search" data-tf="best" placeholder=">1"></td><td></td></tr></thead><tbody></tbody></table></div>
+    <div class="note">For items you sell to players instead of an NPC: the item then counts at the player price in every zeny figure (Zeny Hunter, the Monsters table and the Session zeny / hr). The loot value from rozerodb already counts each drop at its NPC price, so what the NPC pays is taken off. The NPC box shows rozerodb's NPC price for the item; type a number to override it (blank goes back to rozerodb's). Click a header to sort; the row under it filters, like the Monsters table (&lt;350, 100-200, text, "-" for blank, "or"). Prices are saved per account. Click any drop in the Zeny Hunter, Monster info or Item info to add it here.</div>
   </section>
 
   <section class="card" id="mobInfoCard" data-tab="mobinfo">
@@ -387,10 +387,10 @@
     <div class="bar"><label class="grow">Monster<input id="mobInfoInput" list="mobList" placeholder="Search monster"></label></div>
     <div class="calc" id="mobInfoTiles"></div>
     <h3 style="margin:16px 0 8px">Drops</h3>
-    <div class="scroll"><table id="mobInfoDrops"><thead><tr><th>Item</th><th>Auto-loot group</th><th>Chance</th><th>Your chance</th><th>NPC pays</th><th>Players pay</th><th>Zeny / kill</th></tr></thead><tbody></tbody></table></div>
+    <div class="scroll"><table id="mobInfoDrops"><thead><tr><th data-sk="name">Item</th><th data-sk="group">Auto-loot group</th><th data-sk="ch">Chance</th><th data-sk="your">Your chance</th><th data-sk="npc">NPC pays</th><th data-sk="pl">Players pay</th><th data-sk="z">Zeny / kill</th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="group" placeholder="card"></td><td><input type="search" data-tf="ch" placeholder=">1"></td><td><input type="search" data-tf="your" placeholder=">1"></td><td><input type="search" data-tf="npc" placeholder=">100"></td><td><input type="search" data-tf="pl" placeholder="-"></td><td><input type="search" data-tf="z" placeholder=">1"></td></tr></thead><tbody></tbody></table></div>
     <h3 style="margin:16px 0 8px">Where it spawns</h3>
-    <div class="scroll"><table id="mobInfoMaps"><thead><tr><th>Map</th><th>Spawns</th><th>Other monsters</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Your chance is the drop chance after your drop rate bonus and the level penalty. Zeny / kill counts the NPC price, or the player price you set on the Market tab, and is 0 for groups you don't auto loot. Click an item to set its market price, or a map to open it in the map planner.</div>
+    <div class="scroll"><table id="mobInfoMaps"><thead><tr><th data-sk="map">Map</th><th data-sk="n">Spawns</th><th data-sk="others">Other monsters</th></tr><tr class="filters"><td><input type="search" data-tf="map" placeholder="map"></td><td><input type="search" data-tf="n" placeholder=">20"></td><td><input type="search" data-tf="others" placeholder="monster"></td></tr></thead><tbody></tbody></table></div>
+    <div class="note">Your chance is the drop chance after your drop rate bonus and the level penalty. Zeny / kill counts the NPC price, or the player price you set on the Market tab, and is 0 for groups you don't auto loot. Click an item to set its market price, or a map to open it in the map planner. Click a header to sort; the row under it filters, like the Monsters table.</div>
   </section>
 
   <section class="card" id="itemCard" data-tab="items">
@@ -398,12 +398,11 @@
     <div class="bar">
       <label class="grow">Item<input id="itemSearch" placeholder="name or #id"></label>
       <label>Group<select id="itemGroup"><option value="">All</option></select></label>
-      <label>Sort by<select id="itemSort"><option value="npc">NPC price</option><option value="players">Players pay</option><option value="name">Name</option><option value="best">Best drop chance</option></select></label>
     </div>
     <div class="calc" id="itemTiles"></div>
-    <div class="scroll" id="itemDroppers"></div>
-    <div class="scroll tall"><table id="itemTable"><thead><tr><th>Item</th><th>Group</th><th>NPC pays</th><th>Players pay</th><th>Best drop</th><th>Dropped by</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Every item monsters drop (rozerodb.com). Click a row to see every monster that drops it. Players pay is the price you set on the Market tab.</div>
+    <div id="itemDroppers" hidden><div class="scroll"><table id="itemDropTable"><thead><tr><th data-sk="name">Dropped by</th><th data-sk="lv">Lv</th><th data-sk="ch">Chance</th><th data-sk="your">Your chance</th><th data-sk="z">Zeny / kill from it</th><th data-sk="map">Best open map</th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="lv" placeholder="30-60"></td><td><input type="search" data-tf="ch" placeholder=">1"></td><td><input type="search" data-tf="your" placeholder=">1"></td><td><input type="search" data-tf="z" placeholder=">1"></td><td><input type="search" data-tf="map" placeholder="map"></td></tr></thead><tbody></tbody></table></div></div>
+    <div class="scroll tall"><table id="itemTable"><thead><tr><th data-sk="name">Item</th><th data-sk="group">Group</th><th data-sk="npc">NPC pays</th><th data-sk="pl">Players pay</th><th data-sk="best" title="the monster with the best drop chance; sorts and filters by that chance, or by its name">Best drop</th><th data-sk="cnt" title="how many monsters drop it">Dropped by</th></tr><tr class="filters"><td><input type="search" data-tf="name" placeholder="name"></td><td><input type="search" data-tf="group" placeholder="card"></td><td><input type="search" data-tf="npc" placeholder=">1000"></td><td><input type="search" data-tf="pl" placeholder="-"></td><td><input type="search" data-tf="best" placeholder=">1"></td><td><input type="search" data-tf="cnt" placeholder=">5"></td></tr></thead><tbody></tbody></table></div>
+    <div class="note">Every item monsters drop (rozerodb.com). Click a row to see every monster that drops it. Players pay is the price you set on the Market tab. Click a header to sort; the row under it filters, like the Monsters table (&lt;350, 100-200, text, "-" for blank, "or").</div>
   </section>
 
   <section class="card" data-tab="ref">

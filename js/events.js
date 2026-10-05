@@ -194,7 +194,13 @@ $("mobInfoDrops").addEventListener("click",e=>{const a=e.target.closest("[data-p
 $("mobInfoMaps").addEventListener("click",e=>{const tr=e.target.closest("tr[data-map]");if(!tr)return;state.map=tr.dataset.map;save();showTab("maps");renderMap();$("mapCard").scrollIntoView({behavior:"smooth",block:"start"})});
 // Item info: search and filter; click an item for its droppers, a dropper for its Monster info
 $("itemGroup").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<option value="${g}">${n}</option>`).join(""));
-$("itemSearch").addEventListener("input",renderItems);$("itemGroup").addEventListener("change",renderItems);$("itemSort").addEventListener("change",renderItems);
+$("itemSearch").addEventListener("input",renderItems);$("itemGroup").addEventListener("change",renderItems);
+// Monster info, Item info and Market tables: click a header to sort (again to flip it), type under it to filter; saved per table
+[["mobInfoDrops",renderMobInfo],["mobInfoMaps",renderMobInfo],["itemTable",renderItems],["itemDropTable",renderItems],["priceTable",renderPrices]].forEach(([id,render])=>{const t=$(id);
+  t.tHead.addEventListener("click",e=>{const th=e.target.closest("th[data-sk]");if(!th)return;const k=th.dataset.sk,[k0,d0]=tblSort(id);
+    state.tsort[id]=[k,k===k0?-d0:TABLES[id].cols[k].n?-1:1];save();render()});
+  t.querySelectorAll("[data-tf]").forEach(inp=>{inp.value=(state.tfilt[id]||{})[inp.dataset.tf]||"";
+    inp.addEventListener("input",()=>{(state.tfilt[id]=state.tfilt[id]||{})[inp.dataset.tf]=inp.value;save();render()})})});
 $("itemCard").addEventListener("click",e=>{const a=e.target.closest("[data-pitem]");if(a){e.preventDefault();addPrice(a.dataset.pitem,true);return}
   const it=e.target.closest("tr[data-item]");if(it){state.infoItem=it.dataset.item;save();renderItems();$("itemTiles").scrollIntoView({behavior:"smooth",block:"nearest"});return}
   const mo=e.target.closest("#itemDroppers tr[data-id]");if(mo){state.infoMobId=+mo.dataset.id;save();showTab("mobinfo");scrollTo({top:0})}});
@@ -249,7 +255,7 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   $("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
 // ---- show / hide table columns (saved per table) ----
 (function setupColPicks(){
-  const IDS=["cmpTable","mobTable","bestTable","huntTable","mapTable"];
+  const IDS=["cmpTable","mobTable","bestTable","huntTable","mapTable","priceTable","mobInfoDrops","mobInfoMaps","itemTable","itemDropTable"];
   if(!state.hideCols)state.hideCols={};
   const st=document.createElement("style");document.body.appendChild(st);
   // hidden columns are saved by header name, so adding or moving a column doesn't hide the wrong one; the position is looked up here
