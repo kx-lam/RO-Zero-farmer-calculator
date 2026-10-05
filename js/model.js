@@ -48,9 +48,12 @@ const bonusMul=(m,magic=false)=>{const c=C();let k=1+num(c.dmgBonus)/100;
   if(SKFX){if(!magic)k*=(1+SKFX.pct/100)*(1+(SKFX.physEle[atkEl()]||0)/100);else k*=1+(SKFX.myEle[atkEl()]||0)/100}return k};
 // build mode: gear EXP bonus % (plus vs a monster's race), and damage taken from its race / element / boss-normal kind
 const expGear=m=>{const c=C();return c.bx?(c.bx.exp.all||0)+((c.bx.exp.race||{})[m.race]||0):0};
-// your EXP per kill: your Even Share cut (rounded down), then every EXP bonus added together, not multiplied: gear and
-// the EXP bonus % (manuals, buffs) — 10% + 10% is ×1.20 (matches the in-game kills noted at partyN)
-const killExp=(m,s=cur())=>Math.floor(Math.floor(m.exp*(100+partyBonus(s))/100/partyN(s))*(1+(expGear(m)+num(state.bonus))/100));
+// your EXP per kill: your Even Share cut (rounded down), then every EXP bonus added together, not multiplied (10% + 10% is ×1.20,
+// matching the in-game kills noted at partyN). Gear EXP counts for base and job EXP; an item's "EXP +X%" is base EXP only and
+// only "Job EXP +X%" raises job EXP (checked in game: a Captain with 10% gear gave +10% to both, an "EXP +10%" item +10% base only)
+const partyCut=(v,s=cur())=>Math.floor(v*(100+partyBonus(s))/100/partyN(s));
+const killExp=(m,s=cur())=>Math.floor(partyCut(m.exp,s)*(1+(expGear(m)+num(state.bonus))/100));
+const killJobExp=(m,s=cur())=>Math.floor(partyCut(m.job,s)*(1+(expGear(m)+num(state.jobBonus))/100));
 const takenMul=m=>{const c=C();if(!c.bx)return 1;const t=c.bx.taken;return (1+(t.race[m.race]||0)/100)*(1+(t.ele[m.el||"Neutral"]||0)/100)*(1+(t.kind[m.boss?"boss":"normal"]||0)/100)};
 // ignore DEF / MDEF %: lowers the monster's hard defence before the (4000+DEF)/(4000+10·DEF) or (1000+MDEF)/(1000+10·MDEF) factor
 const effDef=m=>(m.def||0)*(1-Math.min(100,Math.max(0,num(C().ignDef)))/100);
@@ -304,8 +307,8 @@ function tripInfo(m,w){const k=SG_MOB;SG_MOB=m;try{if(!wOn())return null;const w
   const {rA,rB,totB}=tripParts(m,tot,w);return {wk,kills:(rA+rB)/wk,min:(rA*tot+(rB?rB*totB:0))/wk/60,fell:num(C().sellAt)===90&&rB<=0&&wRoom(W_STOP)>rA}}finally{SG_MOB=k}}
 function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally{SG_MOB=kSG}}
 function mobRow00(m,w){
-  const sec=fightSec(m),tot=tripTot(m,sec+w,w),epk=killExp(m);
-  return {sec,tot,epm:isFinite(tot)&&tot>0?epk/tot*60:0,epk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk:zenyKill(m)-skillZeny(m)};
+  const sec=fightSec(m),tot=tripTot(m,sec+w,w),epk=killExp(m),jpk=killJobExp(m);
+  return {sec,tot,epm:isFinite(tot)&&tot>0?epk/tot*60:0,epk,jpm:isFinite(tot)&&tot>0?jpk/tot*60:0,jpk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk:zenyKill(m)-skillZeny(m)};
 }
 // map averages, weighted by spawn counts; monsters you can't hurt are skipped (you walk past them)
 function mapStats0(mp,w){

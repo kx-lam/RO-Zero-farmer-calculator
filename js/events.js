@@ -63,6 +63,7 @@ Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target
 $("partyN").addEventListener("input",e=>{cur().partyN=num(e.target.value,1)||1;save();renderAll()});
 $("dropBonus").value=state.dropBonus||0;$("dropBonus").addEventListener("input",e=>{state.dropBonus=num(e.target.value);save();renderAll()});
 $("bonus").addEventListener("input",e=>{state.bonus=num(e.target.value);save();renderAll()});
+$("jobBonus").addEventListener("input",e=>{state.jobBonus=num(e.target.value);save();renderAll()});
 // log
 function nowTime(){return new Date().toTimeString().slice(0,5)}
 const today=()=>{const d=new Date(),p=x=>String(x).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`};
