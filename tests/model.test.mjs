@@ -819,4 +819,28 @@ t("SP back from cards: Dracula, Dark Priest, +5 SP per kill, SP recovery %", () 
   assert.equal(run("C().bx.spRec"), 15);
 });
 
+t("hits interrupt casts unless Phen or Bloody Butterfly", () => {
+  const BOLT = { name: "x", type: "magic", pct: 100, hits: 1, el: "Fire", cast: 2, delay: 0, sp: 10, targets: 1 };
+  setup("Wizard", { matkTxt: "300+200", aspd: 170, fleeTxt: "1", hitScale: 1, mobInterval: 1.5, fixedShare: 0, vctPct: 0, st: {}, intTxt: "", a: BOLT });
+  const at = code => run(`(()=>{SG_MOB=${MOB};try{return ${code}}finally{SG_MOB=null}})()`);
+  const l = 1 / 1.5;                                                        // FLEE 1: every swing lands
+  near(at(`hitsOnYou(${MOB})`), l);
+  near(run("castSec()"), 2);
+  near(at("castEff()"), Math.expm1(l * 2) / l);                              // restarts after each hit: ~2.9 s on average
+  near(at("useSec()"), Math.expm1(l * 2) / l + Math.max(0, 1 / run("atkPerSec()")));
+  run("C().hitScale=0");                                                    // nothing reaches you: the plain cast
+  near(at("castEff()"), 2);
+  run("C().hitScale=1;CRD().phen=true");                                    // Phen: never interrupted, cast +25%
+  near(run("castSec()"), 2.5);
+  near(at("castEff()"), 2.5);
+  run("CRD().phen=false;CRD().bbfly=true");                                 // Bloody Butterfly: +30%
+  near(at("castEff()"), 2.6);
+  run("CRD().bbfly=false;C().a={...C().a,type:'auto'}");                    // basic attacks have no cast
+  near(at("useSec()"), 1 / run("atkPerSec()"));
+  run(`C().a=${JSON.stringify(BOLT)};C().mode='build';C().build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{acc1:{id:2601,cards:[4077]}}};CRD().phen=true;applyBuild()`);
+  assert.equal(run("noBreak()"), true);                                     // build mode: Phen in your gear, its +25% counted from there
+  assert.equal(run("vctCards()"), 0);
+  near(run("C().vctPct"), -25);
+});
+
 console.log(`${n} tests passed`);

@@ -105,9 +105,10 @@ const AC_D={on:false,spell:"Fire Bolt",lv:3,pct:5};
 const AC=()=>{const c=C();if(!c.ac||typeof c.ac!=="object")c.ac={};for(const k in AC_D)if(c.ac[k]==null)c.ac[k]=AC_D[k];if(!AC_SPELLS[c.ac.spell])c.ac.spell=AC_D.spell;return c.ac};
 // cards any job can slot (they used to sit in Sage options): Vitata (Heal Lv1, SP cost +25%), Hunter Fly (HP back on physical
 // attacks), Side Winder (Double Attack on basic attacks), Creamy (Teleport Lv1, so no Fly Wings), and SP back: Dracula (SP on attacks),
-// Dark Priest (Sage: 1 SP per physical hit) and the +5 SP per kill cards (killSp: the races, see KILL_SP)
+// Dark Priest (Sage: 1 SP per physical hit) and the +5 SP per kill cards (killSp: the races, see KILL_SP); Phen and Bloody Butterfly
+// (casts can't be interrupted, variable cast +25% / +30%)
 const CARD_D={vitata:false,spBonus:25,healSp:13,healHp:357,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7,creamy:false,
-  dracOn:false,dracPct:10,dracSp:20,dpOn:false,killSp:[]};
+  dracOn:false,dracPct:10,dracSp:20,dpOn:false,killSp:[],phen:false,bbfly:false};
 const CRD=()=>{const c=C();if(!c.cards||typeof c.cards!=="object")c.cards={};for(const k in CARD_D)if(c.cards[k]==null)c.cards[k]=JSON.parse(JSON.stringify(CARD_D[k]));
   if(!Array.isArray(c.cards.killSp))c.cards.killSp=[];return c.cards};
 // weapon cards: "Recovers 5 SP when defeating <race> monsters with melee physical attacks"
