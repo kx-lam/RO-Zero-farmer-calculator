@@ -83,8 +83,10 @@ t("cast time: variable part shrinks with DEX and INT, fixed part doesn't", () =>
 });
 
 t("party Even Share and EXP bonus", () => {
-  run(`state.bonus=50;cur().partyN=3;cur().partyBonus=20`);
-  near(run(`expMul()`), 1.5 * (1 + 0.2 * 2) / 3);
+  run(`state.bonus=50;cur().partyN=3`);
+  near(run(`expMul()`), 1.5 * 2.15 / 3);
+  const total = [100, 160, 215, 265, 310, 350, 385, 415, 440, 460, 475, 485];
+  total.forEach((p, i) => { run(`cur().partyN=${i + 1}`); near(run(`partyBonus()`), p - 100); });
   run(`cur().partyN=1`);
   near(run(`expMul()`), 1.5);
 });

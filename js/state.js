@@ -70,8 +70,9 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 const num=(v,d=0)=>{const x=+v;return isFinite(x)?x:d};
 const dbUrl=m=>`https://rozerodb.com/monsters/${m.id}`;
 const lvExp=lv=>EXP_TABLE[lv]||null;
-// your share of each kill: EXP bonus, then Even Share (irowiki.org/wiki/Party): 100% + 20% per member beyond the first, split evenly
+// your share of each kill: EXP bonus, then the Even Share party bonus, split evenly. The 2nd member adds 60% and each one after
+// adds 5% less, so a kill gives 100% solo, 160% for 2, 215% for 3, 265% for 4 ... 485% for 12: bonus = (n − 1) × (130 − 5n) / 2
 const partyN=(s=cur())=>Math.min(12,Math.max(1,Math.round(num(s&&s.partyN,1))));
-const partyBonus=(s=cur())=>s&&s.partyBonus!=null&&s.partyBonus!==""?num(s.partyBonus):20;
-const expMul=(s=cur())=>(1+num(state.bonus)/100)*(1+partyBonus(s)/100*(partyN(s)-1))/partyN(s);
+const partyBonus=(s=cur())=>{const n=partyN(s);return (n-1)*(130-5*n)/2};
+const expMul=(s=cur())=>(1+num(state.bonus)/100)*(1+partyBonus(s)/100)/partyN(s);
 

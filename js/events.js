@@ -61,7 +61,6 @@ Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target
   if(c.preset>=0){c.a.name=(JOBS[state.job].p[c.preset]||{}).name+" (edited)";c.preset=-1;$("preset").value="-1"}save();renderAll()};
   $(id).addEventListener(id==="aType"||id==="aElem"?"change":"input",h)});
 $("partyN").addEventListener("input",e=>{cur().partyN=num(e.target.value,1)||1;save();renderAll()});
-$("partyBonus").addEventListener("input",e=>{cur().partyBonus=e.target.value===""?null:num(e.target.value);save();renderAll()});
 $("dropBonus").value=state.dropBonus||0;$("dropBonus").addEventListener("input",e=>{state.dropBonus=num(e.target.value);save();renderAll()});
 $("bonus").addEventListener("input",e=>{state.bonus=num(e.target.value);save();renderAll()});
 // log
