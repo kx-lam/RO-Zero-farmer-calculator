@@ -94,6 +94,17 @@ const JOBS={
 // Shadow Spell auto-cast damage per proc (0 when the attack has none)
 const SS_CHANCE=0.3,SS_MATK=50;
 const ssDmg=m=>{const s=C().a.ss;if(!s)return 0;let p=num(s.pct);s.sadd.forEach(([k,f])=>{const v=statVal(C(),k);if(v!=null)p+=v*f});return magicDmg(m,p,s.el,SS_MATK)*s.hits};
+// auto-cast spells from a card, weapon or scroll (any job, Mages too): each basic attack that connects has a chance % to cast the spell
+// for free at its level, as MATK damage. Ratios as the Mage presets and Shadow Spell above: [element, max Lv, % per hit, hits, INT% per hit]
+const AC_SPELLS={"Fire Bolt":["Fire",10,()=>100,lv=>lv,0.5],"Cold Bolt":["Water",10,()=>100,lv=>lv,0.5],"Lightning Bolt":["Wind",10,()=>100,lv=>lv,0.5],
+ "Earth Spike":["Earth",5,()=>200,lv=>lv,1],"Soul Strike":["Ghost",10,()=>100,lv=>Math.ceil(lv/2),0],"Napalm Beat":["Ghost",10,lv=>70+10*lv,()=>1,0],
+ "Fire Ball":["Fire",10,lv=>140+20*lv,()=>1,0],"Frost Driver":["Water",10,lv=>100+10*lv,()=>1,0],"Jupitel Thunder":["Wind",10,()=>100,lv=>lv+2,0]};
+const AC_D={on:false,spell:"Fire Bolt",lv:3,pct:5};
+const AC=()=>{const c=C();if(!c.ac||typeof c.ac!=="object")c.ac={};for(const k in AC_D)if(c.ac[k]==null)c.ac[k]=AC_D[k];if(!AC_SPELLS[c.ac.spell])c.ac.spell=AC_D.spell;return c.ac};
+const acSpell=()=>{const a=AC(),[el,max,pct,hits,int]=AC_SPELLS[a.spell],lv=Math.min(max,Math.max(1,Math.round(num(a.lv,1))));return {el,lv,pct:pct(lv)+(statVal(C(),"int")||0)*int,hits:hits(lv)}};
+// auto-cast damage per proc (0 when it's off or the attack isn't basic attacks)
+const acDmg=m=>{if(!AC().on||C().a.type!=="auto")return 0;const s=acSpell();return withEl(s.el,()=>magicDmg(m,s.pct,s.el))*s.hits};
+const acChance=()=>Math.min(100,Math.max(0,num(AC().pct)))/100;
 const MAGIC_JOBS=["Mage","Wizard","Sage"];
 const charDefault=job=>{const J=JOBS[job]||JOBS.Novice;const mag=J.p[0].type==="magic";
   const c={baseLv:60,atkTxt:mag?"60+50":"120+200",matkTxt:mag?"100+200":"40+30",hitTxt:"300",fleeTxt:"250",aspd:170,defTxt:"40+60",maxHp:6000,maxSp:600,intTxt:mag?"60+10":"10",spRegen:0,weapon:J.w,wElem:"Neutral",

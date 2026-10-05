@@ -511,4 +511,40 @@ t("gear from the client check: Guild options are GvG-only, race CRIT and damage 
   assert.ok(g(4312).includes('"cls":["acolyte"]'));    // Fur Seal Card: Acolyte Class vs Demon/Undead
 });
 
+t("Spell Fist: each basic attack also lands its physical hit", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  const char = { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", matkTxt: "300+200", hitTxt: "220", crit: 0, aspd: 170, st: {}, intTxt: "",
+    sage: { sfLv: 10, boltLv: 10, bolts: { Fire: true, Water: false, Wind: false }, hsOn: false, hsAuto: false, daSF: false, vitata: false, ecOn: false } };
+  setup("Sage", { ...char, a: AUTO });
+  const phys = run(`dmgPerHit(${MOB})`) * run(`hitChance(${MOB})`) / 100;   // a plain basic attack's hit, misses averaged in
+  assert.ok(phys > 0);
+  setup("Sage", { ...char, preset: 0, a: JSON.parse(run("JSON.stringify(JOBS.Sage.p[0])")) });   // the Spell Fist preset
+  near(run(`sfPerAttack(${MOB})`), run(`sfMagic(${MOB})`) + phys);
+  near(run(`hitChance(${MOB})`), 100);                                    // the Spell Fist proc itself still always lands
+  run("G().daSF=true;G().daPct=7");                                        // Side Winder: the 2nd hit is physical too
+  near(run(`sfPerAttack(${MOB})`), run(`sfMagic(${MOB})`) + phys * 1.07);
+  run("C().atkTxt='0'");                                                   // no ATK still leaves the 1 damage minimum
+  assert.ok(run(`sfPhys(${MOB})`) < phys);
+});
+
+t("auto-cast spells from cards work on any job's basic attacks", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", matkTxt: "100+50", intTxt: "40", hitTxt: "300", crit: 0, st: {}, a: AUTO });
+  const off = run(`usesPerKill(${MOB})`);
+  run("C().ac={on:true,spell:'Fire Bolt',lv:3,pct:5}");
+  const per = run(`dmgPerHit(${MOB})`), hc = run(`hitChance(${MOB})`) / 100;
+  const bolt = run(`magicDmg(${MOB},120,'Fire')`) * 3;                     // (100 + ½ × 40 INT)% × 3 hits, Fire vs Water 1
+  near(run(`acDmg(${MOB})`), bolt);
+  near(run(`usesPerKill(${MOB})`), 10000 / (per * hc + bolt * 0.05 * hc));   // only procs on swings that connect
+  assert.ok(run(`usesPerKill(${MOB})`) < off);
+  run("C().ac.spell='Soul Strike';C().ac.lv=10");                          // Soul Strike Lv10: 5 Ghost hits
+  near(run(`acDmg(${MOB})`), run(`magicDmg(${MOB},100,'Ghost')`) * 5);
+  run("C().a={...C().a,type:'phys',pct:400}");                             // skills don't proc it
+  assert.equal(run(`acDmg(${MOB})`), 0);
+  // a Mage swinging a staff gets both its physical hit and the auto-cast
+  setup("Mage", { atkTxt: "60+50", wAtk: 0, wElem: "Neutral", matkTxt: "200+100", intTxt: "80", hitTxt: "300", crit: 0, st: {}, a: AUTO });
+  run("C().ac={on:true,spell:'Cold Bolt',lv:10,pct:10}");
+  assert.ok(run(`dmgPerHit(${MOB})`) > 1 && run(`acDmg(${MOB})`) > 0);
+});
+
 console.log(`${n} tests passed`);

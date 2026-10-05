@@ -85,9 +85,12 @@ function dmgPerHit(m){
 const critRace=m=>{const c=C();return m&&c.bx&&c.bx.critRace?num(c.bx.critRace[m.race]):0};
 const critChance=m=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(100,Math.max(0,(num(cf("crit"))+critRace(m))*(c.weapon==="Katar"?2:1)))/100};
 // uses needed per kill: whole hits that land, spread over misses
-function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m),a=C().a,ss=ssDmg(m)*SS_CHANCE;if(d<=0&&ss<=0)return Infinity;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);const cr=critChance(m);
-  // Shadow Spell: the auto-cast is averaged into each attack and only procs on swings that connect (crits always do)
-  if(cr>0||ss>0){const land=cr+(1-cr)*hitChance(m)/100;const exp=per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hitChance(m)/100)+ss*land;return Math.max(1,m.hp/exp)}
+// average damage of one use: hits that land (crits always do, × 1.4 × (1 + crit damage %)) plus auto-casts, which only proc on swings that connect
+const procPerUse=m=>ssDmg(m)*SS_CHANCE+acDmg(m)*acChance();
+const useAvg=(m,per,proc)=>{const cr=critChance(m),hc=hitChance(m)/100;return per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hc)+proc*(cr+(1-cr)*hc)};
+function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const d=dmgPerHit(m),a=C().a,proc=procPerUse(m);if(d<=0&&proc<=0)return Infinity;const h=a.sizeHits?a.sizeHits[{S:0,M:1,L:2}[m.size]??1]:num(a.hits,1);const per=d*Math.max(0.01,h);
+  // Shadow Spell and card auto-casts are averaged into each attack
+  if(critChance(m)>0||proc>0)return Math.max(1,m.hp/useAvg(m,per,proc));
   return Math.ceil(m.hp/per)/(hitChance(m)/100)}
 // SP: a use costs SP; natural regen is 1 + MaxSP/100 + INT/6 per 8s unless typed
 const spRegen8=()=>num(C().spRegen)>0?num(C().spRegen):1+Math.floor(num(cf("maxSp"))/100)+Math.floor(statVal(C(),"int")/6);
@@ -158,7 +161,11 @@ const sgDefSP=()=>{const m=SG_MOB||calcMob();const d=m?sgDefense(m):null;return 
 const sgItemsPerSec=()=>sgItemsOn()?Math.max(0,sgUpkeep()+sgDefSP()+hsFullSP()-regenPerSec())/num(C().itemSp):0;
 // without SP items, Hindsight only fires as often as spare regen pays for
 const hsSustain=()=>{const f=hsFullSP();if(f<=0||sgItemsOn())return 1;return Math.max(0,Math.min(1,(regenPerSec()-sgUpkeep()-sgDefSP())/f))};
-const sfPerAttack=m=>{const el=atkEl();return sfChance()*magicDmg(m,sfPct(),el)*daFactor()+hsChance()*hsSustain()*hsBoltLv()*magicDmg(m,100,el)*(1+dbChance())};
+// the basic attack under Spell Fist still deals its own physical hit: weapon element, size, DEF, HIT and crits, plus card auto-casts
+const withAtk=(a,fn)=>{const c=C(),k=c.a;c.a=a;try{return fn()}finally{c.a=k}};
+const sfPhys=m=>withAtk(BASIC,()=>withEl(null,()=>useAvg(m,dmgPerHit(m),procPerUse(m))));
+const sfMagic=m=>{const el=atkEl();return sfChance()*magicDmg(m,sfPct(),el)*daFactor()+hsChance()*hsSustain()*hsBoltLv()*magicDmg(m,100,el)*(1+dbChance())};
+const sfPerAttack=m=>sfMagic(m)+sfPhys(m)*daFactor();
 // Hindsight auto: on for the session's map only when the extra EXP costs less than your limit per 1% (after the extra loot)
 function applyHsAuto(){
   const g=G();if(!isSF()||!g.hsAuto){g._note="";return}
