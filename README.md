@@ -177,8 +177,8 @@ node tests/model.test.mjs    # damage and tracker maths, loaded with a stand-in 
 
 - Monsters, drops, NPC prices and skills: [rozerodb.com](https://rozerodb.com)
 - Gear, cards, refine and job data: [roz.prontera.info](https://roz.prontera.info)
-- Spawn counts: the official Ragnarok Zero Global client (navigation table); rozerodb's estimates for maps not out yet
-- Map names: the official client (`System/mapInfo_enUS.lub`); ragnarokzero.net's names for maps not in the client yet
+- Spawn counts: the official Ragnarok Zero Global client (navigation table)
+- Map names: the official client (`System/mapInfo_enUS.lub`)
 - Spawn, drop and item name cross-check, in-game map codes: [ragnarokzero.net](https://ragnarokzero.net/database/maps)
 - Monster race and HP cross-check: [einh-guild.de](https://einh-guild.de), [midgardhub.com](https://midgardhub.com/database/monsters)
 - Formulas: [roz.prontera.info/mechanics](https://roz.prontera.info/mechanics), [iRO Wiki](https://irowiki.org/wiki/Stats)
