@@ -35,8 +35,17 @@ const aspdBaseOf=(c,w=c.weapon,lw=c.lw)=>{const ab=aspdBase(state.job,w);return 
 // hand, so it's never worn with an Assassin's second weapon
 const shieldPen=(c,w=c.weapon,lw=c.lw,sh=c.shield)=>sh&&!BUILD.dualOk(state.job,w,lw)?BUILD.SHIELD_ASPD[state.job]||0:0;
 const aspdStart=c=>{const ab=aspdBaseOf(c);return ab==null?null:ab-shieldPen(c)};
-// status-window mode: a change of weapon, left hand or shield moves the typed ASPD by what the base moves
-const aspdMove=(c,next)=>{const a0=aspdStart(c),a1=aspdStart(next);if(a0!=null&&a1!=null){c.aspd=Math.min(190,Math.round((num(c.aspd,150)+a1-a0)*10)/10);$("aspd").value=c.aspd}};
+// status-window mode: a change of weapon, left hand or shield moves the typed ASPD by what the base moves, except right after you
+// typed ASPD: then the number is taken as this setup's (filling in a character: ASPD 171 typed, then the weapon picked). The note
+// under the shield row offers the other value
+const aspdMove=(c,next,what)=>{const a0=aspdStart(c),a1=aspdStart(next);weaponNote(null);
+  if(a0!=null&&a1!=null&&a0!==a1){const was=num(c.aspd,150),moved=Math.min(190,Math.round((was+a1-a0)*10)/10);
+    if(!c.aspdNew){c.aspd=moved;$("aspd").value=c.aspd}weaponNote({what,now:c.aspd,alt:c.aspdNew?moved:was,kept:!!c.aspdNew,typed:!!c.aspdNew})}
+  delete c.aspdNew};
+const weaponNote=n=>{const el=$("weaponNote");if(!n){el.hidden=true;el.innerHTML="";return}el.hidden=false;
+  el.innerHTML=`${n.kept?`Kept ASPD ${n.now}${n.typed?": you had just typed it, so it counts":""} as your ASPD with ${esc(n.what)}.`:`ASPD ${n.alt} → ${n.now} with ${esc(n.what)} (base ASPD difference).`} <button type="button" class="small" id="weaponNoteUse">Use ${n.alt}</button>`;
+  $("weaponNoteUse").onclick=()=>{const c=C();c.aspd=n.alt;$("aspd").value=c.aspd;weaponNote({...n,now:n.alt,alt:n.now,kept:!n.kept,typed:false});save();renderAll()}};
+$("job").addEventListener("change",()=>weaponNote(null));
 const bumpFirst=(txt,d)=>{if(!d)return txt;const p=String(txt??"0").split("+");p[0]=String(Math.round((parseFloat(p[0])||0)+d));return p.join("+")};
 // a stat change moves the status part of ATK/MATK/HIT/FLEE/DEF by the same amount the formula moves, so gear bonuses you typed stay
 function shiftByStats(c,before){const a=derived(c);const ok=k=>STATS.every(x=>statVal(c,x)!=null);if(!ok())return;
@@ -50,13 +59,13 @@ STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c
 // character number/text fields
 const numK=["lwAtk","jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"];
 ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","lwAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"].forEach(k=>
-  $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
+  $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="aspd"){c0.aspdNew=true;weaponNote(null)}if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
 $("npcBuy").addEventListener("change",e=>{C().npcBuy=e.target.checked;save();renderAll()});
 $("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?Math.min(90,v):70;save();renderAll()});
 ["weapon","wElem","nameType","lw","lwElem"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
-  if(k==="weapon"||k==="lw"){const next={...c,[k]:e.target.value};if(k==="lw"&&BUILD.dualOk(state.job,next.weapon,next.lw))next.shield=false;aspdMove(c,next);c.shield=next.shield;$("shield").checked=!!c.shield}
+  if(k==="weapon"||k==="lw"){const next={...c,[k]:e.target.value};if(k==="lw"&&BUILD.dualOk(state.job,next.weapon,next.lw))next.shield=false;aspdMove(c,next,k==="weapon"?`the ${next.weapon}`:next.lw?`a ${next.lw} in the left hand`:"no left-hand weapon");c.shield=next.shield;$("shield").checked=!!c.shield}
   c[k]=e.target.value;save();renderAll();if(k==="weapon")renderSkills()}));
-$("shield").addEventListener("change",e=>{const c=C(),next={...c,shield:e.target.checked};if(next.shield)next.lw="";aspdMove(c,next);
+$("shield").addEventListener("change",e=>{const c=C(),next={...c,shield:e.target.checked};if(next.shield)next.lw="";aspdMove(c,next,next.shield?"a shield":"no shield");
   c.shield=next.shield;c.lw=next.lw;$("lw").value=c.lw||"";save();renderAll()});
 $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();renderAll()});
 const potInfo=()=>{const c=C();$("potInfo").textContent=!c.potOn?"":c.mode!=="build"&&statVal(c,"agi")==null?"type your AGI above to count it (value × AGI/200)":`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`};
