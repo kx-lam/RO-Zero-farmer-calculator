@@ -266,10 +266,8 @@ const bkText=()=>JSON.stringify(state);
 const bkAllText=()=>{save();return JSON.stringify({allAccounts:1,active:accts.active,accounts:accts.list.map(a=>{let data=null;try{data=JSON.parse(localStorage.getItem(acctKey(a.id)))}catch(e){}return {id:a.id,name:a.name,data}})})};
 const bkCopyText=(t,what)=>{const fb=()=>{$("bkText").value=t;$("bkText").select();$("bkMsg").textContent="Couldn't copy automatically, so the backup is selected in the box below."};
   try{navigator.clipboard.writeText(t).then(()=>{$("bkMsg").textContent=`${what} copied. Paste it somewhere safe.`},fb)}catch(err){fb()}};
-$("bkCopy").addEventListener("click",()=>bkCopyText(bkText(),"Backup"));
-$("bkCopyAll").addEventListener("click",()=>bkCopyText(bkAllText(),`Backup of all ${accts.list.length} accounts`));
-$("bkShow").addEventListener("click",()=>{$("bkText").value=bkText();$("bkText").select();$("bkMsg").textContent="Backup text is in the box."});
-$("bkShowAll").addEventListener("click",()=>{$("bkText").value=bkAllText();$("bkText").select();$("bkMsg").textContent="Backup text for all accounts is in the box."});
+// the backup always holds every account; the text also goes in the box so it can be seen or copied by hand
+$("bkCopy").addEventListener("click",()=>{const t=bkAllText();$("bkText").value=t;const n=accts.list.length;bkCopyText(t,n>1?`Backup of all ${n} accounts`:"Backup")});
 // share link: the current account, deflated and base64url-encoded into the URL hash (#s=…), which never reaches the server
 const b64u={enc:b=>{let s="";for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")},
   dec:t=>Uint8Array.from(atob(t.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0))};

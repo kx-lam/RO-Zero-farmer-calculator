@@ -18,7 +18,7 @@ It's a single page that runs entirely in your browser. There's no server, no log
 ### Account
 
 - Keep separate characters, sessions and settings for each of your accounts, and switch between them.
-- **Backup:** copy or restore the current account's data, or every account at once, as text. Restoring an all-accounts backup replaces every account.
+- **Backup:** Copy backup copies every account as one block of text (it also shows in the box). Restore from text replaces every account with it; older single-account backups still restore into the current account.
 - **Copy share link** puts the current account in a link. The data sits in the part after `#`, which never reaches the server. Opening the link loads the account into the backup box, and nothing changes until you click Restore.
 
 ### Character
