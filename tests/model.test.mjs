@@ -22,7 +22,7 @@ const load = save => {
     document: stub(), console, setTimeout: () => 0, clearTimeout() {}, navigator: stub(), location: stub(), scrollTo() {}, addEventListener() {},
     localStorage: { getItem: k => k in store ? store[k] : null, setItem: (k, v) => { store[k] = String(v) }, removeItem: k => { delete store[k] } },
   });
-  for (const [, src] of html.matchAll(/<script src="([^"]+)"><\/script>/g)) vm.runInContext(readFileSync(new URL(src, root), "utf8"), ctx, { filename: src });
+  for (const [, src] of html.matchAll(/<script src="([^"?]+)(?:\?v=[^"]*)?"><\/script>/g)) vm.runInContext(readFileSync(new URL(src, root), "utf8"), ctx, { filename: src });
   return code => vm.runInContext(code, ctx);
 };
 const run = load();
@@ -897,6 +897,19 @@ t("share links leave out defaults and get every value back", () => {
   assert.deepEqual(after.sessions[0].entries, before.sessions[0].entries);
   assert.equal(after.chars.Sage.sage.hsAuto, true);
   assert.equal(run("JSON.stringify(unpackState({sessions:[]}))"), '{"sessions":[]}');  // older links, not packed, load as they are
+});
+
+t("share links get a real two-account backup back", () => {
+  const bk = JSON.parse(readFileSync(new URL("tests/fixtures/backup-2-accounts.json", root), "utf8"));
+  for (const a of bk.accounts) {
+    const r = load(a.data);                                                  // the page as it opens with this account saved
+    const before = JSON.parse(r("JSON.stringify(state)")), packed = r("JSON.stringify(packState(state))");
+    const after = JSON.parse(r(`JSON.stringify(unpackState(JSON.parse(${JSON.stringify(packed)})))`));
+    for (const j in before.chars) delete before.chars[j].bx;
+    const has = (x, y, at) => { if (x && typeof x === "object" && !Array.isArray(x)) for (const k in x) has(x[k], y?.[k], `${at}.${k}`); else assert.deepEqual(y, x, at) };
+    has(before, after, a.name);
+    assert.ok(packed.length < JSON.stringify(before).length, a.name);
+  }
 });
 
 console.log(`${n} tests passed`);

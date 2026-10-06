@@ -113,7 +113,7 @@ The page is plain HTML, CSS and JavaScript with no dependencies. Open `index.htm
 | `build.js` | Build simulator: turns base stats, job level, gear, refine and cards into the status window's ATK/MATK/HIT/FLEE/ASPD/DEF/HP/SP. |
 | `js/` | Calculator and tracker code (see below). |
 | `data/` | Game data tables, one per file (see below). |
-| `tools/` | Python scripts that export and cross-check the data. |
+| `tools/` | Python scripts that export and cross-check the data, and `stamp.mjs` for the file stamps in `index.html`. |
 | `tests/` | Node tests. |
 
 ### `js/`
@@ -156,6 +156,8 @@ Each table lives in its own file, so a re-export after a patch only touches that
 
 All scripts use only the Python standard library.
 
+**After changing any script, stylesheet or data file, run `node tools/stamp.mjs`.** It sets each `?v=` in `index.html` to that file's content hash, so after a deploy a browser never runs the new page with an old cached file. `tests/stamp.test.mjs` fails while a stamp is out of date.
+
 | Command | What it does |
 | --- | --- |
 | `python tools/export_spawns.py [--client PATH]` | Rewrites `data/spawn.js` from `navi_mob.lub` in your installed client's `data.grf` (read-only). Default client path: `C:\Gravity\RagnarokZero`. |
@@ -177,6 +179,7 @@ Notes on `export_prontera.py`:
 node tests/build.test.mjs    # build simulator
 node tests/ingame.test.mjs   # real characters against their in-game status window
 node tests/model.test.mjs    # damage and tracker maths, loaded with a stand-in page
+node tests/stamp.test.mjs    # every file in index.html carries its current ?v= hash
 ```
 
 `model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time and the monster table filters. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`).
