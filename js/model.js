@@ -1,11 +1,20 @@
 // ---- attack model ----
 let EL_OVR=null;
 const atkEl=()=>{const a=C().a;if(a.type==="spellfist")return EL_OVR||sfBolts()[0]||"Fire";return a.el==="W"?(EL_OVR||C().wElem):a.el};
-// elemental converters (Fire/Water/Earth/Wind) change the weapon element for basic attacks and weapon-element skills
+// elemental converters (Fire/Water/Earth/Wind) change the weapon element for basic attacks and weapon-element skills. One is on at
+// a time: c.convEl picks it, or "" to try each (and your weapon's own element) and take the best per monster / map
+const CONV_ELS=["Fire","Water","Earth","Wind"];
 const convOn=()=>!!C().converters&&C().a.el==="W";
-const elOptions=()=>C().a.type==="spellfist"?(sfBolts().length?sfBolts():[null]):convOn()?[...new Set([C().wElem,"Fire","Water","Earth","Wind"])]:[null];
+const convFixed=()=>CONV_ELS.includes(C().convEl)?C().convEl:"";
+const convAll=()=>[...new Set([C().wElem,...CONV_ELS])];
+const convLabel=by=>convFixed()?`${convFixed()} converter`:`best converter ${by}`;
+const elOptions=()=>C().a.type==="spellfist"?(sfBolts().length?sfBolts():[null]):convOn()?(convFixed()?[convFixed()]:convAll()):[null];
 const withEl=(el,fn)=>{const k=EL_OVR;EL_OVR=el;try{return fn()}finally{EL_OVR=k}};
 const elTag=el=>el&&(convOn()||C().a.type==="spellfist")?` <span class="el ${el}">${el}</span>`:"";
+// element-table rate of an attack element against a monster (Reference tab): green above 100%, amber below, red when it can't hurt
+const elRateCls=v=>v<=0?"bad":v>100?"good":v<100?"warnc":"";
+const elRateTxt=v=>v<=0?"0% ✕":v+"%";
+const elRateHtml=(el,v)=>`<span class="el ${el}">${el}</span> <span class="${elRateCls(v)}">${elRateTxt(v)}</span>`;
 // ASPD potion adds a flat bonus to your status window ASPD (Zero cap 190); its cost counts against zeny/hr
 // damage maths read cf(k): the typed (or built) stat plus consumables, see applyConsumables
 let EFF=null;const cf=k=>EFF&&EFF[k]!==undefined?EFF[k]:C()[k];
@@ -19,10 +28,8 @@ const ocMul=()=>1+skRate("overcharge")/100;
 const discMul=()=>C().npcBuy===false?1:1-skRate("discount")/100;
 const spItemPrice=()=>num(C().itemPrice)*discMul();
 const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
-// Blessing of Yggdrasil: one World Tree Dew or Zelstar an hour (not sold by NPCs, so no Discount)
-const yggCostHr=()=>C().yggOn?num(C().yggPrice):0;
-// zeny per hour spent on the ASPD potion and Blessing of Yggdrasil (other consumables carry no price)
-const potCostHr=()=>potOnlyHr()+yggCostHr();
+// zeny per hour spent on the ASPD potion (consumables carry no price; Blessing of Yggdrasil's items come from the KP shop)
+const potCostHr=()=>potOnlyHr();
 const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 // seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
 // variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)

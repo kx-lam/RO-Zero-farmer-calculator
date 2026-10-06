@@ -62,9 +62,7 @@ $("autoSp").addEventListener("change",e=>{C().autoSp=e.target.checked;save();ren
 const potInfo=()=>{const c=C();$("potInfo").textContent=!c.potOn?"":c.mode!=="build"&&statVal(c,"agi")==null?"type your AGI above to count it (value × AGI/200)":`ASPD ${aspdEff()} · ~${fmtN(potOnlyHr())} z/hr`};
 $("potOn").addEventListener("change",e=>{C().potOn=e.target.checked;save();potInfo();renderAll()});
 ["potPrice","potMin"].forEach(id=>$(id).addEventListener("input",e=>{C()[id]=num(e.target.value);save();potInfo();renderAll()}));
-const yggInfo=()=>{const c=C();$("yggInfo").textContent=c.yggOn&&yggCostHr()>0?`~${fmtN(yggCostHr())} z/hr`:""};
-$("yggOn").addEventListener("change",e=>{C().yggOn=e.target.checked;save();yggInfo();renderAll()});
-$("yggPrice").addEventListener("input",e=>{C().yggPrice=num(e.target.value);save();yggInfo();renderAll()});
+$("yggOn").addEventListener("change",e=>{C().yggOn=e.target.checked;save();renderAll()});
 ROOTQ("#sagePanel").forEach(p=>p.addEventListener("input",e=>{const i=e.target;const g=G();
   if(i.dataset.sgbolt){g.bolts[i.dataset.sgbolt]=i.checked}else if(i.dataset.sg){const k=i.dataset.sg;g[k]=i.type==="checkbox"?i.checked:num(i.value)}else return;
   if(i.dataset.sg==="hsOn")g.hsAuto=false;save();syncChar();renderAll()}));
@@ -78,7 +76,7 @@ $("ecRow").addEventListener("input",e=>{const i=e.target,k=i.dataset.ec;if(!k)re
 $("acOn").addEventListener("change",e=>{AC().on=e.target.checked;save();renderAll()});
 $("acSpell").addEventListener("change",e=>{AC().spell=e.target.value;save();renderAll()});
 ["acLv","acPct"].forEach(id=>$(id).addEventListener("input",e=>{AC()[id==="acLv"?"lv":"pct"]=num(e.target.value);save();renderAll()}));
-$("converters").addEventListener("change",e=>{C().converters=e.target.checked;save();renderAll()});
+$("convSel").addEventListener("change",e=>{const v=e.target.value,c=C();c.converters=!!v;c.convEl=v==="auto"?"":v;save();renderAll()});
 // attack detail fields: editing makes the attack "Custom"
 $("cartW").addEventListener("input",e=>{C().cartW=Math.min(8000,Math.max(0,num(e.target.value)));save();renderAll()});
 const aMap={aType:"type",aPct:"pct",aHits:"hits",aElem:"el",aCast:"cast",aDelay:"delay",aSp:"sp",aTargets:"targets",aZeny:"zeny"};

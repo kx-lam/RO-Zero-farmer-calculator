@@ -683,6 +683,22 @@ t("auto-cast spells from cards work on any job's basic attacks", () => {
   assert.ok(run(`dmgPerHit(${MOB})`) > 1 && run(`acDmg(${MOB})`) > 0);
 });
 
+t("elemental converter: one element picked, or the best per monster / map", () => {
+  setup("Knight", { atkTxt: "150+200", wAtk: 0, wElem: "Neutral", weapon: "Two-handed sword", hitTxt: "300", st: {}, autoSp: false, potOn: false, cons: [], converters: true, convEl: "",
+    a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  assert.equal(run(`JSON.stringify(elOptions())`), JSON.stringify(["Neutral", "Fire", "Water", "Earth", "Wind"]));   // auto: your weapon and each converter
+  const jakk = `MOBS.find(m=>m.name==="Jakk")`;
+  assert.equal(run(`elemMult(${jakk},"Fire")`), 0);                          // Fire 2 takes nothing from Fire
+  assert.equal(run(`mobRow(${jakk},0).el2`), "Water");
+  run(`C().convEl="Fire"`);                                                  // only one converter can be on
+  assert.equal(run(`JSON.stringify(elOptions())`), JSON.stringify(["Fire"]));
+  assert.equal(run(`mobRow(${jakk},0).el2`), "Fire");
+  assert.equal(run(`mapStats(mapKey("gef_dun01"),0).el2`), "Fire");
+  assert.ok(run(`withEl("Fire",()=>hitPctOf(${jakk}))`) < run(`withEl("Water",()=>hitPctOf(${jakk}))`));
+  run(`C().converters=false`);
+  assert.equal(run(`JSON.stringify(elOptions())`), "[null]");
+});
+
 t("ASPD potion and buffs from others (RO樂園攻速計算機 values)", () => {
   setup("Knight", { atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
     potOn: true, potType: "conc", cons: [], pbuffs: {}, buffs: {}, skills: {}, a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
@@ -719,16 +735,15 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`statVal(C(),"luk")`), 1);
   assert.equal(run(`cf("hitTxt")`), run(`C().hitTxt`));
   run(`C().addOnTop=true`);
-  // Blessing of Yggdrasil (World Tree Dew / Zelstar, 1 hour): all stats +7, ATK/MATK +30, HIT/FLEE +5, and its price each hour
-  run(`C().consStat={};C().cons=[];C().yggOn=true;C().yggPrice=50000;applyConsumables()`);
+  // Blessing of Yggdrasil (World Tree Dew / Zelstar from the KP shop, 1 hour): all stats +7, ATK/MATK +30, HIT/FLEE +5, no zeny
+  run(`C().consStat={};C().cons=[];C().yggOn=true;applyConsumables()`);
   assert.equal(run(`statVal(C(),"luk")`), 8);
   assert.equal(run(`statVal(C(),"str")`), 57);
   assert.equal(run(`sumStat(cf("hitTxt"))-sumStat(C().hitTxt)`), 5 + 7 + 2); // HIT +5, DEX +7, LUK +7
   assert.equal(run(`sumStat(cf("fleeTxt"))-sumStat(C().fleeTxt)`), 5 + 7 + 1); // FLEE +5, AGI +7, LUK +7
-  assert.equal(run(`potCostHr()`), 50000);
+  assert.equal(run(`potCostHr()`), 0);
   run(`C().yggOn=false;applyConsumables()`);
   assert.equal(run(`statVal(C(),"luk")`), 1);
-  assert.equal(run(`potCostHr()`), 0);
   const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
   assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
 });
