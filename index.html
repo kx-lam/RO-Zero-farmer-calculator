@@ -130,7 +130,7 @@
       <label>LUK<input id="st_luk" inputmode="numeric"></label>
     </div>
     <div class="note" id="statNote"></div>
-    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add Consumables &amp; buffs, the ASPD potion and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
+    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add Consumables &amp; buffs and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
     <details class="card sub" id="eqPanel" open>
       <summary><b>Equipment stats</b> <span class="note">% lines from Equipment Stats that the status window doesn't show</span></summary>
       <div id="eqList" class="eqlist"></div>
@@ -227,17 +227,24 @@
       <div class="note" id="sageInfo"></div>
       <div class="note">SP items (below) only count with Hindsight on: regen pays SP first, items cover the rest.</div>
     </details>
-    <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="converters" style="width:auto"> Use elemental converters (Fire / Water / Earth / Wind) on basic attacks and weapon-element skills: picks the best one per monster and per map</label> <span id="convNote" class="warnc"></span></div>
-    <div class="bar note"><span>ASPD potion:</span>
-      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="potOn" style="width:auto"> using one</label>
-      <select id="potType" aria-label="Which potion" style="width:auto"></select>
-      <label class="bar" style="flex-direction:row;gap:4px"><input id="potPrice" type="number" step="100" style="width:80px"> z each</label>
-      <label class="bar" style="flex-direction:row;gap:4px">lasts <input id="potMin" type="number" step="1" style="width:56px"> min</label>
-      <span id="potInfo"></span>
-    </div>
     <details class="card sub" id="consPanel" open>
       <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they add on top</span></summary>
       <div class="warnc" id="consOff" hidden>Not added: the status window box above says your numbers already include buffs and items.</div>
+      <div class="bar note"><span>ASPD potion:</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="potOn" style="width:auto"> using one</label>
+        <select id="potType" aria-label="Which potion" style="width:auto"></select>
+        <label class="bar" style="flex-direction:row;gap:4px"><input id="potPrice" type="number" step="100" style="width:80px"> z each</label>
+        <label class="bar" style="flex-direction:row;gap:4px">lasts <input id="potMin" type="number" step="1" style="width:56px"> min</label>
+        <span id="potInfo"></span>
+      </div>
+      <div class="bar note"><span>Elemental converter:</span>
+        <select id="convSel" aria-label="Elemental converter" style="width:auto"><option value="">none</option><option value="auto">best per monster / map</option><option>Fire</option><option>Water</option><option>Earth</option><option>Wind</option></select>
+        <span class="muted">one element at a time, on basic attacks and weapon-element skills</span> <span id="convNote" class="warnc"></span>
+        <div id="convInfo" style="flex-basis:100%"></div>
+      </div>
+      <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px" title="Consumes 1 World Tree Dew or Zelstar for a 1-hour buff"><input type="checkbox" id="yggOn" style="width:auto"> Blessing of Yggdrasil</label>
+        <span class="muted">World Tree Dew or Zelstar (KP shop), lasts 1 hour: all stats +7, ATK +30, MATK +30, HIT +5, FLEE +5</span>
+      </div>
       <div class="note">Stats from food and other consumables: + adds to the stat, +% is a share of your total stat, rounded down</div>
       <table id="consStats" class="cstats"><thead><tr><th>Stat</th><th>+</th><th>+%</th></tr></thead><tbody></tbody></table>
       <div class="note"><b>Other effects</b> (ATK, HIT, ASPD…)</div>
@@ -385,7 +392,8 @@
     <datalist id="mapList"></datalist>
     <div class="note" id="mapName"></div>
     <div class="calc" id="mapTiles"></div>
-    <div class="scroll"><table id="mapTable"><thead><tr><th>Monster</th><th>Count</th><th>Share</th><th>Lv</th><th>Element</th><th>Size</th><th>Your hit %</th><th>Sec / kill</th><th>Base EXP</th></tr></thead><tbody></tbody></table></div>
+    <div id="mapConv"></div>
+    <div class="scroll"><table id="mapTable"><thead><tr><th>Monster</th><th>Count</th><th>Share</th><th>Lv</th><th>Element</th><th title="Element table rate of your attack element (with the map's converter or bolt) against the monster">Element %</th><th>Size</th><th>Your hit %</th><th>Sec / kill</th><th>Base EXP</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card" data-tab="track">
