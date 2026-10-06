@@ -93,9 +93,10 @@ const today=()=>{const d=new Date(),p=x=>String(x).padStart(2,"0");return `${d.g
 // the Date box follows today until you change it, so a page left open past midnight doesn't log on yesterday's date
 const pickedDay=()=>$("fDate").dataset.auto==="1"?"":$("fDate").value;
 // keepDay leaves a date you picked in place for the next entry
-function resetForm(keepDay){const es=[...cur().entries].sort((a,b)=>a.t-b.t),last=es[es.length-1];$("fLevel").value=last?last.lv:num(C().baseLv,60);$("fPct").value="";$("fJob").value="";$("fTime").value=nowTime();if(!keepDay||!pickedDay()){$("fDate").value=today();$("fDate").dataset.auto="1"}}
-$("fDate").addEventListener("input",e=>{e.target.dataset.auto=e.target.value?"":"1"});
-$("addForm").addEventListener("focusin",e=>{if(e.target.id!=="fDate"&&$("fDate").dataset.auto==="1")$("fDate").value=today()});
+function resetForm(keepDay){const es=[...cur().entries].sort((a,b)=>a.t-b.t),last=es[es.length-1];$("fLevel").value=last?last.lv:num(C().baseLv,60);$("fPct").value="";$("fJob").value="";$("fTime").value=nowTime();$("fTime").dataset.auto="1";if(!keepDay||!pickedDay()){$("fDate").value=today();$("fDate").dataset.auto="1"}}
+// date and time follow the clock until you type in them (else the time left from the last entry stamps the next one, which after a pause squeezes its EXP into a minute)
+["fDate","fTime"].forEach(id=>$(id).addEventListener("input",e=>{e.target.dataset.auto=e.target.value?"":"1"}));
+$("addForm").addEventListener("focusin",e=>{if(e.target.id!=="fDate"&&$("fDate").dataset.auto==="1")$("fDate").value=today();if(e.target.id!=="fTime"&&$("fTime").dataset.auto==="1")$("fTime").value=nowTime()});
 // day ("YYYY-MM-DD") puts the entry on that date; without one it's today, or yesterday for a time more than an hour ahead
 function entryTime(h,m,day){const d=day?new Date(day+"T00:00"):new Date();d.setHours(h,m,0,0);if(!day&&d.getTime()-Date.now()>3600e3)d.setDate(d.getDate()-1);return d.getTime()}
 // pasted lines on a picked date run on into the next day when a time goes back (23:50 then 00:10)
@@ -107,7 +108,7 @@ function pasteLine(line){const pct="(\\d+(?:\\.\\d+)?)\\s*%?(?:[^\\d\\n]*?(\\d+(
   if(m)return +m[1]>23||+m[2]>59?null:[+m[1],+m[2],+m[3],m[4]!=null?+m[4]:null];
   if(/\d:\d/.test(line))return null;m=line.match(new RegExp("^[^\\d\\n]*?"+pct));return m?[null,null,+m[1],m[2]!=null?+m[2]:null]:null}
 function guessLevel(s,t,lv,p){const prev=[...s.entries].filter(e=>e.t<t).sort((a,b)=>b.t-a.t)[0];return prev&&prev.lv===lv&&prev.pct-p>=50?lv+1:lv}
-$("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m,pickedDay());
+$("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").dataset.auto==="1"?nowTime():$("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m,pickedDay());
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
   $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
   const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=Math.min(jobMax(),num(C().jobLv)+1)}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
