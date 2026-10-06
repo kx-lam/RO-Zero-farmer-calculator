@@ -881,4 +881,22 @@ t("hits interrupt casts unless Phen or Bloody Butterfly", () => {
   near(run("C().vctPct"), -25);
 });
 
+t("share links leave out defaults and get every value back", () => {
+  run(`state.job="Hunter";C().baseLv=67;C().atkTxt="150+210";AC();CRD().hfOn=true;ECO();
+    state.job="Sage";C().eq=[{slot:"w",id:1601,ref:7}];G().bolts={Fire:true,Water:false,Wind:true};CRD();ECO();applyBuild();
+    state.job="Assassin";C();state.minLv=40;state.prices={"512":150};
+    const s=state.sessions[0];s.mobIds=[1031];s.pauses=[{from:5}];s.entries=[{t:1791227430624,lv:60,pct:0,jpct:0},{t:1791227652213,lv:60,pct:2.44},{t:1791227848687,lv:61,pct:0.5,jpct:3.4,jlv:41}]`);
+  const before = JSON.parse(run("JSON.stringify(state)"));
+  const packed = run("JSON.stringify(packState(state))");
+  assert.ok(packed.length < JSON.stringify(before).length / 2, `packed ${packed.length} of ${JSON.stringify(before).length}`);
+  const after = JSON.parse(run(`JSON.stringify(unpackState(JSON.parse(${JSON.stringify(packed)})))`));
+  for (const j in before.chars) delete before.chars[j].bx;                     // gear totals: applyBuild works them out again
+  // every value the save had comes back; anything new is a default the page would fill in anyway
+  const has = (a, b, at) => { if (a && typeof a === "object" && !Array.isArray(a)) for (const k in a) has(a[k], b?.[k], `${at}.${k}`); else assert.deepEqual(b, a, at) };
+  has(before, after, "state");
+  assert.deepEqual(after.sessions[0].entries, before.sessions[0].entries);
+  assert.equal(after.chars.Sage.sage.hsAuto, true);
+  assert.equal(run("JSON.stringify(unpackState({sessions:[]}))"), '{"sessions":[]}');  // older links, not packed, load as they are
+});
+
 console.log(`${n} tests passed`);

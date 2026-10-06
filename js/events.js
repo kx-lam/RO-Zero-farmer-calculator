@@ -275,14 +275,36 @@ const b64u={enc:b=>{let s="";for(let i=0;i<b.length;i+=0x8000)s+=String.fromChar
   dec:t=>Uint8Array.from(atob(t.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0))};
 const packShare=async t=>b64u.enc(new Uint8Array(await new Response(new Blob([t]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer()));
 const unpackShare=async t=>new Response(new Blob([b64u.dec(t)]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
-$("bkLink").addEventListener("click",async()=>{let url;try{save();url=location.origin+location.pathname+"#s="+await packShare(bkText())}catch(err){$("bkMsg").textContent="This browser can't make share links. Use Copy backup instead.";return}
+// before deflating, a share link leaves out what the page fills back in by itself: character fields still at their defaults (C, AC, CRD, ECO
+// and G fill a missing one key by key), the gear totals applyBuild works out again (bx) and settings still at their defaults (D).
+// Log entries go in column by column, each time and level as the change from the entry before. unpackState puts it all back; $p marks a packed save
+const SHARE_SUB={ac:AC_D,cards:CARD_D,ec:EC_D,sage:SAGE_D};
+const isObj=o=>!!o&&typeof o==="object"&&!Array.isArray(o),jsEq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const shareRef=j=>{const d=charDefault(j);for(const k in SHARE_SUB)d[k]={...SHARE_SUB[k],...d[k]};return JSON.parse(JSON.stringify(d))};
+const SHARE_DELTA=["t","lv"];
+function packState(s){const o=JSON.parse(JSON.stringify(s));o.$p=1;
+  for(const k in D)if(jsEq(o[k],D[k]))delete o[k];
+  for(const j in objOr(o.chars)){const c=o.chars[j],r=shareRef(j);if(!isObj(c))continue;delete c.bx;
+    for(const k in r){if(k in SHARE_SUB&&isObj(c[k])){for(const x in r[k])if(jsEq(c[k][x],r[k][x]))delete c[k][x];if(!Object.keys(c[k]).length)delete c[k]}
+      else if(jsEq(c[k],r[k]))delete c[k]}}
+  (Array.isArray(o.sessions)?o.sessions:[]).forEach(x=>{if(!x||!Array.isArray(x.entries))return;const E=x.entries,ks=[...new Set(E.flatMap(e=>Object.keys(objOr(e))))];
+    x.entries=Object.fromEntries(ks.map(k=>{let p=0;return [k,E.map(e=>{const v=objOr(e)[k]??null;if(v==null||!SHARE_DELTA.includes(k))return v;const d=v-p;p=v;return d})]}))});
+  return o}
+function unpackState(o){if(!isObj(o)||o.$p!==1)return o;delete o.$p;
+  for(const k in D)if(!(k in o))o[k]=JSON.parse(JSON.stringify(D[k]));
+  for(const j in objOr(o.chars)){const c=o.chars[j],r=shareRef(j);if(!isObj(c))continue;for(const k in SHARE_SUB)if(isObj(c[k]))c[k]={...r[k],...c[k]};o.chars[j]={...r,...c}}
+  (Array.isArray(o.sessions)?o.sessions:[]).forEach(x=>{const E=x&&x.entries;if(!isObj(E))return;const cols=Object.entries(E).filter(([,a])=>Array.isArray(a));
+    x.entries=Array.from({length:Math.max(0,...cols.map(([,a])=>a.length))},()=>({}));
+    cols.forEach(([k,a])=>{let p=0;a.forEach((v,i)=>{if(v==null)return;if(SHARE_DELTA.includes(k))v=p+=v;x.entries[i][k]=v})})});
+  return o}
+$("bkLink").addEventListener("click",async()=>{let url;try{save();url=location.origin+location.pathname+"#s="+await packShare(JSON.stringify(packState(state)))}catch(err){$("bkMsg").textContent="This browser can't make share links. Use Copy backup instead.";return}
   bkCopyText(url,`Share link (${url.length.toLocaleString()} characters)`)});
 // opening a share link loads it into the backup box; nothing is replaced until Restore is clicked twice
 async function loadShareLink(){const m=location.hash.match(/^#s=([\w-]+)/);if(!m)return;
   try{history.replaceState(null,"",location.pathname+location.search)}catch(err){}
   showTab("acct");
-  try{const t=await unpackShare(m[1]),data=JSON.parse(t);if(!data||!Array.isArray(data.sessions))throw 0;
-    $("bkText").value=t;$("bkMsg").textContent="A shared account is in the box below. Click Restore from text (twice) to replace this account with it."}
+  try{const data=unpackState(JSON.parse(await unpackShare(m[1])));if(!data||!Array.isArray(data.sessions))throw 0;
+    $("bkText").value=JSON.stringify(data);$("bkMsg").textContent="A shared account is in the box below. Click Restore from text (twice) to replace this account with it."}
   catch(err){$("bkMsg").textContent="That share link is broken or cut off, so nothing was loaded."}}
 let bkArmed=false;
 // a single-account backup replaces the current account; an all-accounts backup replaces every account
