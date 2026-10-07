@@ -438,8 +438,8 @@ const mapTxt=mp=>`${mapCode(mp)} ${mapName(mp)}${isClosed(mp)?" closed":""}`;
 const TABLES={
   mobInfoDrops:{def:["z",-1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},group:{t:r=>GROUP_NAME[groupOf(r.id)]+(looted(r.id)?"":" not looted")},ch:{n:r=>r.ch},your:{n:r=>r.your},npc:{n:r=>r.npc},pl:{n:r=>r.pl},z:{n:r=>r.z}}},
   mobInfoMaps:{def:["n",-1],cols:{map:{t:r=>mapTxt(r.mp)},n:{n:r=>r.n},others:{t:r=>r.others.map(x=>x.m.name).join(", ")}}},
-  itemTable:{def:["npc",-1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},group:{t:r=>GROUP_NAME[groupOf(r.id)]+(looted(r.id)?"":" not looted")},npc:{n:r=>r.npc},pl:{n:r=>r.pl},best:{n:r=>r.b.ch,t:r=>r.b.m.name},cnt:{n:r=>r.cnt}}},
-  itemDropTable:{def:["ch",-1],cols:{name:{t:r=>r.m.name+bossTag(r.m)},lv:{n:r=>r.m.lv},ch:{n:r=>r.ch},your:{n:r=>r.your},z:{n:r=>r.z},map:{t:r=>r.om.length?mapTxt(r.om[0][0]):""}}},
+  itemTable:{def:["npc",-1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},group:{t:r=>GROUP_NAME[groupOf(r.id)]+(looted(r.id)?"":" not looted")},npc:{n:r=>r.npc},pl:{n:r=>r.pl},best:{n:r=>r.b.ch,t:r=>r.b.m.name},nz:{n:r=>r.nz},cnt:{n:r=>r.cnt}}},
+  itemDropTable:{def:["ch",-1],cols:{name:{t:r=>r.m.name+bossTag(r.m)},lv:{n:r=>r.m.lv},ch:{n:r=>r.ch},your:{n:r=>r.your},nz:{n:r=>r.nz},z:{n:r=>r.z},map:{t:r=>r.om.length?mapTxt(r.om[0][0]):""}}},
   bestTable:{def:["epm",-1],cols:{rank:{n:r=>r.rank,asc:1},mp:{t:r=>mapTxt(r.mp)},main:{t:r=>MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).map(x=>x.m.name).join(", ")},epm:{n:r=>r.epm},secT:{n:r=>r.secT,asc:1},epk:{n:r=>r.epk},zph:{n:r=>r.zb},heal:{n:r=>r.heal,asc:1},net:{n:r=>r.net},hpm:{n:r=>r.hpm,asc:1},skip:{n:r=>r.skip,asc:1},N:{n:r=>r.N},proj:{n:r=>r.proj}}},
   huntTable:{def:["net",-1],cols:{rank:{n:r=>r.rank,asc:1},name:{t:r=>r.mp?mapTxt(r.mp):`${r.m.name} Lv ${r.m.lv}`},from:{t:r=>r.mp?r.earn.map(x=>x.m.name).join(", "):[mapTxt(openMaps(r.m)[0][0]),...(r.m.drops||[]).map(([id])=>itemName(id))].join(", ")},net:{n:r=>r.net},loot:{n:r=>r.loot},cost:{n:r=>r.cost,asc:1},kph:{n:r=>r.kph},zk:{n:r=>r.zk},epm:{n:r=>r.epm},hpm:{n:r=>r.hpm,asc:1}}},
   cmpTable:{def:["when",-1],cols:{name:{t:r=>r.s.name},job:{t:r=>r.s.job||""},mobs:{t:r=>[...r.ms.map(m=>m.name),sessMap(r.s)?mapTxt(sessMap(r.s)):""].join(", ")},when:{n:r=>r.st.es[0].t,t:r=>`${fmtD(r.st.es[0].t)} ${fmtT(r.st.es[0].t)}`},
@@ -480,23 +480,27 @@ function renderMobInfo(){
 // every monster that drops each item, best chance first
 const ITEM_DROPS={};MOBS.forEach(m=>(m.drops||[]).forEach(([id,ch])=>(ITEM_DROPS[id]=ITEM_DROPS[id]||[]).push({m,ch})));
 Object.values(ITEM_DROPS).forEach(l=>l.sort((a,b)=>b.ch-a.ch));
+// what an NPC pays for one drop, times your chance of it a kill: null with no NPC price or no published rate
+const npcZ=(m,id,ch)=>{const y=yourCh(m,ch);return y==null||(NPCSELL[id]==null&&state.npcPrices[id]==null)?null:npcPays(id)*y/100};
+// the most NPC zeny a kill of any monster that drops it gives
+const bestNpcZ=id=>ITEM_DROPS[id].reduce((b,{m,ch})=>{const z=npcZ(m,id,ch);return z!=null&&(b==null||z>b)?z:b},null);
 function renderItems(){
   const q=$("itemSearch").value.trim().toLowerCase(),g=$("itemGroup").value;
   const ids=Object.keys(ITEM_DROPS).filter(id=>(!g||groupOf(id)===g)&&(!q||itemName(id).toLowerCase().includes(q)||("#"+id).includes(q))).sort((a,b)=>itemName(a).localeCompare(itemName(b)));
-  const hit=tableRows("itemTable",ids.map(id=>({id,b:ITEM_DROPS[id][0],npc:NPCSELL[id]==null?null:npcPays(id),pl:state.prices[id]>0?state.prices[id]:null,cnt:ITEM_DROPS[id].length})));
+  const hit=tableRows("itemTable",ids.map(id=>({id,b:ITEM_DROPS[id][0],npc:NPCSELL[id]==null?null:npcPays(id),pl:state.prices[id]>0?state.prices[id]:null,nz:bestNpcZ(id),cnt:ITEM_DROPS[id].length})));
   const sel=state.infoItem&&ITEM_DROPS[state.infoItem]?String(state.infoItem):null;
-  $("itemTable").tBodies[0].innerHTML=hit.slice(0,300).map(({id,b,npc,pl,cnt})=>`<tr data-item="${esc(id)}" class="${id===sel?"sel":""}"><td class="name">${esc(itemName(id))} <span class="note">#${esc(id)}</span></td><td class="name">${GROUP_NAME[groupOf(id)]}${looted(id)?"":' <span class="note">not looted</span>'}</td><td>${npc==null?"–":fmtN(npc)}</td><td>${pl!=null?fmtN(pl):`<a href="#" data-pitem="${esc(id)}">set</a>`}</td><td class="name">${esc(b.m.name)} <span class="note">${chTxt(b.ch)}</span></td><td>${cnt}</td></tr>`).join("")
-    +(hit.length>300?`<tr><td colspan="6" class="name muted">${hit.length-300} more: narrow the search</td></tr>`:"")
-    ||'<tr><td colspan="6" class="name muted">No items match.</td></tr>';
+  $("itemTable").tBodies[0].innerHTML=hit.slice(0,300).map(({id,b,npc,pl,nz,cnt})=>`<tr data-item="${esc(id)}" class="${id===sel?"sel":""}"><td class="name">${esc(itemName(id))} <span class="note">#${esc(id)}</span></td><td class="name">${GROUP_NAME[groupOf(id)]}${looted(id)?"":' <span class="note">not looted</span>'}</td><td>${npc==null?"–":fmtN(npc)}</td><td>${pl!=null?fmtN(pl):`<a href="#" data-pitem="${esc(id)}">set</a>`}</td><td class="name">${esc(b.m.name)} <span class="note">${chTxt(b.ch)}</span></td><td>${nz==null?"–":dropZTxt(nz)}</td><td>${cnt}</td></tr>`).join("")
+    +(hit.length>300?`<tr><td colspan="7" class="name muted">${hit.length-300} more: narrow the search</td></tr>`:"")
+    ||'<tr><td colspan="7" class="name muted">No items match.</td></tr>';
   $("itemDroppers").hidden=!sel;
   if(!sel){$("itemTiles").innerHTML='<div class="note">Click an item to see every monster that drops it.</div>';$("itemDropTable").tBodies[0].innerHTML="";return}
   const ds=ITEM_DROPS[sel],open=ds.filter(d=>!d.m.boss&&openMaps(d.m).length);
   $("itemTiles").innerHTML=`<div class="tile now"><div class="k">${esc(itemName(sel))} · #${esc(sel)}</div><div class="v mono">${NPCSELL[sel]==null&&state.npcPrices[sel]==null?"–":fmtN(npcPays(sel))+" z"}</div><div class="s">NPC pays${skRate("overcharge")?` with Overcharge +${skRate("overcharge")}%`:""}${state.npcPrices[sel]!=null?" (your price)":NPCSELL[sel]==null?" (no NPC price)":""} · ${GROUP_NAME[groupOf(sel)]}${looted(sel)?"":" · not auto looted"}</div></div>
    <div class="tile"><div class="k">Players pay</div><div class="v mono">${state.prices[sel]>0?fmtN(state.prices[sel])+" z":"–"}</div><div class="s"><a href="#" data-pitem="${esc(sel)}">${state.prices[sel]>0?"change":"set"} on the Market tab</a></div></div>
    <div class="tile"><div class="k">Best open source</div><div class="v mono">${open.length?esc(open[0].m.name):"–"}</div><div class="s">${open.length?`${chTxt(open[0].ch)} · Lv ${open[0].m.lv} · ${esc(mapLabel(openMaps(open[0].m)[0][0]))}`:"no monster on an open map drops it"}</div></div>`;
-  const drs=tableRows("itemDropTable",ds.map(({m,ch})=>({m,ch,your:yourCh(m,ch),z:dropZ(m,sel,ch),om:openMaps(m)})));
-  $("itemDropTable").tBodies[0].innerHTML=drs.map(({m,ch,your,z,om})=>`<tr data-id="${m.id}"><td class="name">${esc(m.name)}${BOSS_PILL(m)}</td><td>${m.lv}</td><td>${chTxt(ch)}</td><td>${chTxt(your)}</td><td>${dropZTxt(z)}</td><td class="name">${om.length?`<span class="mono">${mapCode(om[0][0])}</span> <span class="note">≈${om[0][1]}</span>`:'<span class="note">none open</span>'}</td></tr>`).join("")
-    ||'<tr><td colspan="6" class="name muted">No monsters match these filters.</td></tr>';
+  const drs=tableRows("itemDropTable",ds.map(({m,ch})=>({m,ch,your:yourCh(m,ch),nz:npcZ(m,sel,ch),z:dropZ(m,sel,ch),om:openMaps(m)})));
+  $("itemDropTable").tBodies[0].innerHTML=drs.map(({m,ch,your,nz,z,om})=>`<tr data-id="${m.id}"><td class="name">${esc(m.name)}${BOSS_PILL(m)}</td><td>${m.lv}</td><td>${chTxt(ch)}</td><td>${chTxt(your)}</td><td>${nz==null?"–":dropZTxt(nz)}</td><td>${dropZTxt(z)}</td><td class="name">${om.length?`<span class="mono">${mapCode(om[0][0])}</span> <span class="note">≈${om[0][1]}</span>`:'<span class="note">none open</span>'}</td></tr>`).join("")
+    ||'<tr><td colspan="7" class="name muted">No monsters match these filters.</td></tr>';
 }
 function renderHunt(){
   const mode=state.huntMode==="mobs"?"mobs":"maps",lim=num($("huntN").value,10),min=num($("huntMin").value),w=walkSec();

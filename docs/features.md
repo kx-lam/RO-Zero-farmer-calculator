@@ -73,7 +73,7 @@ One monster's stats, how you do against it, and every map it spawns on. Its drop
 
 ## Item info
 
-Every item monsters drop, searchable and filterable by auto-loot group, with NPC and player prices. Click an item to see every monster that drops it, the drop chance and the best open map.
+Every item monsters drop, searchable and filterable by auto-loot group, with NPC and player prices and NPC zeny per kill: the NPC price times your drop chance (after drop bonus and level penalty), at the monster where that comes to most. Click an item to see every monster that drops it, the drop chance, the NPC zeny per kill from each and the best open map.
 
 ## Market
 
