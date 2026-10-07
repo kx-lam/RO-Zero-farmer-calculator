@@ -50,8 +50,9 @@ const castSec=()=>{const c=C(),a=c.a,vp=num(c.vctPct)-vctCards();
 const castEff=()=>{const T=castSec();if(T<=0||noBreak())return T;const l=hitsOnYou(SG_MOB||calcMob());return l>0?Math.expm1(l*T)/l:T};
 const delaySec=()=>Math.max(0,num(C().a.delay)*(1-num(C().acdPct)/100));
 const useSec=()=>{const a=C().a;if(a.type==="auto"||a.type==="spellfist")return 1/atkPerSec();return Math.max(castEff()+Math.max(delaySec(),1/atkPerSec()),0.1)};
+// base-level skills: × BaseLv/100 only above Lv100, except the three Zero skills missing that check (blvBug, see game.js)
 // cart skills (Cart Revolution): +a.cart % per 8,000 cart weight, capped at a full 8,000 cart
-const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});if(num(a.cart))p+=num(a.cart)*Math.min(8000,Math.max(0,num(c.cartW)))/8000;return a.blv?p*num(c.baseLv,99)/100:p};
+const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});if(num(a.cart))p+=num(a.cart)*Math.min(8000,Math.max(0,num(c.cartW)))/8000;if(!a.blv)return p;const lv=num(c.baseLv,99);return p*(a.blvBug?lv:Math.max(100,lv))/100};
 const targets=()=>Math.max(1,num(C().a.targets,1));
 // magic: true for magic damage (spells, Spell Fist, Shadow Spell auto-casts). Each race / size / element / name bonus is
 // physical-only, magic-only or both (race / size / element default to both, as before the setting existed)

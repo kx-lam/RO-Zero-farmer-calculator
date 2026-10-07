@@ -1121,4 +1121,29 @@ t("share links get a real two-account backup back", () => {
   }
 });
 
+t("base-level skills scale only above Lv100, except the three Zero skills missing that check", () => {
+  const pre = (job, name) => `({...JOBS.${job}.p.find(p=>p.name.startsWith(${JSON.stringify(name)}))})`;
+  setup("Assassin", { baseLv: 60, st: { str: 1, int: 1 } });
+  run(`C().a=${pre("Assassin", "Meteor Assault")};C().a.sadd=[]`);
+  near(run(`pctEff()`), 1400);                                            // Lv60: no × 60/100
+  run(`C().a=${pre("Assassin", "Soul Destroyer")};C().a.sadd=[]`);
+  near(run(`pctEff()`), 1500 * 60 / 100);                                 // the bug: × 60/100
+  setup("Blacksmith", { baseLv: 72, st: {} });
+  run(`C().a=${pre("Blacksmith", "Axe Tornado")};C().a.sadd=[]`);
+  near(run(`pctEff()`), 4300 * 72 / 100);
+  setup("Rogue", { baseLv: 99, st: {} });
+  run(`C().a=${pre("Rogue", "Triangle Shot")};C().a.sadd=[]`);
+  near(run(`pctEff()`), 2300 * 99 / 100);
+  // a save from before blvBug gets it back from the preset
+  run(`C().preset=JOBS.Rogue.p.findIndex(p=>p.name.startsWith("Triangle Shot"));delete C().a.blvBug`);
+  assert.equal(run(`C().a.blvBug`), true);
+  // Sonic Blow is 100% lower on Zero Global at every level: 1100% at Lv10, 600% at Lv5
+  setup("Assassin", { st: {} });
+  const sb = `JOBS.Assassin.p.find(p=>p.name.startsWith("Sonic Blow"))`;
+  run(`C().skills={"sonic-blow":5,"katar-mastery":4}`);
+  assert.equal(run(`levelPreset(${sb},C()).a.pct`), 600);
+  run(`C().skills={"sonic-blow":10,"katar-mastery":4}`);
+  assert.equal(run(`levelPreset(${sb},C()).a.pct`), 1100);
+});
+
 console.log(`${n} tests passed`);
