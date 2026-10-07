@@ -32,24 +32,33 @@ const YGG_FX=[...["str","agi","vit","int","dex","luk"].map(k=>[k,7]),["atk",30],
 // effect lines the status window can't show, read before the usual options (they count whether or not "add on top" is ticked):
 // "SP +5% every 5s" / "HP +20 every 5 sec" / "SP +2/s" -> restored per second (sp_regen, sp_regen_pct of Max SP, same for HP),
 // "SP consumption -10%" -> sp_cost_percent, "Fixed cast -30%" -> fct_percent (only the highest % cut counts), "Crit damage +5%" -> crit_dmg,
+// "Ranged damage +5%" -> range_dmg (bows and other ranged weapons), "Magic damage +5%" -> magic_dmg,
 // "Base/Job EXP +50%" -> exp_base / exp_job, "Recovery items +20%" -> rec_item_pct (HP and SP items restore more), "Heal received +20%" -> heal_pct, "Casting cannot be interrupted" -> no_break. "All stats +5" is the six stats;
 // "ATK/MATK +30" and "Max HP/Max SP +5%" are split into one line each
 const TIMED_RE=/^(max\s*hp|mhp|hp|max\s*sp|msp|sp)\s*\+\s*(\d+(?:\.\d+)?)\s*(%?)\s*(?:every|per|\/)\s*(\d+(?:\.\d+)?)?\s*s(?:ec(?:onds?)?)?$/i;
-function parseCons(txt){const lines=[],rest=[];
-  String(txt||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(p=>{let m=p.match(TIMED_RE);
-    if(m){const k=/hp/i.test(m[1])?"hp":"sp";lines.push([k+(m[3]?"_regen_pct":"_regen"),null,null,parseFloat(m[2])/(m[4]?parseFloat(m[4]):1)]);return}
-    const pct=(re,t)=>{const x=p.match(re);if(x)lines.push([t,null,null,parseFloat(x[x.length-1].replace(/\s/g,""))]);return !!x};
-    if(pct(/^(?:skill\s*)?sp\s*consumption\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"sp_cost_percent"))return;
-    if(pct(/^fixed\s*cast(?:ing)?(?:\s*time)?\s*(-\s*\d+(?:\.\d+)?)\s*%$/i,"fct_percent"))return;
-    if(pct(/^crit(?:ical)?\s*damage\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"crit_dmg"))return;
-    if(pct(/^(?:recovery|healing)\s*items?\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"rec_item_pct"))return;
-    if(pct(/^(?:incoming\s*)?heal(?:\s*received)?\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"heal_pct"))return;
+function parseCons(txt){const lines=[],rest=[],N="([+-]\\s*\\d+(?:\\.\\d+)?)";
+  const one=p=>{p=p.trim();if(!p)return;let m;
+    // written as on the item: "+7 All Stats" -> "All Stats +7"; no sign ("HIT/FLEE 30") -> +
+    if((m=p.match(/^([+-]\s*\d+(?:\.\d+)?%?)\s+(.+)$/)))p=`${m[2]} ${m[1]}`;
+    if(!/[+-]\s*\d/.test(p))p=p.replace(/\s(\d+(?:\.\d+)?%?)(\s*(?:every|per|\/).*)?$/i," +$1$2");
+    if((m=p.match(TIMED_RE))){const k=/hp/i.test(m[1])?"hp":"sp";lines.push([k+(m[3]?"_regen_pct":"_regen"),null,null,parseFloat(m[2])/(m[4]?parseFloat(m[4]):1)]);return}
+    const pct=(re,...ts)=>{const x=p.match(new RegExp(re+"\\s*"+N+"\\s*%$","i"));if(x)ts.forEach(t=>lines.push([t,null,null,parseFloat(x[1].replace(/\s/g,""))]));return !!x};
+    if(pct("^(?:skill\\s*)?sp\\s*consumption","sp_cost_percent"))return;
+    if(pct("^fixed\\s*cast(?:ing)?(?:\\s*time)?","fct_percent"))return;
+    if(pct("^cri(?:t(?:ical)?)?\\s*(?:damage|dmg)","crit_dmg"))return;
+    if(pct("^ranged(?:\\s*physical)?\\s*(?:damage|dmg)","range_dmg"))return;
+    if(pct("^(?:all\\s*element\\s*)?magic(?:al)?\\s*(?:damage|dmg)","magic_dmg"))return;
+    if(pct("^(?:incoming\\s*)?heal\\s*(?:and|&|\\/)\\s*recovery\\s*items?(?:\\s*effect)?","heal_pct","rec_item_pct"))return;
+    if(pct("^(?:recovery|healing)\\s*items?(?:\\s*effect)?","rec_item_pct"))return;
+    if(pct("^(?:incoming\\s*)?heal(?:\\s*received)?(?:\\s*effect)?","heal_pct"))return;
     if((m=p.match(/^(base|job|base\s*\/\s*job)\s*exp\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i))){const v=parseFloat(m[2].replace(/\s/g,""));
       if(/base/i.test(m[1]))lines.push(["exp_base",null,null,v]);if(/job/i.test(m[1]))lines.push(["exp_job",null,null,v]);return}
     if(/^cast(?:ing)?\s*(?:can\s*not|cannot|can't)\s*be\s*interrupted$/i.test(p)){lines.push(["no_break",null,null,1]);return}
     if((m=p.match(/^all\s*stats?\s*([+-]\s*\d+)$/i))){STAT6_UI.forEach(k=>rest.push(k+" "+m[1]));return}
-    if((m=p.match(/^([a-z ]+(?:\/[a-z ]+)+?)\s*([+-].*)$/i))){m[1].split("/").forEach(n=>rest.push(n.trim()+" "+m[2]));return}
-    rest.push(p)});
+    // "ATK/MATK +30", "Cri damage / ranged damage / magic damage +5%": each name gets the value
+    if((m=p.match(/^([a-z ]+(?:\/[a-z ]+)+?)\s*([+-].*)$/i))){m[1].split("/").forEach(n=>one(n.trim()+" "+m[2]));return}
+    rest.push(p)};
+  String(txt||"").split(/[,;\n]+/).forEach(one);
   const o=BUILD.parseOptions(rest.join(","));return {lines:[...lines,...o.lines],bad:o.bad}}
 // Ragnarok Zero event consumables (30 minutes each), added as rows you can edit. note: what isn't counted
 const CONS_PRESETS=[
@@ -57,7 +66,7 @@ const CONS_PRESETS=[
   {name:"Mimir's Well",eff:"Max SP +10%, SP consumption -10%"},
   {name:"Small Mana Potion",eff:"SP +5% every 5s"},
   {name:"Small Healing Potion",eff:"HP +5% every 5s"},
-  {name:"Unlimited Drink",eff:"Max HP/Max SP +5%, Crit damage +5%, Casting cannot be interrupted",note:"ranged physical / magic damage +5% not counted: add it to Melee / ranged dmg %"},
+  {name:"Unlimited Drink",eff:"Max HP/Max SP +5%, Crit damage +5%, Ranged damage +5%, Magic damage +5%, Casting cannot be interrupted"},
   {name:"Premium Course Meal",eff:"All stats +5, ATK/MATK +20"},
   {name:"Enriched Abrasive",eff:"CRIT +30"},
   {name:"Growth Elixir",eff:"Base/Job EXP +50%"},

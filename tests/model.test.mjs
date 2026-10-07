@@ -1083,6 +1083,14 @@ t("event consumables: presets and the effect lines they use", () => {
   assert.equal(JSON.parse(lines("All stats +5")).lines.length, 6);
   assert.equal(lines("Base/Job EXP +50%"), JSON.stringify({ lines: [["exp_base", null, null, 50], ["exp_job", null, null, 50]], bad: [] }));
   assert.equal(lines("Casting cannot be interrupted, Crit damage +5%"), JSON.stringify({ lines: [["no_break", null, null, 1], ["crit_dmg", null, null, 5]], bad: [] }));
+  // written the way the item tooltips are
+  const kinds = eff => JSON.parse(lines(eff)).lines.map(l => l[0] + " " + l[3]).join(", ");
+  assert.equal(kinds("+7 All Stats"), "str 7, agi 7, vit 7, int 7, dex 7, luk 7");
+  assert.equal(kinds("HIT/FLEE 30"), "hit 30, flee 30");
+  assert.equal(kinds("MHP/MSP +5%"), "hp_percent 5, sp_percent 5");
+  assert.equal(kinds("Cri damage / ranged damage / magic damage +5%"), "crit_dmg 5, range_dmg 5, magic_dmg 5");
+  assert.equal(kinds("Incoming Heal and Recovery Item effect +20%"), "heal_pct 20, rec_item_pct 20");
+  assert.equal(kinds("SP Consumption -5%, Fixed Cast Time -30%"), "sp_cost_percent -5, fct_percent -30");
   // every preset reads without leftovers
   assert.equal(run(`CONS_PRESETS.flatMap(p=>parseCons(p.eff).bad).join()`), "");
   // fixed cast: only the highest % cut counts
@@ -1097,6 +1105,13 @@ t("event consumables: presets and the effect lines they use", () => {
   assert.equal(run(`killExp(${mob})`), 100); assert.equal(run(`killJobExp(${mob})`), 60);
   run(`C().cons=[{on:true,name:"Growth Elixir",eff:"Base/Job EXP +50%"}]`);
   assert.equal(run(`killExp(${mob})`), 150); assert.equal(run(`killJobExp(${mob})`), 90);
+  // Unlimited Drink: ranged damage only with a ranged weapon, magic damage only on spells
+  const tgt = "({id:-5,name:'T',lv:10,hp:1e9,def:0,mdef:0,race:'Brute',size:'M',el:'Neutral',elv:1})";
+  setup("Hunter", { atkTxt: "300+200", weapon: "Bow", st: {}, skills: {}, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  const bow0 = run(`bonusMul(${tgt})`);
+  run(`C().cons=[{on:true,name:"",eff:"Ranged damage +5%, Magic damage +5%"}]`);
+  near(run(`bonusMul(${tgt})`), bow0 * 1.05); near(run(`bonusMul(${tgt},true)`) / bow0, 1.05);
+  run(`C().weapon="Dagger"`); near(run(`bonusMul(${tgt})`), bow0);
   // Ale's Blessing: HP / SP items and Heal received +20%
   setup("Merchant", { st: {}, cons: [], autoSp: false, potOn: false });
   run(`state.recovery={discount:true}`);
