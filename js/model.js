@@ -282,28 +282,23 @@ function useHour(m,w){const r=mobRow(m,w);if(!r||!isFinite(r.tot)||!(r.tot>0))re
 const fieldBuffs=()=>{const c=C();return Object.keys(FIELD_ITEM).filter(k=>(c.buffs||{})[k]&&skLv(c,k)>0).map(k=>({k,id:CONS_ID[FIELD_ITEM[k]],perHr:60/skLv(c,k)}))};
 const fieldCostHr=()=>fieldBuffs().reduce((t,f)=>t+f.perHr*consPrice(f.id),0);
 // ---- recovery items (data/recovery.js): HP and SP items priced per HP / SP ----
-// per character (chars.<Job>.recovery): the HP and SP item you use ("auto" = the cheapest per HP / SP that has a price; SP "custom" = the restores / costs
-// boxes), Scale by stats with the stats the values were measured on (refStats), and your own min / max / weight / prices per item (overrides).
+// per character (chars.<Job>.recovery): the HP and SP item you use ("auto" = the cheapest per HP / SP that has a price; "none" = no item;
+// SP "custom" = the restores / costs boxes) and your own min / max / weight / prices per item (overrides).
 // Per account (state.recovery.discount, on by default): buy at the Discount price, since a Merchant on the account can buy for the others
-const REC_D={hpItem:"auto",spItem:"auto",scaleByStats:false,refStats:{},overrides:{}};
+const REC_D={hpItem:"auto",spItem:"auto",overrides:{}};
 const REC=()=>{const c=C();if(!c.recovery||typeof c.recovery!=="object")c.recovery={};const r=c.recovery;for(const k in REC_D)if(r[k]==null||typeof r[k]!==typeof REC_D[k])r[k]=JSON.parse(JSON.stringify(REC_D[k]));return r};
 const recDisc=()=>!state.recovery||state.recovery.discount!==false;
 const REC_IDS=Object.keys(RECOVERY);
-// Scale by stats (off by default, as Zero's values don't follow classic RO): × (100 + VIT × 2 for HP, or INT × 2 + Increase SP Recovery Lv × 10 for SP,
-// + Potion Research (Learning Potion) Lv × 5) / 100, relative to the same worked out for the stats the values were measured on (blank counts as 0)
-const recFactor=(kind,s)=>(100+(kind==="hp"?2*num(s.vit):2*num(s.int)+10*num(s.isr))+5*num(s.lp))/100;
-const recStatsNow=()=>{const c=C();return {vit:statVal(c,"vit")||0,int:statVal(c,"int")||0,isr:skLv(c,"increase-sp-recovery"),lp:skLv(c,"potion-research")}};
-const recScale=kind=>REC().scaleByStats?recFactor(kind,recStatsNow())/recFactor(kind,REC().refStats):1;
-// one item with your changes: avg restored (min and max averaged, then scaled), the price used (Discount or NPC price, else the player price; null = n/a),
+// one item with your changes: avg restored (min and max averaged), the price used (Discount or NPC price, else the player price; null = n/a),
 // zeny per HP / SP and HP / SP per weight
 function recItem(id){const b=RECOVERY[id];if(!b)return null;const o=REC().overrides[id]||{},v=k=>o[k]!=null?o[k]:b[k];
-  const min=num(v("min")),max=Math.max(min,num(v("max"))),scale=recScale(b.kind),avg=(min+max)/2*scale,w=num(v("w")),npc=v("npc"),disc=v("disc"),player=v("player");
+  const min=num(v("min")),max=Math.max(min,num(v("max"))),avg=(min+max)/2,w=num(v("w")),npc=v("npc"),disc=v("disc"),player=v("player");
   const src=npc!=null?(recDisc()&&disc!=null?"disc":"npc"):player!=null?"player":null,price=src?{disc,npc,player}[src]:null;
-  return {id,name:b.name,kind:b.kind,min,max,scale,avg,w,wOk:b.wOk!==false,npc,disc,player,src,price,per:price!=null&&avg>0?price/avg:null,perW:w>0?avg/w:null,edited:Object.keys(o).length>0}}
+  return {id,name:b.name,kind:b.kind,min,max,avg,w,wOk:b.wOk!==false,npc,disc,player,src,price,per:price!=null&&avg>0?price/avg:null,perW:w>0?avg/w:null,edited:Object.keys(o).length>0}}
 const recItems=kind=>REC_IDS.filter(id=>!kind||RECOVERY[id].kind===kind).map(recItem);
 const recCheapest=kind=>recItems(kind).filter(x=>x.per!=null).sort((a,b)=>a.per-b.per)[0]||null;
-// the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price)
-function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];
+// the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price); null with "none"
+function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];if(k==="none")return null;
   if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
   const it=RECOVERY[k]&&RECOVERY[k].kind===kind?recItem(k):null;if(it&&it.per!=null)return it;const ch=recCheapest(kind);return ch?{...ch,auto:true,want:it}:null}
 const spItemAmt=()=>{const p=recPick("sp");return p?num(p.avg):0};

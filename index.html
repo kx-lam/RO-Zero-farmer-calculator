@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=572710bffe">
+<link rel="stylesheet" href="style.css?v=e9f6991ea1">
 <!-- full width is a per-device display choice: set it before the page draws so it doesn't jump -->
 <script>try{if(localStorage.getItem("rozero-farm-planner-wide")==="1")document.documentElement.classList.add("wide")}catch(e){}</script>
 </head>
@@ -295,17 +295,9 @@
         <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
       </span>
       <label class="bar" style="flex-direction:row;gap:4px" title="Saved for the whole account: a Merchant with Discount (FXFighter) can buy for the other characters. Off: the NPC price"><input type="checkbox" id="recDisc" style="width:auto"> Buy with Discount <span class="muted">(this account)</span></label>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Off by default: Ragnarok Zero's values don't follow classic RO. On: × (100 + VIT × 2 for HP, INT × 2 + Increase SP Recovery Lv × 10 for SP, + Potion Research Lv × 5) / 100, relative to the stats the values were measured on"><input type="checkbox" id="recScale" style="width:auto"> Scale by stats</label>
-    </div>
-    <div class="bar note" id="recRef" hidden><span>Values measured on a Merchant with</span>
-      <label class="bar" style="flex-direction:row;gap:4px">VIT <input data-rref="vit" type="number" min="0" placeholder="0" style="width:60px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">INT <input data-rref="int" type="number" min="0" placeholder="0" style="width:60px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">Increase SP Recovery Lv <input data-rref="isr" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">Potion Research Lv <input data-rref="lp" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
-      <span id="recScaleNote"></span>
     </div>
     <div class="scroll"><table id="recTable"><thead><tr><th data-sk="name">Item</th><th data-sk="kind">Type</th><th data-sk="avg" title="min – max restored (edit them); the average is what's counted">Avg amount</th><th data-sk="price" title="With Buy with Discount: the Discount price, else the NPC price; player-only items use the player price">Price used</th><th data-sk="per">Cost per HP / SP</th><th data-sk="perW" title="restored per point of weight (edit the weight)">HP or SP per weight</th><th data-sk="uph">Uses / hr</th><th data-sk="zph">Cost / hr</th><th data-sk="wph">Weight / hr</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
+    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. Pick None to use no HP or SP item. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
   </section>
 
   <section class="card" data-tab="char" id="skillCard">
@@ -563,10 +555,10 @@
 <script src="build.js?v=99fe625055"></script>
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
 <script src="js/game.js?v=4e3b2fd995"></script>
-<script src="js/state.js?v=61cd8f55bd"></script>
-<script src="js/model.js?v=dce5185c8b"></script>
-<script src="js/render.js?v=869c1df29a"></script>
-<script src="js/events.js?v=8c73f530aa"></script>
+<script src="js/state.js?v=25ad991139"></script>
+<script src="js/model.js?v=b1d99c0f9a"></script>
+<script src="js/render.js?v=182c938503"></script>
+<script src="js/events.js?v=8d335894f4"></script>
 <script src="js/skills.js?v=4e9e35293d"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>
 <script src="js/ref.js?v=0cc8633f35"></script>

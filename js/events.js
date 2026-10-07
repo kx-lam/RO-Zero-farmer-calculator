@@ -86,12 +86,10 @@ Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target
 // items skills use up: casts per kill of support skills and your price per item (blank = NPC price), saved per job
 $("useItems").addEventListener("input",e=>{const i=e.target,c=C();if(i.dataset.supk){c.supCasts=c.supCasts||{};c.supCasts[i.dataset.supk]=Math.max(0,num(i.value))}
   else if(i.dataset.iprice){c.itemPrices=c.itemPrices||{};if(i.value==="")delete c.itemPrices[i.dataset.iprice];else c.itemPrices[i.dataset.iprice]=Math.max(0,num(i.value))}else return;save();renderAll()});
-// Recovery items: HP / SP item picks, Scale by stats and its reference stats (per job), Buy with Discount (per account), your values per item
+// Recovery items: HP / SP item picks (per job), Buy with Discount (per account), your values per item
 $("recHp").addEventListener("change",e=>{REC().hpItem=e.target.value;save();renderAll()});
 $("recSp").addEventListener("change",e=>{REC().spItem=e.target.value;save();renderAll()});
 $("recDisc").addEventListener("change",e=>{state.recovery.discount=e.target.checked;save();renderAll()});
-$("recScale").addEventListener("change",e=>{REC().scaleByStats=e.target.checked;save();renderAll()});
-$("recRef").addEventListener("input",e=>{const k=e.target.dataset.rref;if(!k)return;const r=REC().refStats;if(e.target.value==="")delete r[k];else r[k]=Math.max(0,num(e.target.value));save();renderAll()});
 // a value typed back to the default (or cleared) drops the change
 $("recTable").addEventListener("input",e=>{const i=e.target,id=i.dataset.rid,k=i.dataset.rk;if(!id||!k||!RECOVERY[id])return;const O=REC().overrides,o=O[id]=O[id]||{};
   if(i.value===""||+i.value===RECOVERY[id][k])delete o[k];else o[k]=Math.max(0,num(i.value));if(!Object.keys(o).length)delete O[id];save();renderAll()});

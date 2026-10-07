@@ -77,10 +77,9 @@ A Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs.
 HP and SP items with what they really cost per HP / SP: Red, Orange, Yellow and White Potion, Cheese, Blue Herb, Strawberry and Blue Potion. The amounts were measured in Ragnarok Zero Global on a Merchant (they don't match classic RO) and the average of min and max is counted.
 
 - **Buy with Discount** (on by default, saved for the whole account, since a Merchant on the account can buy for the others) uses the Discount price, else the NPC price. Items NPCs don't sell (Strawberry, Blue Potion) use a player price you type; Blue Potion has none until you do, shows n/a and is never picked as the cheapest.
-- Edit any item's min, max, price or weight in the table (saved per job); "reset" goes back to the defaults. Sort by any column; the cheapest HP and SP item are highlighted.
+- Edit any item's min, max, price or weight in the table (saved per job); "reset" goes back to the defaults. Sort by any column; the item in use is marked.
 - Uses, zeny and weight per hour are worked out for the Map planner's map (else the monster you picked): HP items cover its HP lost / min, SP items the SP your attack uses beyond regen and cards.
-- Pick the HP and SP item per job, or leave them on Auto (cheapest). The SP item is the one "SP items: auto-use when needed" and Sage Hindsight use; Custom keeps the restores / costs boxes. Older saves with their own SP item typed carry it over as Custom.
-- **Scale by stats** (off by default) multiplies recovery by (100 + VIT × 2 for HP, or INT × 2 + Increase SP Recovery Lv × 10 for SP, + Potion Research Lv × 5) / 100, relative to the stats the values were measured on, which you can fill in.
+- Pick the HP and SP item per job, leave them on Auto (cheapest), or pick None to use no item: no HP item means HP loss costs nothing (regen, cards, heals cover it), no SP item means you rest. The SP item is the one "SP items: auto-use when needed" and Sage Hindsight use; Custom keeps the restores / costs boxes. Older saves with their own SP item typed carry it over as Custom.
 
 ## Weight
 

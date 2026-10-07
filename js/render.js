@@ -29,7 +29,7 @@ function renderChar(){renderAspdBuffs();potInfo();
   {const oc=skRate("overcharge"),dc=skRate("discount");$("npcBuy").checked=c.npcBuy!==false;
     $("mercNote").textContent=oc||dc?[oc?`Overcharge: NPCs pay you +${oc}%`:"",dc?`Discount: NPCs charge you −${dc}%${c.npcBuy===false?" (off: bought from players)":""}`:""].filter(Boolean).join(" · "):""}
   renderUseItems();
-  {const p=recPick("sp");$("spItemUse").innerHTML=p?`<b>${esc(p.name)}</b> (${fmtSig(p.avg)} SP, ${fmtSig(p.price)} z${p.auto?", cheapest":""}) <span class="muted">· pick it in Recovery items</span>`:""}
+  {const p=recPick("sp");$("spItemUse").innerHTML=p?`<b>${esc(p.name)}</b> (${fmtSig(p.avg)} SP, ${fmtSig(p.price)} z${p.auto?", cheapest":""}) <span class="muted">· pick it in Recovery items</span>`:REC().spItem==="none"?'<span class="muted">no SP item (None in Recovery items): you rest</span>':""}
   $("itemInfo").textContent=c.autoSp?(ips>0?`≈ ${(ips*60).toFixed(1)} items/min · ${fmtN(ips*3600*spItemPrice())} z/hr`:"not needed: regen covers it"):"";
   const atk=a.type==="magic"||a.type==="spellfist"?`MATK ${fmtN(sumStat(c.matkTxt))}`:`ATK ${fmtN(sumStat(c.atkTxt))}`;
   {const cd=CRD(),m=calcMob(),k0=SG_MOB;SG_MOB=m;try{const hf=hfHpPerSec(),hs=m?healsPerSec(m):0,sh=m?healShare(m):0,parts=[];
@@ -86,24 +86,22 @@ const REC_SRC={disc:"Discount",npc:"NPC",player:"players"};
 function recNeed(){let mp=mapKey(state.map);if(!MAPMOBS[mp]){const m=calcMob(),om=m?openMaps(m):[];mp=om.length?om[0][0]:currentMap()}if(!MAPMOBS[mp])return null;
   const w=walkSec(),r=mapStats(mp,w);return {mp,hpm:r?r.hpm:null,sp:r?mapSpShort(mp,w,r.el2):0}}
 function renderRecovery(){const R=REC(),need=recNeed(),pick={hp:recPick("hp"),sp:recPick("sp")},ch={hp:recCheapest("hp"),sp:recCheapest("sp")};
-  const opts=kind=>`<option value="auto">Auto (cheapest${ch[kind]?": "+esc(ch[kind].name):""})</option>`+recItems(kind).map(x=>`<option value="${x.id}">${esc(x.name)}${x.per==null?" (no price)":""}</option>`).join("")+(kind==="sp"?'<option value="custom">Custom (type it)</option>':"");
-  $("recHp").innerHTML=opts("hp");$("recHp").value=RECOVERY[R.hpItem]&&RECOVERY[R.hpItem].kind==="hp"?R.hpItem:"auto";
-  $("recSp").innerHTML=opts("sp");$("recSp").value=R.spItem==="custom"||(RECOVERY[R.spItem]&&RECOVERY[R.spItem].kind==="sp")?R.spItem:"auto";
+  const opts=kind=>`<option value="auto">Auto (cheapest${ch[kind]?": "+esc(ch[kind].name):""})</option><option value="none">None</option>`+recItems(kind).map(x=>`<option value="${x.id}">${esc(x.name)}${x.per==null?" (no price)":""}</option>`).join("")+(kind==="sp"?'<option value="custom">Custom (type it)</option>':"");
+  $("recHp").innerHTML=opts("hp");$("recHp").value=R.hpItem==="none"||(RECOVERY[R.hpItem]&&RECOVERY[R.hpItem].kind==="hp")?R.hpItem:"auto";
+  $("recSp").innerHTML=opts("sp");$("recSp").value=R.spItem==="custom"||R.spItem==="none"||(RECOVERY[R.spItem]&&RECOVERY[R.spItem].kind==="sp")?R.spItem:"auto";
   $("recHp").title=pick.hp&&pick.hp.want?`${pick.hp.want.name} has no price, so the cheapest is used`:"";$("recSp").title=pick.sp&&pick.sp.want?`${pick.sp.want.name} has no price, so the cheapest is used`:"";
-  $("recCustom").hidden=R.spItem!=="custom";$("recDisc").checked=recDisc();$("recScale").checked=!!R.scaleByStats;$("recRef").hidden=!R.scaleByStats;
-  ROOTQ("[data-rref]").forEach(i=>{if(document.activeElement!==i){const v=R.refStats[i.dataset.rref];i.value=v!=null?v:""}});
-  {const s=recStatsNow();$("recScaleNote").textContent=R.scaleByStats?`yours: VIT ${s.vit}, INT ${s.int}, Increase SP Recovery Lv ${s.isr}, Potion Research Lv ${s.lp} → HP items ×${recScale("hp").toFixed(2)}, SP items ×${recScale("sp").toFixed(2)}`:""}
-  $("recNote").textContent=need?`${state.job} on ${mapCode(need.mp)}: ${need.hpm==null?"HP loss unknown":`${fmtN(need.hpm)} HP lost/min`} · ${fmtN(need.sp/60)} SP/min short`+(pick.hp&&pick.sp?` · using ${pick.hp.name} and ${pick.sp.name}`:""):"pick a monster or a map (Map planner) to see uses per hour";
+  $("recCustom").hidden=R.spItem!=="custom";$("recDisc").checked=recDisc();
+  $("recNote").textContent=need?`${state.job} on ${mapCode(need.mp)}: ${need.hpm==null?"HP loss unknown":`${fmtN(need.hpm)} HP lost/min`} · ${fmtN(need.sp/60)} SP/min short`+` · using ${pick.hp?pick.hp.name:"no HP item"} and ${pick.sp?pick.sp.name:"no SP item"}`:"pick a monster or a map (Map planner) to see uses per hour";
   // don't rebuild the box you're typing in; the table catches up when you leave it
   const f=document.activeElement;if(f&&f.tagName==="INPUT"&&$("recTable").tBodies[0].contains(f))return;
   const rows=tableRows("recTable",recItems().map(x=>{const n=!need||!(x.avg>0)?null:x.kind==="hp"?(need.hpm==null?null:need.hpm*60/x.avg):need.sp/x.avg;
     return {...x,uph:n,zph:n!=null&&x.price!=null?n*x.price:null,wph:n!=null?n*x.w:null}}));
   const inp=(x,k,v,w)=>`<input type="number" min="0" step="any" data-rid="${x.id}" data-rk="${k}" value="${v??""}" placeholder="${k==="player"||RECOVERY[x.id][k]==null?"n/a":RECOVERY[x.id][k]}" aria-label="${esc(x.name)} ${k}" style="width:${w}px">`;
-  $("recTable").querySelector("tbody").innerHTML=rows.map(x=>{const best=ch[x.kind]&&ch[x.kind].id===x.id,use=pick[x.kind]&&pick[x.kind].id===x.id,u=x.kind.toUpperCase();
-    return `<tr class="${best?"cheap":""}"><td class="name"><b>${esc(x.name)}</b>${best?' <span class="pill up">cheapest</span>':""}${use?' <span class="pill">in use</span>':""}${x.edited?` <a href="#" data-rreset="${x.id}">reset</a>`:""}</td><td>${u}</td>
-      <td class="nowrap">${inp(x,"min",x.min,56)}–${inp(x,"max",x.max,56)} <b>${fmtSig(x.avg)}</b>${x.scale!==1?` <span class="note">×${x.scale.toFixed(2)}</span>`:""}</td>
+  $("recTable").querySelector("tbody").innerHTML=rows.map(x=>{const use=pick[x.kind]&&pick[x.kind].id===x.id,u=x.kind.toUpperCase();
+    return `<tr><td class="name"><b>${esc(x.name)}</b>${use?' <span class="pill">in use</span>':""}${x.edited?` <a href="#" data-rreset="${x.id}">reset</a>`:""}</td><td>${u}</td>
+      <td class="nowrap">${inp(x,"min",x.min,56)}–${inp(x,"max",x.max,56)} <b>${fmtSig(x.avg)}</b></td>
       <td class="nowrap">${inp(x,x.src||"player",x.price,72)} <span class="note">${x.src?REC_SRC[x.src]:"no price"}</span></td>
-      <td class="${best?"good":""}">${x.per==null?"n/a":`<b>${fmtSig(x.per)}</b> z/${u}`}</td>
+      <td>${x.per==null?"n/a":`<b>${fmtSig(x.per)}</b> z/${u}`}</td>
       <td class="nowrap">${x.perW==null?"–":fmtSig(x.perW)} <span class="note">per ${inp(x,"w",x.w,52)}${x.wOk?"":' <span title="weight not checked in game yet">?</span>'}</span></td>
       <td>${fmtQty(x.uph)}</td><td>${x.per==null?"n/a":x.zph==null?"–":fmtN(x.zph)}</td><td>${fmtQty(x.wph)}</td></tr>`}).join("")}
 // ---- render: tracker ----
@@ -385,8 +383,8 @@ ${weightTile(m)}
 }
 const BOSS_PILL=m=>m.mini?` <span class="pill" title="One per map on a long respawn · ${m.boss?"Boss class: boss / normal bonuses count it as a boss":"not Boss class: boss / normal bonuses count it as normal"}">mini boss</span>`:m.boss?' <span class="pill">boss</span>':"";
 // the EXP Hunter's Heal cost / hr: which items and how many an hour
-const healTip=r=>{const h=recPick("hp"),s=recPick("sp");return [r.hpm==null?"HP: no damage data":r.hpZ>0&&h?`HP: ${h.name} ×${fmtQty(r.hpHr)}/hr = ${fmtN(r.hpZ)} z`:"HP: none lost",
-  r.spHr>0&&s?`SP: ${s.name} ×${fmtQty(r.spHr)}/hr = ${fmtN(r.spZ)} z`:itemsOnNow()?"SP: regen covers it":"SP: no SP items (auto-use off, you rest)"].join("\n")};
+const healTip=r=>{const h=recPick("hp"),s=recPick("sp");return [r.hpm==null?"HP: no damage data":r.hpZ>0&&h?`HP: ${h.name} ×${fmtQty(r.hpHr)}/hr = ${fmtN(r.hpZ)} z`:r.hpm>0&&!h?"HP: no HP item":"HP: none lost",
+  r.spHr>0&&s?`SP: ${s.name} ×${fmtQty(r.spHr)}/hr = ${fmtN(r.spZ)} z`:!s?"SP: no SP item (you rest)":itemsOnNow()?"SP: regen covers it":"SP: no SP items (auto-use off, you rest)"].join("\n")};
 // the Zeny Hunter's Costs / hr: healing as above, plus the ASPD potion and ground buffs
 const costTip=r=>healTip(r)+(r.other>=0.5?`\nASPD potion${fieldBuffs().length?", ground buffs":""}: ${fmtN(r.other)} z`:"");
 const UNK_PILL=' <span class="pill down" title="No EXP data for it yet, so it\'s left out of EXP / min">EXP ?</span>';

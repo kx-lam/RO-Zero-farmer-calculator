@@ -741,15 +741,12 @@ t("recovery items: cost per HP / SP, the cheapest pick and healing per hour", ()
   // Custom: the restores / costs boxes, as before
   run(`REC().spItem="custom";C().itemSp=50;C().itemPrice=300;C().skills={}`);
   near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300);
-  // Scale by stats (off by default): × (100 + VIT × 2) / 100 for HP, against the reference stats
-  run(`REC().spItem="auto";REC().hpItem="auto";C().st={vit:"50",dex:"1",str:"1",agi:"1",luk:"1"};C().intTxt="25"`);
-  near(run(`recItem("501").avg`), 45);
-  run(`REC().scaleByStats=true`);
-  near(run(`recItem("501").avg`), 45 * 200 / 100);
-  near(run(`recItem("548").avg`), 32 * 150 / 100);
-  run(`REC().refStats={vit:50,int:25}`);
-  near(run(`recItem("501").avg`), 45); near(run(`recItem("548").avg`), 32);
-  run(`REC().refStats={};REC().scaleByStats=false`);
+  // None: no HP item (HP loss costs nothing) and no SP item (auto-use has nothing to use, so you rest)
+  run(`REC().hpItem="none";REC().spItem="none"`);
+  assert.equal(run(`recPick("hp")`), null); assert.equal(run(`recPick("sp")`), null);
+  assert.equal(run(`hpHeal(202).z`), 0); assert.equal(run(`hpHeal(202).n`), 0);
+  assert.equal(run(`spItemAmt()`), 0); assert.equal(run(`spItemPrice()`), 0);
+  run(`REC().spItem="auto";REC().hpItem="auto"`);
 });
 
 t("recovery items: SP items in the SP model, Heal cost / hr and Net zeny / hr in the EXP Hunter", () => {
@@ -776,6 +773,10 @@ t("recovery items: SP items in the SP model, Heal cost / hr and Net zeny / hr in
   const hmap = run(`huntMap0("prt_f08",2)`);
   near(hmap.cost, hmap.hpZ + hmap.spZ + hmap.other); near(hmap.net, hmap.loot - hmap.cost);
   if (hmap.hpm != null) near(hmap.hpZ, hmap.hpm * 60 / 45 * 8);
+  run(`REC().spItem="none";REC().hpItem="none"`);                           // None: no SP items bought, no HP items either
+  const m3 = run(`mapStats0("prt_f08",2)`);
+  assert.equal(m3.spZ, 0); assert.equal(m3.hpZ, 0); near(m3.net, m3.zph);
+  run(`REC().spItem="auto";REC().hpItem="auto"`);
   run(`C().autoSp=false`);                                                  // auto-use off: you rest, no SP items bought
   const m2 = run(`mapStats0("prt_f08",2)`);
   assert.equal(m2.spZ, 0); near(m2.net, m2.zph - m2.hpZ);
@@ -786,8 +787,8 @@ t("recovery items: saves load with defaults, older SP items carry over, bad valu
   const app = load({ job: "Merchant", current: "s1", sessions: S, chars: { Merchant: { itemSp: 37, itemPrice: 200 }, Sage: { itemSp: 60, itemPrice: 450 },
     Wizard: { recovery: { hpItem: 501, spItem: "548", scaleByStats: "yes", refStats: { vit: "40", int: "x", job: 3 }, overrides: { 548: { disc: "30", w: -1, bogus: 5 }, 999: { disc: 1 }, 501: "x" } } } } });
   assert.equal(app("state.chars.Merchant.recovery.spItem"), "auto");       // the 37 SP for 200 z default: Auto (cheapest)
-  assert.equal(app("JSON.stringify(state.chars.Sage.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "custom", scaleByStats: false, refStats: {}, overrides: {} }));
-  assert.equal(app("JSON.stringify(state.chars.Wizard.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "548", scaleByStats: false, refStats: { vit: 40 }, overrides: { 548: { disc: 30 } } }));
+  assert.equal(app("JSON.stringify(state.chars.Sage.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "custom", overrides: {} }));
+  assert.equal(app("JSON.stringify(state.chars.Wizard.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "548", overrides: { 548: { disc: 30 } } }));
   assert.equal(app("state.recovery.discount"), true);                      // Buy with Discount: on by default
   assert.equal(app("JSON.stringify(state.sessions[0].entries)"), JSON.stringify(S[0].entries));
   assert.equal(app("JSON.stringify(state.sessions[0].pauses)"), JSON.stringify(S[0].pauses));
@@ -815,7 +816,7 @@ t("recovery items: three accounts load, switch and keep their own settings", () 
   assert.equal(app(`recItem("501").price`), 10);                             // Discount off for this account: NPC price
   run(`state.job="Merchant";state.chars={};REC().overrides={"548":{disc:20}};REC().spItem="custom"`);  // and a share link keeps them
   const after = JSON.parse(run(`JSON.stringify(unpackState(JSON.parse(JSON.stringify(packState(state)))))`));
-  assert.deepEqual(after.chars.Merchant.recovery, { hpItem: "auto", spItem: "custom", scaleByStats: false, refStats: {}, overrides: { 548: { disc: 20 } } });
+  assert.deepEqual(after.chars.Merchant.recovery, { hpItem: "auto", spItem: "custom", overrides: { 548: { disc: 20 } } });
 });
 
 t("spawn counts come from the client's navigation table (normal channels)", () => {
