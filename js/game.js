@@ -28,6 +28,8 @@ const sizeMod=(m,w)=>{const t=WEAPONS[w]||WEAPONS[WREN[w]]||WEAPONS["Bare hands"
 
 // ---- jobs and attack presets: max-level values from rozerodb.com/tools/skill-tree (Ragnarok Zero) ----
 // type: phys / magic / auto · pct per hit · hits per use · el ("W" = weapon/arrow element) · cast = rozerodb base cast (lower it for your DEX/gear) · delay = cooldown · sp · targets
+// what each use costs (catalysts from rAthena's renewal skill_db; prices and weights in data/consumables.js, see useItems in model.js):
+// consumes: [{item, qty}] by item name · arrows: arrows per use with a bow, instrument or whip (basic attacks always fire one) · zeny: zeny per use (Mammonite, scaled to the learned level)
 const A=(name,type,pct,hits,el,cast,delay,sp,targets,note,extra)=>({name,type,pct,hits,el,cast,delay,sp,targets,note:note||"",...(extra||{})});
 const BASIC=A("Basic attack","auto",100,1,"W",0,0,0,1);
 // Zero skill data from Landgris ROCalculator (skills_zero.json + Zero Global overrides): fixed / variable cast, cooldown, global delay,
@@ -39,7 +41,7 @@ const BOLT3=[A2("Fire Bolt Lv10","magic",100,10,"Fire",30,1,"",Z(1.2,3.2,0,1.4,{
 const MAGE=[...BOLT3,A2("Earth Spike Lv5","magic",200,5,"Earth",30,1,"",Z(0.28,1.12,0.7,0.3,{sadd:[["int",1]]})),A2("Soul Strike Lv10","magic",100,5,"Ghost",38,1,"+50% vs Undead element not included",Z(0.1,0.4,0,0)),
  A2("Fire Ball Lv10","magic",340,1,"Fire",25,3,"340% centre, 255% around it",Z(0.1,0.4,0.35,0.3)),A2("Frost Driver Lv10","magic",200,1,"Water",16,1,"",Z(0.16,0.64,0,0)),
  A2("Napalm Beat Lv10","magic",170,1,"Ghost",18,1,"Damage is split when it hits several monsters",Z(0.1,0.4,0,0)),A2("Thunder Storm Lv10","magic",100,10,"Wind",74,3,"5x5 area",Z(0.8,3.2,1,0.3,{sadd:[["int",1]]}))];
-const ARCH=[A2("Double Strafe Lv10","phys",190,2,"W",12,1,"",Z(0,0,0,0.1)),A2("Arrow Shower Lv10","phys",250,1,"W",15,3,"3x3 area",Z(0,0,0,0))];
+const ARCH=[A2("Double Strafe Lv10","phys",190,2,"W",12,1,"1 arrow per use",Z(0,0,0,0.1,{arrows:1})),A2("Arrow Shower Lv10","phys",250,1,"W",15,3,"3x3 area, 1 arrow per use",Z(0,0,0,0,{arrows:1}))];
 const ACO=[A2("Holy Light","magic",125,1,"Holy",15,1,"",Z(0.2,0.8,0,0))];
 const MERC=[A2("Mammonite Lv10","phys",600,1,"W",5,1,"Costs 1,000 z per use (taken off zeny/hr)",Z(0,0,0,0,{zeny:1000})),A2("Cart Revolution","phys",150,1,"W",12,3,"Quest skill; +100% per 8,000 cart weight (set Cart weight)",Z(0,0,0,0,{cart:100}))];
 const THIEF=[A("Basic attack (Double Attack Lv10)","auto",100,1.5,"W",0,0,0,1,"Dagger: about half your hits strike twice"),A2("Envenom Lv10","phys",100,1,"Poison",12,1,"Plus a flat +150 damage, not included",Z(0,0,0,0)),A2("Sand Attack","phys",130,1,"Earth",9,1,"",Z(0,0,0,0))];
@@ -60,24 +62,37 @@ const JOBS={
    A2("Lord of Vermilion Lv10","magic",1400,1,"Wind",96,5,"13x13 area, +INT%",Z(0.84,3.36,1.5,0.3,{sadd:[["int",1]]})),A2("Meteor Storm Lv10","magic",625,1,"Fire",64,4,"(125 + INT)% × 5 per meteor, 7 meteors over 13x13",Z(1.2,4.8,2.5,0.3,{sadd:[["int",5]]})),
    A2("Gravitational Field Lv5","magic",500,10,"Neutral",100,4,"5x5 area, scales with base level",Z(1,4,4.5,0.3,{blv:true})),A2("Sightrasher Lv10","magic",300,1,"Fire",53,3,"Needs Sight",Z(0.08,0.32,0,0)),...MAGE,BASIC]},
  "Sage":{w:"Book",p:[A("Spell Fist (full Sage model)","spellfist",0,1,"Fire",0,0,0,1,"Spell Fist procs with the best of your ticked bolts, plus the Sage options below"),A2("Heaven's Drive Lv5","magic",200,5,"Earth",44,3,"5x5 area, +INT%",Z(0.4,0.6,0.5,0.3,{sadd:[["int",1]]})),...MAGE,BASIC]},
- "Hunter":{w:"Bow",p:[A2("Focused Arrow Strike Lv5","phys",1800,1,"W",24,2,"5x5 around the target, scales with base level",Z(0.5,0.5,0.15,0.5,{blv:true})),...ARCH,BASIC]},
- "Bard":{w:"Musical instrument",p:[A2("Arrow Vulcan Lv10","phys",3000,1,"W",30,1,"Instrument only, scales with base level",Z(0.38,1.52,1.5,0.3,{blv:true})),A2("Melody Strike Lv5","phys",300,2,"W",15,1,"Instrument only. +INT% per hit",Z(0.1,0.4,0,0.3,{sadd:[["int",1]]})),...ARCH,BASIC]},
- "Dancer":{w:"Whip",p:[A2("Arrow Vulcan Lv10","phys",3000,1,"W",30,1,"Whip only, scales with base level",Z(0.38,1.52,1.5,0.3,{blv:true})),A2("Slinging Arrow Lv5","phys",300,2,"W",15,1,"Whip only. +INT% per hit",Z(0.1,0.4,0,0.3,{sadd:[["int",1]]})),...ARCH,BASIC]},
- "Priest":{w:"One-handed mace",p:[A2("Magnus Exorcismus Lv10","magic",100,10,"Holy",58,4,"Costs a Blue Gemstone. 130% vs Demon, Undead and Shadow",Z(0.5,2,3,0.3)),...ACO,BASIC]},
+ "Hunter":{w:"Bow",p:[A2("Focused Arrow Strike Lv5","phys",1800,1,"W",24,2,"5x5 around the target, scales with base level. 1 arrow per use",Z(0.5,0.5,0.15,0.5,{blv:true,arrows:1})),...ARCH,BASIC]},
+ "Bard":{w:"Musical instrument",p:[A2("Arrow Vulcan Lv10","phys",3000,1,"W",30,1,"Instrument only, scales with base level. 1 arrow per use",Z(0.38,1.52,1.5,0.3,{blv:true,arrows:1})),A2("Melody Strike Lv5","phys",300,2,"W",15,1,"Instrument only. +INT% per hit. 1 arrow per use",Z(0.1,0.4,0,0.3,{sadd:[["int",1]],arrows:1})),...ARCH,BASIC]},
+ "Dancer":{w:"Whip",p:[A2("Arrow Vulcan Lv10","phys",3000,1,"W",30,1,"Whip only, scales with base level. 1 arrow per use",Z(0.38,1.52,1.5,0.3,{blv:true,arrows:1})),A2("Slinging Arrow Lv5","phys",300,2,"W",15,1,"Whip only. +INT% per hit. 1 arrow per use",Z(0.1,0.4,0,0.3,{sadd:[["int",1]],arrows:1})),...ARCH,BASIC]},
+ "Priest":{w:"One-handed mace",p:[A2("Magnus Exorcismus Lv10","magic",100,10,"Holy",58,4,"Costs a Blue Gemstone. 130% vs Demon, Undead and Shadow",Z(0.5,2,3,0.3,{consumes:[{item:"Blue Gemstone",qty:1}]})),...ACO,BASIC]},
  "Monk":{w:"Knuckle",p:[A2("Throw Spirit Sphere Lv5","phys",1600,1,"W",28,1,"Uses 1 spirit sphere",Z(0.2,0.8,1,0)),A2("Occult Impaction Lv5","phys",500,1,"W",20,1,"Uses 1 spirit sphere. More vs high DEF",Z(0.2,0.8,0,0)),
    A2("Excruciating Palm","phys",800,1,"W",40,1,"Costs 200 HP",Z(0,0,0,0)),A2("Combo: Quadruple Blow + Raging Thrust","phys",2100,1,"W",16,1,"After a Triple Attack proc; Thrust uses a sphere",Z(0,0,0,0)),...ACO,BASIC]},
  "Blacksmith":{w:"Two-handed axe",p:[A2("Power Swing Lv10","phys",1300,1,"W",19,1,"+STR% +DEX%",Z(0,0,0,0.2,{sadd:[["str",1],["dex",1]]})),A2("Axe Tornado Lv5","phys",4300,1,"W",45,3,"Axe only. 7x7 around you. (4300 + 10×VIT)% × base level / 100",Z(0,0,2,0.3,{blv:true,sadd:[["vit",10]]})),
    A2("Axe Boomerang Lv5","phys",500,1,"W",14,1,"Plus axe weight, scales with base level",Z(0,0,0.6,0,{blv:true})),...MERC,BASIC]},
- "Alchemist":{w:"Two-handed axe",p:[A2("Acid Terror Lv5","phys",1000,1,"W",15,1,"Costs an Acid Bottle",Z(0.2,0.8,0,0)),A2("Acid Bomb Lv10","phys",4000,1,"W",50,1,"Costs an Acid Bottle and a Molotov Cocktail. Scales with base level",Z(0.2,0.8,0.5,0.3,{blv:true,sadd:[["int",2]]})),...MERC,BASIC]},
+ "Alchemist":{w:"Two-handed axe",p:[A2("Acid Terror Lv5","phys",1000,1,"W",15,1,"Costs an Acid Bottle",Z(0.2,0.8,0,0,{consumes:[{item:"Acid Bottle",qty:1}]})),A2("Acid Bomb Lv10","phys",4000,1,"W",50,1,"Costs an Acid Bottle and a Bottle Grenade. Scales with base level",Z(0.2,0.8,0.5,0.3,{blv:true,sadd:[["int",2]],consumes:[{item:"Acid Bottle",qty:1},{item:"Bottle Grenade",qty:1}]})),...MERC,BASIC]},
  "Assassin":{w:"Katar",p:[A2("Sonic Blow Lv10","phys",1100,1,"W",28,1,"Katar only. +50% below half HP. 1100% on Zero Global",Z(0,0,1,0)),A2("Meteor Assault Lv10","phys",1400,1,"W",40,3,"5x5 around you. (1400 + 5×AGI)% × base level / 100",Z(0,0,0.7,0.3,{blv:true,sadd:[["agi",5]]})),
    A2("Soul Destroyer Lv10","phys",1500,1,"W",60,1,"(1500 + STR + INT)% × base level / 100",Z(0.1,0.4,0.5,0.3,{blv:true,sadd:[["str",1],["int",1]]})),A2("Venom Splasher Lv10","phys",1400,1,"W",30,2,"Explodes after 2s, 5x5",Z(0.2,0.8,1,0)),
    A2("Grimtooth Lv5","phys",200,1,"W",8,2,"Katar, from Hiding. (200 + AGI)%",Z(0,0,1,0,{sadd:[["agi",1]]})),
-   A2("Venom Knife","phys",500,1,"W",35,1,"Costs a Venom Knife",Z(0,0,0,0)),A("Basic attack (katar)","auto",100,1.2,"W",0,0,0,1,"Katar extra hit averaged in"),...THIEF,
+   // TODO: Venom Knife uses up a Venom Knife (ammo); its item id and NPC price aren't in data/consumables.js yet, so it costs nothing here
+   A2("Venom Knife","phys",500,1,"W",35,1,"Costs a Venom Knife (not counted)",Z(0,0,0,0)),A("Basic attack (katar)","auto",100,1.2,"W",0,0,0,1,"Katar extra hit averaged in"),...THIEF,
    // appended so saved preset indexes stay put: dual wield with a one-handed sword or axe in the right hand (no Double Attack)
    A("Basic attack","auto",100,1,"W",0,0,0,1,"No Double Attack: for a one-handed sword or axe in the right hand")]},
- "Rogue":{w:"Dagger",p:[A2("Back Stab Lv10","phys",700,2,"W",12,1,"Hits twice with a dagger, half damage with a bow",Z(0,0,0.7,0.3)),A2("Triangle Shot Lv10","phys",2300,1,"W",20,1,"Bow, costs 3 arrows. (2300 + 3×AGI)% × base level / 100",Z(0.2,0.8,0,0.2,{blv:true,sadd:[["agi",3]]})),
-   A2("Sightless Mind Lv5","phys",850,1,"W",15,3,"From Hiding, 7x7. +3×AGI% +DEX/2%",Z(0,0,0.7,0.3,{sadd:[["agi",3],["dex",0.5]]})),A2("Double Strafe Lv10","phys",190,2,"W",12,1,"Bow",Z(0,0,0,0.1)),...THIEF]}
+ "Rogue":{w:"Dagger",p:[A2("Back Stab Lv10","phys",700,2,"W",12,1,"Hits twice with a dagger, half damage with a bow",Z(0,0,0.7,0.3)),A2("Triangle Shot Lv10","phys",2300,1,"W",20,1,"Bow, costs 3 arrows. (2300 + 3×AGI)% × base level / 100",Z(0.2,0.8,0,0.2,{blv:true,sadd:[["agi",3]],arrows:3})),
+   A2("Sightless Mind Lv5","phys",850,1,"W",15,3,"From Hiding, 7x7. +3×AGI% +DEX/2%",Z(0,0,0.7,0.3,{sadd:[["agi",3],["dex",0.5]]})),A2("Double Strafe Lv10","phys",190,2,"W",12,1,"Bow, 1 arrow per use",Z(0,0,0,0.1,{arrows:1})),...THIEF]}
 };
+// support skills cast between attacks that use up an item (not damage presets: trap damage is DEX/INT-based and isn't modelled). You type
+// how many you cast per kill; each cast costs items [name, qty] (rAthena renewal skill_db). Their cast time isn't counted.
+// TODO: pre-renewal rAthena has Blast Mine and Freezing Trap at 1 Trap; Zero's number isn't confirmed. Quagmire uses no item in either.
+// Stone Curse is the Mage skill, so Wizards and Sages have it too
+const SUPPORT=[{key:"ankle-snare",name:"Ankle Snare",jobs:["Hunter"],items:[["Trap",1]]},{key:"land-mine",name:"Land Mine",jobs:["Hunter"],items:[["Trap",1]]},
+  {key:"blast-mine",name:"Blast Mine",jobs:["Hunter"],items:[["Trap",2]]},{key:"claymore-trap",name:"Claymore Trap",jobs:["Hunter"],items:[["Trap",2]]},
+  {key:"freezing-trap",name:"Freezing Trap",jobs:["Hunter"],items:[["Trap",2]]},{key:"skid-trap",name:"Skid Trap",jobs:["Hunter"],items:[["Trap",1]]},
+  {key:"stone-curse",name:"Stone Curse",jobs:["Mage","Wizard","Sage"],items:[["Red Gemstone",1]]},
+  {key:"bomb",name:"Bomb (Demonstration)",jobs:["Alchemist"],items:[["Bottle Grenade",1]]}];
+// Sage ground buffs (switched on in the Skills card): one item per cast, recast every 60 s × level (rAthena Duration1)
+// TODO: renewal rAthena uses a Blue Gemstone, pre-renewal a Yellow Gemstone (same NPC price); Zero's isn't confirmed
+const FIELD_ITEM={volcano:"Blue Gemstone",deluge:"Blue Gemstone",whirlwind:"Blue Gemstone"};
 // Rogue Plagiarism: one copied skill at Lv10, appended so saved preset indexes stay put. Only skills with no weapon a Rogue can't hold
 // (no katar/spear/instrument/whip/axe/shield); magic copies use your MATK
 (function plagiarism(){const all=Object.values(JOBS).flatMap(j=>j.p);const fix={"Bowling Bash Lv10":"Hits 3–5 times; +STR% per hit"};

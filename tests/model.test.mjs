@@ -386,6 +386,48 @@ t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts 
   run(`state.skipMobs=[]`);
 });
 
+t("skill items: catalysts and arrows per use, your prices, support casts and ground buffs come off zeny", () => {
+  const pre = (job, name) => `({...JOBS.${job}.p.find(p=>p.name.startsWith(${JSON.stringify(name)}))})`;
+  setup("Alchemist", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed axe", st: {}, autoSp: false, potOn: false, cons: [], npcBuy: true });
+  run(`C().a=${pre("Alchemist", "Acid Bomb")}`);
+  assert.equal(run(`useItems().map(x=>consName(x.id)+" "+x.qty).join()`), "Acid Bottle 1,Bottle Grenade 1");
+  near(run(`useZeny()`), 200 + 200);                                     // NPC prices from data/consumables.js
+  run(`C().itemPrices={7136:350}`);                                      // a market price for Acid Bottles
+  near(run(`useZeny()`), 350 + 200);
+  const mob = MOB.replace("drops:[]", "drops:[],loot:5000");
+  near(run(`skillZeny(${mob})`), 550 * run(`usesPerKill(${mob})`));
+  const r = run(`mobRow0(${mob},2)`);                                    // zeny per kill and per hour are after the bottles
+  near(r.zk, 5000 - r.zc); near(r.zph, r.zk / r.tot * 3600 - r.hc);
+  run(`C().supCasts={bomb:0.5}`);                                         // half a Bomb a kill: a Bottle Grenade every other kill
+  near(run(`skillZeny(${mob})`), 550 * run(`usesPerKill(${mob})`) + 100);
+  // arrows: bows fire one per basic attack and a.arrows per skill, of the attack's element; melee weapons fire none
+  setup("Archer", { atkTxt: "100+300", wAtk: 0, weapon: "Bow", wElem: "Neutral", st: {}, autoSp: false, potOn: false, cons: [] });
+  run(`C().a={...BASIC}`);
+  assert.equal(run(`useItems().map(x=>consName(x.id)+" "+x.qty).join()`), "Arrow 1");
+  run(`C().wElem="Fire"`);
+  assert.equal(run(`useItems().map(x=>consName(x.id)).join()`), "Fire Arrow");
+  run(`C().a=${pre("Archer", "Double Strafe")}`);
+  assert.equal(run(`useItems()[0].qty`), 1);
+  setup("Rogue", { weapon: "Bow", wElem: "Neutral", st: {} });
+  run(`C().a=${pre("Rogue", "Triangle Shot")}`);
+  assert.equal(run(`useItems()[0].qty`), 3);
+  run(`C().weapon="Dagger"`);
+  assert.equal(run(`useItems().length`), 0);
+  // Mammonite costs 100 z × the learned level
+  setup("Merchant", { st: {} });
+  run(`C().skills={mammonite:3}`);
+  assert.equal(run(`levelPreset(JOBS.Merchant.p[0],C()).a.zeny`), 300);
+  // Volcano: a gemstone every 60 s × Lv, per hour like the ASPD potion; it's in the map planner's net zeny / hr
+  setup("Sage", { atkTxt: "100+300", wAtk: 0, st: {}, autoSp: false, potOn: false, cons: [], sage: { hsOn: false, hsAuto: false } });
+  run(`C().skills={volcano:5};C().buffs={volcano:true};SKFX=skillEffects(C())`);
+  near(run(`fieldCostHr()`), 12 * 450);
+  const m = run(`mapStats0("mjo_d03",2)`);
+  near(m.zph, m.zg - 12 * 450);
+  // weight: Volcano's gems weigh 0.1 each
+  const h = run(`useHour(${mob},2)`);
+  near(h.w, 12 * 0.1); near(h.z, 12 * 450);
+});
+
 t("market prices: a drop sold to players counts at its player price instead of its NPC price", () => {
   const mob = "({id:-2,name:'Seller',loot:50,drops:[[909,10],[4001,0.5]]})";
   near(run(`zenyKill(${mob})`), 50);                                     // no prices typed: rozerodb loot value only

@@ -83,6 +83,9 @@ const aMap={aType:"type",aPct:"pct",aHits:"hits",aElem:"el",aCast:"cast",aDelay:
 Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target.value;if(k==="cast"){delete c.a.fct;delete c.a.vct}c.a[k]=(k==="type"||k==="el")?v:Math.max(k==="hits"||k==="targets"?(k==="targets"?1:0.01):0,num(v));
   if(c.preset>=0){c.a.name=(JOBS[state.job].p[c.preset]||{}).name+" (edited)";c.preset=-1;$("preset").value="-1"}save();renderAll()};
   $(id).addEventListener(id==="aType"||id==="aElem"?"change":"input",h)});
+// items skills use up: casts per kill of support skills and your price per item (blank = NPC price), saved per job
+$("useItems").addEventListener("input",e=>{const i=e.target,c=C();if(i.dataset.supk){c.supCasts=c.supCasts||{};c.supCasts[i.dataset.supk]=Math.max(0,num(i.value))}
+  else if(i.dataset.iprice){c.itemPrices=c.itemPrices||{};if(i.value==="")delete c.itemPrices[i.dataset.iprice];else c.itemPrices[i.dataset.iprice]=Math.max(0,num(i.value))}else return;save();renderAll()});
 $("partyN").addEventListener("input",e=>{cur().partyN=num(e.target.value,1)||1;save();renderAll()});
 $("dropBonus").value=state.dropBonus||0;$("dropBonus").addEventListener("input",e=>{state.dropBonus=num(e.target.value);save();renderAll()});
 $("bonus").addEventListener("input",e=>{state.bonus=num(e.target.value);save();renderAll()});

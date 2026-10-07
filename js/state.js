@@ -27,7 +27,10 @@ if(!state.chars||typeof state.chars!=="object")state.chars={};
 const numMap=o=>Object.fromEntries(Object.entries(o&&typeof o==="object"?o:{}).map(([k,v])=>[k,v===""||v==null?NaN:+v]).filter(([,v])=>Number.isFinite(v)));
 for(const j in state.chars){const c=state.chars[j];if(!c||typeof c!=="object"){delete state.chars[j];continue}
   if(c.skills!=null)c.skills=Object.fromEntries(Object.entries(numMap(c.skills)).map(([k,v])=>[k,Math.max(0,Math.round(v))]).filter(([,v])=>v>0));
-  if(c.build&&typeof c.build==="object"&&c.build.check!=null)c.build.check=numMap(c.build.check)}
+  if(c.build&&typeof c.build==="object"&&c.build.check!=null)c.build.check=numMap(c.build.check);
+  // your price per skill item (item id → zeny) and support casts per kill: numbers of 0 or more
+  if(c.itemPrices!=null)c.itemPrices=Object.fromEntries(Object.entries(numMap(c.itemPrices)).filter(([k,v])=>/^\d+$/.test(k)&&v>=0));
+  if(c.supCasts!=null)c.supCasts=Object.fromEntries(Object.entries(numMap(c.supCasts)).filter(([,v])=>v>=0))}
 // market prices you typed for items, and optionally what an NPC pays for them (item id → zeny); numbers only, so a pasted backup can't put anything else in
 state.prices=Object.fromEntries(Object.entries(numMap(state.prices)).filter(([k,v])=>/^\d+$/.test(k)&&v>=0)); // keys are item ids
 state.npcPrices=Object.fromEntries(Object.entries(numMap(state.npcPrices)).filter(([k,v])=>v>=0&&k in state.prices));
@@ -48,7 +51,7 @@ const D={bonus:0,jobBonus:0,minLv:1,maxLv:99,hideClosed:true,filters:{},sort:"ep
 for(const k in D)if(state[k]==null)state[k]=JSON.parse(JSON.stringify(D[k]));
 const save=()=>store.set(state);
 const C=()=>{if(!state.chars[state.job])state.chars[state.job]=charDefault(state.job);const c=state.chars[state.job];
-  {const p=c.preset>=0&&JOBS[state.job]&&JOBS[state.job].p[c.preset];if(p&&c.a){if(p.zeny!=null&&c.a.zeny==null)c.a.zeny=p.zeny;if(p.cart!=null&&c.a.cart==null)c.a.cart=p.cart}}const d=charDefault(state.job);for(const k in d)if(c[k]==null)c[k]=d[k];if(!c.a)c.a={...d.a};return c};
+  {const p=c.preset>=0&&JOBS[state.job]&&JOBS[state.job].p[c.preset];if(p&&c.a){if(p.zeny!=null&&c.a.zeny==null)c.a.zeny=p.zeny;if(p.cart!=null&&c.a.cart==null)c.a.cart=p.cart;if(p.consumes&&c.a.consumes==null)c.a.consumes=p.consumes;if(p.arrows!=null&&c.a.arrows==null)c.a.arrows=p.arrows}}const d=charDefault(state.job);for(const k in d)if(c[k]==null)c[k]=d[k];if(!c.a)c.a={...d.a};return c};
 const cur=()=>state.sessions.find(s=>s.id===state.current)||state.sessions[0];
 
 // skills v2: presets now come from rozerodb; reset each saved job to its first preset
