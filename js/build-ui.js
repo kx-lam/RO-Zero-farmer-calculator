@@ -71,8 +71,11 @@ const CONS_PRESETS=[
   {name:"Enriched Abrasive",eff:"CRIT +30"},
   {name:"Growth Elixir",eff:"Base/Job EXP +50%"},
   {name:"Ale's Blessing",eff:"Recovery items +20%, Heal received +20%"}];
-const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C());if(C().yggOn)YGG_FX.forEach(([t,v])=>lines.push([t,null,null,v]));
-  STAT6_UI.forEach(k=>{const o=cs[k]||{};if(num(o.n))lines.push([k,null,null,num(o.n)]);if(num(o.p))lines.push([k+"_percent",null,null,num(o.p)])});
+// stacking as in Landgris ROCalculator: stat food (the + column) and Blessing of Yggdrasil don't add up, the higher one counts per stat;
+// course meals, event drinks and other rows stack on top
+const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C()),ygg=Object.fromEntries(C().yggOn?YGG_FX:[]);
+  Object.entries(ygg).forEach(([t,v])=>{if(!STAT6_UI.includes(t))lines.push([t,null,null,v])});
+  STAT6_UI.forEach(k=>{const o=cs[k]||{},n=Math.max(num(o.n),ygg[k]||0);if(n)lines.push([k,null,null,n]);if(num(o.p))lines.push([k+"_percent",null,null,num(o.p)])});
   OWN_LISTS.forEach(L=>rowsOf(C(),L.key).filter(r=>r.on).forEach(r=>{const o=parseCons(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||L.what}: ${x}`))}));return {lines,bad}};
 // ---- ASPD potions and buffs from others, from the RO樂園攻速計算機 sheet (2026-09-07, "增益"). "aspd_mod" is the sheet's potion/skill
 // value: it adds value × AGI/200 to ASPD1 (see build.js) ----

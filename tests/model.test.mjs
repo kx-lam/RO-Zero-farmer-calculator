@@ -967,6 +967,12 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   run(`C().consStat={};C().cons=[];C().yggOn=true;applyConsumables()`);
   assert.equal(run(`statVal(C(),"luk")`), 8);
   assert.equal(run(`statVal(C(),"str")`), 57);
+  // stacking (Landgris ROCalculator): stat food and Yggdrasil don't add, the higher counts; a course meal stacks on top
+  run(`C().consStat={str:{n:10},agi:{n:5}};applyConsumables()`);
+  assert.equal(run(`statVal(C(),"str")`), 60); assert.equal(run(`statVal(C(),"agi")`), 80 + 7);  // STR 50 + 10 (not 17); AGI food 5 < 7
+  run(`C().cons=[{on:true,name:"Premium Course Meal",eff:"All stats +5, ATK/MATK +20"}];applyConsumables()`);
+  assert.equal(run(`statVal(C(),"str")`), 65);
+  run(`C().consStat={};C().cons=[];applyConsumables()`);
   assert.equal(run(`sumStat(cf("hitTxt"))-sumStat(C().hitTxt)`), 5 + 7 + 2); // HIT +5, DEX +7, LUK +7
   assert.equal(run(`sumStat(cf("fleeTxt"))-sumStat(C().fleeTxt)`), 5 + 7 + 1); // FLEE +5, AGI +7, LUK +7
   assert.equal(run(`potCostHr()`), 0);
