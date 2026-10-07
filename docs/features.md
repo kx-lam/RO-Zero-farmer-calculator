@@ -1,0 +1,108 @@
+# Features by tab
+
+[← Back to README](../README.md) · The Character tab has [its own page](character.md).
+
+- [Page layout](#page-layout)
+- [Account](#account)
+- [Session (EXP tracker)](#session-exp-tracker)
+- [Monsters & maps](#monsters--maps)
+- [Monster info](#monster-info)
+- [Item info](#item-info)
+- [Market](#market)
+- [EXP & formulas](#exp--formulas)
+- [Tables everywhere](#tables-everywhere)
+
+## Page layout
+
+**Full width:** the button next to the title lets the page use the whole window on wide screens instead of stopping at 1180px. It's remembered in this browser, apart from your account data, so backups and share links don't carry it.
+
+## Account
+
+- Keep separate characters, sessions and settings for each of your accounts, and switch between them.
+- **Backup:** Copy backup copies every account as one block of text (it also shows in the box). Restore from text replaces every account with it; older single-account backups still restore into the current account.
+- **Copy share link** puts the current account in a link. The data sits in the part after `#`, which never reaches the server. Opening the link loads the account into the backup box, and nothing changes until you click Restore.
+
+## Session (EXP tracker)
+
+- Log Base and Job EXP % as you farm. Entries go on today's date unless you pick another. If a session runs past midnight or over several days, the date shows next to each time.
+- See EXP/hr, time to the next level and a progress chart. Kill pace is split into fighting and walking time.
+- Rename a session with ✎ next to the session picker (Enter or ✓ saves, Esc cancels), and compare sessions side by side.
+- **Goal:** the EXP needed and the farming time to a target base and job level, charted together, with a date for each level-up if you farm non-stop.
+
+## Monsters & maps
+
+### Monster table
+
+Every non-MVP monster with HP, EXP, EXP/HP, your damage, kill time, EXP/min, dodge, HP lost, zeny per kill (after skill items) and net zeny/hr (after skill items, SP items, the ASPD potion and ground buffs).
+
+### Mini bosses
+
+Vocal, Eclipse, Toad, Mastering, Dragon Fly and the other monsters that spawn one per map on a long respawn carry a `mini boss` tag wherever monsters are listed, including the monster search on the Session and Monster info tabs, and Monster info says so. Type `mini` in a Monster filter to find them.
+
+Mini boss is how they spawn, not the game's Boss class, which is what boss / normal bonuses go by: Vocal and Garm Baby count as normal monsters, Eclipse as a boss (hover the tag to see which). Boss-class monsters that aren't mini bosses (Owl Duke) are tagged `boss`. Boss-class monsters stay out of the farming tables; Vocal and Garm Baby stay in, weighted by their one spawn on a map.
+
+### EXP Hunter
+
+Open maps ranked by EXP/min, weighted by spawn counts.
+
+- Zeny / hr is loot less skill items, the ASPD potion and ground buffs. Heal cost / hr is the HP items for the map's HP lost / min plus the SP items, from Recovery items (hover it to see which items and how many an hour), and Net zeny / hr is what's left. Sort by any of them.
+- Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F). You can also type the database code (`sp_d05`).
+- Monsters with no EXP data yet (Myst, Isis, Anubis…) show EXP `?` and are left out of EXP/min.
+- Skip monsters you don't want to fight, and mark regions that aren't open yet as closed.
+
+### Zeny Hunter
+
+Open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite zeny, catalysts, arrows, support casts), HP items for the HP you lose and SP items (both from Recovery items), the ASPD potion and Sage ground buffs. Hover Costs / hr to see each.
+
+- Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
+- Converters are picked by zeny rather than EXP. Monsters with no EXP data still count, since they drop loot.
+- Monsters mode lists every drop with your chance and what it adds per kill.
+- **Auto loot:** tick the item groups you loot, like the game's Looting tab (weapons, armor, consumables, cards, miscellaneous, costumes). Unticked groups count as 0 zeny everywhere. The random option grade on equipment isn't modelled.
+- **Monster picks:** like the game's Monster tab, click a monster on a map to stop or start hunting it. **Hunt only the best-paying monsters** picks for you, keeping at least "Min monsters on map" spawns.
+- Skipping monsters costs time. You either walk further (walking × √(all / hunted)) or teleport past them ((all / hunted − 1) teleports per kill, at your seconds per teleport). Each map uses whichever nets more. Teleporting only counts with a Creamy Card (ticked or in build gear) or the Teleport skill learned; Fly Wings cost too much to burn on every landing, so without either it walks. The data doesn't say which maps block teleport, so click "teleport ok" on a map to mark it "no teleport".
+
+### Map planner
+
+Per-map averages, kills/hr, EXP/hr and net zeny/hr. The EXP Hunter's Zeny / hr column is net the same way.
+
+With an elemental converter (or Spell Fist bolts), a table shows each element's rate against every monster on the map and the map's EXP/min with it, and warns about the monsters the one in use is weak against (for example Fire against Jakk, Fire 2, on Geffen Dungeon B2F). An Element % column shows the rate per monster. For physical attacks the rate applies to weapon ATK; status ATK always hits as Neutral.
+
+## Monster info
+
+One monster's stats, how you do against it, and every map it spawns on. Its drops list shows the auto-loot group, chance, your chance, NPC and player price, and zeny per kill. Drops with no published rate yet (the Boulder Dwarves in Nordfeld Cave) show chance `?` and add nothing to zeny or weight figures.
+
+## Item info
+
+Every item monsters drop, searchable and filterable by auto-loot group, with NPC and player prices. Click an item to see every monster that drops it, the drop chance and the best open map.
+
+## Market
+
+- Type what players pay for an item, and that drop counts at the player price in every zeny figure.
+- The NPC price is subtracted, since the loot value already includes it. It's filled in for every drop, and you can type your own to override it.
+- Click a drop in the Zeny Hunter, Monster info or Item info to price it.
+
+### Sell timer
+
+The game's auto return only takes you to town at a weight %; it doesn't sell or store anything. Press Start when you leave town and the timer counts down to when the current session's monsters should have filled you to your sell point, then rings: a beep, an optional browser notification and "Sell now" in the tab title. It can ring a few minutes early.
+
+- Time the session spends paused is added on, and Start or **Back from town** ends a pause left open while you sold.
+- If the trip length can't be worked out (no monster picked, no Max Weight) or doesn't match what you see, type the minutes one trip takes.
+- It also shows how many town runs you make an hour.
+- In a background tab the browser can make it up to a minute late.
+
+## EXP & formulas
+
+- Base and job EXP tables for Base Lv 1–70 and Novice, 1st and 2nd job levels. Your level is highlighted, with kills per level for your monster.
+- **Party EXP (Even Share):** the bonus is +10% per extra member (2 members 110%, 3: 120% … 12: 210%), split evenly.
+- **EXP bonuses** add together. Gear EXP counts for both base and job; an item's "EXP +X%" goes in EXP bonus % (base only) and "Job EXP +X%" in Job EXP bonus % (job only).
+- Every formula the calculator uses, with your own numbers next to it.
+- The element and weapon size tables.
+
+## Tables everywhere
+
+Every big table works the same way:
+
+- Click a column header to sort.
+- Type in the filter row under the header. Filters accept `<350`, `100-200`, `fire`, `-` for blank and `or`. In the EXP Hunter, `poring` under Main monsters finds every map with Porings; in the Zeny Hunter, `elunium` under Earns from finds every monster that drops it.
+- Show or hide columns with the column picker.
+- In the hunters, filters apply before the Show limit, and # stays the map's rank among all open maps.
