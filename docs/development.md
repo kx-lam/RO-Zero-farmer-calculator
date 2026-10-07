@@ -1,0 +1,87 @@
+# Development
+
+[← Back to README](../README.md)
+
+The page is plain HTML, CSS and JavaScript with no dependencies. Open `index.html` directly or serve the folder.
+
+**After changing any script, stylesheet or data file, run `node tools/stamp.mjs`.** It sets each `?v=` in `index.html` to that file's content hash, so after a deploy a browser never runs the new page with an old cached file. `tests/stamp.test.mjs` fails while a stamp is out of date.
+
+## Project layout
+
+| Path | What's in it |
+| --- | --- |
+| `index.html` | Page markup. Loads `data/*.js`, then `build.js`, then `js/*.js`. |
+| `style.css` | Styles. |
+| `build.js` | Build simulator: turns base stats, job level, gear, refine and cards into the status window's ATK/MATK/HIT/FLEE/ASPD/DEF/HP/SP. |
+| `js/` | Calculator and tracker code (see below). |
+| `data/` | Game data tables, one per file (see below). |
+| `tools/` | Python scripts that export and cross-check the data, and `stamp.mjs` for the file stamps in `index.html`. |
+| `tests/` | Node tests. |
+
+### `js/`
+
+Plain scripts that `index.html` loads in this order. They share one global scope, so later files use what earlier ones define.
+
+| File | Purpose |
+| --- | --- |
+| `game.js` | Merges the monster tables; holds the element and size tables, the jobs and the attack presets. |
+| `state.js` | Storage and accounts, saved state and its migrations, small helpers. |
+| `model.js` | Damage, SP, defence and Sage models, maps and the tracker maths. |
+| `render.js` | Draws the Character, Session and Monsters & maps tabs. |
+| `events.js` | Input handlers, stats, the log form, accounts, sessions, backups, the share link and the column picker. |
+| `skills.js` | Skill trees, passives and buffs. |
+| `build-ui.js` | Build mode, consumables and the equipment stats rows. |
+| `ref.js` | The EXP & formulas tab. |
+| `start.js` | Tabs, collapsible cards and the first render. |
+
+### `data/`
+
+Each table lives in its own file, so a re-export after a patch only touches that file. Each file's first line describes its fields. See [Data sources](data-sources.md) for where each comes from.
+
+| File | Contents |
+| --- | --- |
+| `mobs.js` | Monsters (EXP is `null` where there's no data yet) |
+| `spawn.js` | Spawn maps and counts, normal and PvP channels. Written by `tools/export_spawns.py`. |
+| `maps.js` | In-game map code and name for each spawn map. Names written by `tools/export_mapnames.py`. |
+| `loot.js` | Drops (chance `null` where no rate is published yet) |
+| `items.js` | Item names |
+| `prices.js` | NPC sell price for every drop. Written by `tools/export_prices.py`. |
+| `weights.js` | Item weight for every drop; items with no weight count as weightless. Written by `tools/export_prices.py`. |
+| `consumables.js` | Items skills use up (gemstones, traps, bottles, arrows): NPC buy price and weight, from rAthena until Zero's buy prices are exported. |
+| `recovery.js` | HP and SP recovery items: amount restored (measured in Ragnarok Zero Global on a Merchant), weight, NPC, Discount and player prices. |
+| `itemtypes.js` | Auto-loot group for every drop, from item categories. Written by `tools/export_prices.py`. |
+| `mstat.js` | Monster DEF/MDEF/ATK |
+| `elem.js` | Monster element, HIT/FLEE |
+| `sizes.js` | Monster size and race |
+| `exp.js` | EXP tables |
+| `equipment.js`, `cards.js`, `refine.js`, `jobs.js`, `skills.js` | Gear, refine, job and skill data for the build simulator. Written by `tools/export_prontera.py`. |
+
+## Tools
+
+All scripts use only the Python standard library.
+
+| Command | What it does |
+| --- | --- |
+| `python tools/export_spawns.py [--client PATH]` | Rewrites `data/spawn.js` from `navi_mob.lub` in your installed client's `data.grf` (read-only). Default client path: `C:\Gravity\RagnarokZero`. |
+| `python tools/export_mapnames.py [--client PATH]` | Sets the map names in `data/maps.js` to the names your installed client shows in game (read-only). |
+| `python tools/export_prices.py [--refresh]` | Writes `data/prices.js`, `data/weights.js` and `data/itemtypes.js`, and checks the prices add up to each monster's loot value. |
+| `python tools/export_prontera.py [--refresh]` | Writes the gear, refine, job and skill data. |
+| `python tools/check_maps.py` | Compares `data/spawn.js` with the cross-check source and lists missing monsters and spawn counts that differ. Monsters marked as upcoming are expected to show up as missing. |
+| `python tools/check_drops.py` | Compares drops, drop rates and item names with the cross-check source. Loot value per kill isn't compared, because the two sources price items differently. |
+
+Notes on `export_prontera.py`:
+
+- It caches pages in `tools/cache/`. After a patch, run it with `--refresh` to pick up new items and skill, job and refine changes. Delete the cache to also pick up changed stats on existing items.
+- Items that fail to download are left out and listed at the end, so rerun it to retry them.
+- It applies corrections found by checking against the official client (listed at the top of the script): Guild gear options are GvG/Siege-only, a few cards' CRIT only counts against one race, and some skill cooldowns and damage-taken lines that were missing.
+
+## Tests
+
+```sh
+node tests/build.test.mjs    # build simulator
+node tests/ingame.test.mjs   # real characters against their in-game status window
+node tests/model.test.mjs    # damage and tracker maths, loaded with a stand-in page
+node tests/stamp.test.mjs    # every file in index.html carries its current ?v= hash
+```
+
+`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time, the monster table filters and recovery item costs. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`).
