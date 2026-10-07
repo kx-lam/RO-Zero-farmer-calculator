@@ -551,6 +551,9 @@ const CREAMY=4040;
 const creamyOn=()=>!!CRD().creamy||cardInGear(C(),[CREAMY]);
 const canTele=()=>creamyOn()||skLv(C(),"teleport")>0;
 const teleSec=()=>state.teleSec==null?1:num(state.teleSec);
+// the Zeny Hunter's level filter: monsters outside its Lv range (state.huntMinLv / huntMaxLv, null = any), or with a drop level penalty
+// when "Skip drop-penalty monsters" is on (state.huntNoPen), aren't ranked on their own and are passed by on a map, like ones you untick there
+const huntLvOk=m=>(state.huntMinLv==null||m.lv>=state.huntMinLv)&&(state.huntMaxLv==null||m.lv<=state.huntMaxLv)&&!(state.huntNoPen&&dropPenalty(m)>0);
 function huntMap0(mp,w,minN=0){
   const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));const N=list.reduce((a,x)=>a+x.n,0);
   const rows=list.map(({m,n})=>({m,n,r:mobRow0(m,0)})),ok=rows.filter(x=>isFinite(x.r.sec)),skip=rows.filter(x=>!isFinite(x.r.sec)).map(x=>x.m.name);
@@ -562,14 +565,15 @@ function huntMap0(mp,w,minN=0){
       earn:h.map(({m,n,r})=>({m,n,zk:r.zk})).sort((a,b)=>b.n*b.zk-a.n*a.zk)}};
   const at=h=>{const n=h.reduce((a,x)=>a+x.n,0);if(!n)return null;const walked=at0(h,n,w*Math.sqrt(all/n),0);
     if(n>=all||!canTele()||noTele(mp))return walked;const jumps=all/n-1,tp=at0(h,n,w+jumps*teleSec(),jumps);return tp.net>walked.net?tp:walked};
-  const off=huntOffOf(mp);let best;
-  if(off){best=at(ok.filter(x=>!off.includes(x.m.id)));if(best)best.manual=true}
-  else if(state.huntAuto){const rank=ok.slice().sort((a,b)=>b.r.zk/(b.r.sec+w)-a.r.zk/(a.r.sec+w));
+  // the ones the level filter lets you hunt; a map with none of them drops out. A pick of yours that hunts none of them falls back to the rest
+  const lvOk=ok.filter(x=>huntLvOk(x.m)),off=huntOffOf(mp);let best;if(!lvOk.length)return null;
+  if(off){best=at(lvOk.filter(x=>!off.includes(x.m.id)));if(best)best.manual=true}
+  if(!best&&state.huntAuto){const rank=lvOk.slice().sort((a,b)=>b.r.zk/(b.r.sec+w)-a.r.zk/(a.r.sec+w));
     for(let k=1;k<=rank.length;k++){const r=at(rank.slice(0,k));if(r&&(r.n>=Math.min(minN,all)||k===rank.length)&&(!best||r.net>best.net))best=r}}
-  else best=at(ok);
+  if(!best)best=at(lvOk);
   if(!best)return null;
-  // every monster you can hurt here, hunted or not, for the picker
-  const on=new Set(best.earn.map(x=>x.m.id));best.mobs=ok.map(({m,n,r})=>({m,n,zk:r.zk,on:on.has(m.id)})).sort((a,b)=>b.on-a.on||b.n*b.zk-a.n*a.zk);
+  // every monster you can hurt here, hunted or not, for the picker; lvOut: the level filter passes it by
+  const on=new Set(best.earn.map(x=>x.m.id));best.mobs=ok.map(({m,n,r})=>({m,n,zk:r.zk,on:on.has(m.id),lvOut:!huntLvOk(m)})).sort((a,b)=>b.on-a.on||a.lvOut-b.lvOut||b.n*b.zk-a.n*a.zk);
   return best;
 }
 // one monster farmed on its own: its zeny per kill over fight + walk time

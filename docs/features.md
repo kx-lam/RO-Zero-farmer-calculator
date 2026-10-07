@@ -55,6 +55,7 @@ Open maps ranked by EXP/min, weighted by spawn counts.
 Open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite zeny, catalysts, arrows, support casts), HP items for the HP you lose and SP items (both from Recovery items), the ASPD potion and Sage ground buffs. Hover Costs / hr to see each.
 
 - Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
+- **Level filter:** set a Monster Lv range, or tick "Skip drop-penalty monsters" to leave out monsters 40 or more levels below you (it follows your base level). Monsters mode lists only those; on a map the rest are passed by, which costs extra walking or teleports like unticking them.
 - Converters are picked by zeny rather than EXP. Monsters with no EXP data still count, since they drop loot.
 - Monsters mode lists every drop with your chance and what it adds per kill.
 - **Auto loot:** tick the item groups you loot, like the game's Looting tab (weapons, armor, consumables, cards, miscellaneous, costumes). Unticked groups count as 0 zeny everywhere. The random option grade on equipment isn't modelled.

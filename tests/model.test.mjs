@@ -659,6 +659,27 @@ t("Zeny Hunter monster picks: passing monsters by drops them from the map and le
   run(`state.huntOff={};state.huntAuto=false`);
 });
 
+t("Zeny Hunter level filter: monsters outside the Lv range, or with a drop penalty, are passed by", () => {
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  run(`state.huntOff={};state.huntAuto=false;state.huntMinLv=null;state.huntMaxLv=null;state.huntNoPen=false;C().baseLv=1`);
+  const all = run(`huntMap0("mjo_d03",2)`), lvs = all.mobs.map(x => x.m.lv), lo = Math.min(...lvs), hi = Math.max(...lvs);
+  assert.ok(lo < hi && all.mobs.every(x => !x.lvOut));
+  run(`state.huntMinLv=${lo + 1}`);                                         // the lowest-level monsters are passed by: a longer walk
+  const r = run(`huntMap0("mjo_d03",2)`), out = all.mobs.filter(x => x.m.lv === lo);
+  assert.ok(!r.earn.some(x => x.m.lv < lo + 1) && out.every(o => r.mobs.find(x => x.m.id === o.m.id).lvOut));
+  assert.equal(r.n, all.n - out.reduce((a, x) => a + x.n, 0)); near(r.walk, 2 * Math.sqrt(all.n / r.n));
+  run(`state.huntOff={mjo_d03:[${r.earn.map(x => x.m.id).join(",")}]}`);   // a pick of yours that leaves nothing in range hunts the whole range
+  near(run(`huntMap0("mjo_d03",2)`).net, r.net);
+  run(`state.huntOff={};state.huntMinLv=null;state.huntMaxLv=${lo - 1}`);   // nothing in range: the map drops out
+  assert.equal(run(`huntMap0("mjo_d03",2)`), null);
+  run(`state.huntMaxLv=null;state.huntNoPen=true;C().baseLv=${lo + 40}`);   // 40 levels above the lowest: they lose half their drops, so they're skipped
+  assert.equal(run(`dropPenalty(MOBS.find(m=>m.id===${out[0].m.id}))`), 50);
+  const np = run(`huntMap0("mjo_d03",2)`);
+  assert.ok(np.mobs.filter(x => x.lvOut).every(x => x.m.lv <= lo + 40 - 40) && np.mobs.some(x => x.lvOut));
+  assert.equal(run(`huntLvOk(MOBS.find(m=>m.id===${out[0].m.id}))`), false);
+  run(`state.huntNoPen=false;C().baseLv=1`);
+});
+
 t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", () => {
   const atk = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
   setup("Blacksmith", { atkTxt: "100+300", st: {}, a: atk, skills: {}, itemPrice: 1000, potOn: true, potMin: 30, potPrice: 1000, cons: [] });
