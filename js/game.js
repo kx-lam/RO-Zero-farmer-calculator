@@ -85,7 +85,7 @@ const JOBS={
 // how many you cast per kill; each cast costs items [name, qty] (rAthena renewal skill_db). Their cast time isn't counted.
 // TODO: pre-renewal rAthena has Blast Mine and Freezing Trap at 1 Trap; Zero's number isn't confirmed. Quagmire uses no item in either.
 // Stone Curse is the Mage skill, so Wizards and Sages have it too
-const SUPPORT=[{key:"ankle-snare",name:"Ankle Snare",jobs:["Hunter"],items:[["Trap",1]]},{key:"land-mine",name:"Land Mine",jobs:["Hunter"],items:[["Trap",1]]},
+const SUPPORT=[{key:"ankle-snare",sk:"anklesnare",name:"Ankle Snare",jobs:["Hunter"],items:[["Trap",1]]},{key:"land-mine",name:"Land Mine",jobs:["Hunter"],items:[["Trap",1]]},
   {key:"blast-mine",name:"Blast Mine",jobs:["Hunter"],items:[["Trap",2]]},{key:"claymore-trap",name:"Claymore Trap",jobs:["Hunter"],items:[["Trap",2]]},
   {key:"freezing-trap",name:"Freezing Trap",jobs:["Hunter"],items:[["Trap",2]]},{key:"skid-trap",name:"Skid Trap",jobs:["Hunter"],items:[["Trap",1]]},
   {key:"stone-curse",name:"Stone Curse",jobs:["Mage","Wizard","Sage"],items:[["Red Gemstone",1]]},

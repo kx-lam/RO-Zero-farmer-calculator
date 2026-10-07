@@ -64,9 +64,9 @@ Each use of an attack takes its catalysts and arrows:
 - One arrow per shot with a bow, instrument or whip (basic attacks, Double Strafe, Arrow Shower, Focused Arrow Strike, Arrow Vulcan…; Triangle Shot takes 3). The arrow matches your attack element (Fire Arrow, Crystal Arrow, Silver Arrow…).
 - Mammonite costs 100 z × its level.
 
-Hunters (traps), Mages, Wizards and Sages (Stone Curse) and Alchemists (Bomb) can type how many support casts they make per kill, and Sage ground buffs (Volcano, Deluge, Whirlwind) cost a gemstone every 60 s × level while switched on.
+Hunters (traps), Mages, Wizards and Sages (Stone Curse) and Alchemists (Bomb) can type how many times per kill they cast a support skill that uses an item (0.5 = every other kill; blank = never). With a skill tree, only the ones you learned are offered, and Sage ground buffs (Volcano, Deluge, Whirlwind) cost a gemstone every 60 s × level while switched on.
 
-Under Attack details you see what a use costs, the zeny and weight per hour against the monster you picked and how long Max Weight's worth lasts. Each item defaults to its NPC price; type your own (a market price) per item, saved per job. Every zeny/hr figure takes these off.
+Under Attack details you see what a use costs, the zeny and weight per hour against the monster you picked and how long Max Weight's worth lasts. The support casts and each item's price are in the Consumables card: an item defaults to its NPC price (less Discount); type your own (a market price) per item, saved per job. Every zeny/hr figure takes these off.
 
 ## Overcharge and Discount
 

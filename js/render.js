@@ -58,13 +58,13 @@ function renderChar(){renderAspdBuffs();potInfo();
 // items skills use up: casts per kill for this job's support skills and a price box for every item in play (c.supCasts, c.itemPrices,
 // saved per job); the boxes are only rebuilt when the set of items changes, so typing in one keeps its focus
 const qtyTxt=n=>n%1?n.toFixed(1):String(n);
-function renderUseItems(){const c=C(),a=c.a,ui=useItems(),sup=supOf(),fb=Object.keys(FIELD_ITEM).filter(k=>skLv(c,k)>0);
+function renderUseItems(){const c=C(),a=c.a,ui=useItems(),sup=supShown(),fb=Object.keys(FIELD_ITEM).filter(k=>skLv(c,k)>0);
   const ids=[...new Set([...ui.map(x=>x.id),...sup.flatMap(s=>s.items.map(([n])=>CONS_ID[n])),...fb.map(k=>CONS_ID[FIELD_ITEM[k]])])].filter(Boolean);
   const box=$("useItems"),key=ids.join()+"|"+sup.map(s=>s.key).join(),lab='class="bar" style="flex-direction:row;gap:4px"';
   if(box.dataset.key!==key){box.dataset.key=key;
     const row=(h,x)=>`<div class="bar" style="flex-basis:100%"><span>${h}</span>${x}</div>`;
-    box.innerHTML=(sup.length?row("Casts per kill:",sup.map(s=>`<label ${lab} title="${esc(s.items.map(([n,q])=>`${n} ×${q}`).join(" + "))} a cast; its cast time isn't counted">${esc(s.name)} <input type="number" min="0" step="0.5" data-supk="${s.key}" style="width:56px" placeholder="0"></label>`).join("")):"")
-      +(ids.length?row("Item prices:",ids.map(id=>`<label ${lab} title="Blank: the NPC price, ${fmtN(consNpc(id))} z (rAthena; check it in game). Type what you pay, e.g. a market price">${esc(consName(id))} <input type="number" min="0" step="1" data-iprice="${id}" style="width:72px" placeholder="${consNpc(id)}"> z</label>`).join("")):"")}
+    box.innerHTML=(sup.length?row("Support skills, casts per kill:",sup.map(s=>`<label ${lab} title="How many times you cast it per kill (e.g. 0.5 = every other kill); each cast uses ${esc(s.items.map(([n,q])=>`${n} ×${q}`).join(" + "))}. Its cast time isn't counted">${esc(s.name)} <input type="number" min="0" step="0.5" data-supk="${s.key}" style="width:56px" placeholder="0"></label>`).join("")):"")
+      +(ids.length?row("Skill item prices:",ids.map(id=>`<label ${lab} title="Blank: the NPC price, ${fmtN(consNpc(id))} z (rAthena; check it in game). Type what you pay, e.g. a market price">${esc(consName(id))} <input type="number" min="0" step="1" data-iprice="${id}" style="width:72px" placeholder="${consNpc(id)}"> z</label>`).join("")):"")}
   box.querySelectorAll("[data-supk]").forEach(i=>{if(document.activeElement!==i)i.value=supCasts(i.dataset.supk)||""});
   box.querySelectorAll("[data-iprice]").forEach(i=>{if(document.activeElement!==i){const v=(c.itemPrices||{})[i.dataset.iprice];i.value=v!=null&&v!==""?v:""}});
   box.hidden=!ids.length&&!sup.length;

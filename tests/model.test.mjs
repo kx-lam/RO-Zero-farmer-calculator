@@ -431,6 +431,12 @@ t("skill items: catalysts and arrows per use, your prices, support casts and gro
   const r = run(`mobRow0(${mob},2)`);                                    // zeny per kill and per hour are after the bottles
   near(r.zk, 5000 - r.zc); near(r.zph, r.zk / r.tot * 3600 - r.hc);
   run(`C().supCasts={bomb:0.5}`);                                         // half a Bomb a kill: a Bottle Grenade every other kill
+  assert.equal(run(`supShown().map(s=>s.key).join()`), "bomb");             // no skill tree: offered
+  run(`C().skills={"acid-terror":5}`);                                     // a skill tree without Bomb: still shown, as casts are typed
+  assert.equal(run(`supShown().map(s=>s.key).join()`), "bomb");
+  run(`C().supCasts={}`); assert.equal(run(`supShown().length`), 0);     // ... and hidden once they're cleared
+  run(`C().skills.bomb=1`); assert.equal(run(`supShown().map(s=>s.key).join()`), "bomb");
+  run(`C().skills={};C().supCasts={bomb:0.5}`);
   near(run(`skillZeny(${mob})`), 550 * run(`usesPerKill(${mob})`) + 100);
   // arrows: bows fire one per basic attack and a.arrows per skill, of the attack's element; melee weapons fire none
   setup("Archer", { atkTxt: "100+300", wAtk: 0, weapon: "Bow", wElem: "Neutral", st: {}, autoSp: false, potOn: false, cons: [] });

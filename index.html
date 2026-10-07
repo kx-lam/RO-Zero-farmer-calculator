@@ -152,7 +152,6 @@
         <label>Zeny per use<input id="aZeny" type="number" step="100" min="0" placeholder="0"></label>
         <label id="cartWrap" hidden>Cart weight<input id="cartW" type="number" step="100" min="0" max="8000" placeholder="0 – 8000"></label>
       </div>
-      <div class="bar note" id="useItems"></div>
       <div class="note" id="useInfo"></div>
       <div class="form" id="bonusRow" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
         <label>Extra damage %<input id="dmgBonus" type="number" step="1"></label>
@@ -270,6 +269,7 @@
       <span id="spItemUse"></span>
       <span id="itemInfo"></span>
     </div>
+    <div class="bar note" id="useItems"></div>
     <div class="scroll"><table id="recTable"><thead><tr><th data-sk="name">Item</th><th data-sk="kind">Type</th><th data-sk="avg" title="min – max restored (edit them); the average is what's counted">Avg amount</th><th data-sk="price" title="With Buy with Discount: the Discount price, else the NPC price; player-only items use the player price">Price used</th><th data-sk="per">Cost per HP / SP</th><th data-sk="perW" title="restored per point of weight (edit the weight)">HP or SP per weight</th><th data-sk="uph">Uses / hr</th><th data-sk="zph">Cost / hr</th><th data-sk="wph">Weight / hr</th></tr></thead><tbody></tbody></table></div>
     <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. Pick None to use no HP or SP item. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
     <details class="card sub" id="consPanel" open>
@@ -554,10 +554,10 @@
 <script src="data/skills.js?v=25895412fe"></script>
 <script src="build.js?v=99fe625055"></script>
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
-<script src="js/game.js?v=4e3b2fd995"></script>
+<script src="js/game.js?v=3db406db55"></script>
 <script src="js/state.js?v=e38bd4c3f3"></script>
-<script src="js/model.js?v=33231cb3b3"></script>
-<script src="js/render.js?v=fec4e52d44"></script>
+<script src="js/model.js?v=c631eb7c06"></script>
+<script src="js/render.js?v=f3da4dfc28"></script>
 <script src="js/events.js?v=07a2c4143b"></script>
 <script src="js/skills.js?v=4e9e35293d"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>

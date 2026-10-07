@@ -267,8 +267,10 @@ function useItems(a=C().a){const out=[],add=(name,qty)=>{const id=CONS_ID[name];
   (a.consumes||[]).forEach(x=>add(x.item,num(x.qty,1)));if(usesArrows(a))add(ARROW_OF[atkEl()]||"Arrow",a.type==="auto"?1:num(a.arrows));return out}
 // zeny one use costs: its zeny (Mammonite) plus the items it uses up
 const useZeny=()=>num(C().a.zeny)+useItems().reduce((t,x)=>t+x.qty*consPrice(x.id),0);
-// support casts (traps, Stone Curse, Bomb: SUPPORT in game.js) for this job, and the items they take per kill at the casts per kill you typed
+// support casts (traps, Stone Curse, Bomb: SUPPORT in game.js) for this job, and the items they take per kill at the casts per kill you typed.
+// supShown: the ones to offer; with a skill tree only learned skills (or ones you already typed casts for)
 const supOf=()=>SUPPORT.filter(s=>s.jobs.includes(state.job));
+const supShown=()=>{const c=C();return supOf().filter(s=>!hasTree(c)||skLv(c,s.sk||s.key)>0||supCasts(s.key)>0)};
 const supCasts=k=>Math.max(0,num((C().supCasts||{})[k]));
 const supItemsKill=()=>supOf().flatMap(s=>s.items.map(([n,q])=>({id:CONS_ID[n],qty:q*supCasts(s.key)}))).filter(x=>x.id&&x.qty>0);
 // zeny skills cost per kill: zeny per use × uses per kill, shared across monsters hit, plus support casts
