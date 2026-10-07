@@ -15,9 +15,9 @@ const stub = () => {
 };
 const root = new URL("../", import.meta.url);
 const html = readFileSync(new URL("index.html", root), "utf8");
-// a fresh copy of the page's scripts; save (optional) is what localStorage holds for the account when they load
-const load = save => {
-  const store = save ? { "rozero-farm-planner-v1": JSON.stringify(save) } : {};
+// a fresh copy of the page's scripts; save (optional) is what localStorage holds for the account when they load, raw (optional) the whole localStorage
+const load = (save, raw) => {
+  const store = raw ?? (save ? { "rozero-farm-planner-v1": JSON.stringify(save) } : {});
   const ctx = vm.createContext({
     document: stub(), console, setTimeout: () => 0, clearTimeout() {}, navigator: stub(), location: stub(), scrollTo() {}, addEventListener() {},
     localStorage: { getItem: k => k in store ? store[k] : null, setItem: (k, v) => { store[k] = String(v) }, removeItem: k => { delete store[k] } },
@@ -381,18 +381,19 @@ t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts 
   setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   const mob = MOB.replace("drops:[]", "drops:[],loot:500");
   const r = run(`huntMob0(${mob},2)`), sec = run(`fightSec(${mob})`) + 2;
-  near(r.zk, 500); near(r.loot, 500 * 3600 / sec); near(r.net, r.loot); assert.equal(r.cost, 0);
+  near(r.zk, 500); near(r.loot, 500 * 3600 / sec);
+  assert.ok(r.hpZ > 0); near(r.cost, r.hpZ); near(r.net, r.loot - r.hpZ);  // the only cost: HP items for the HP it takes off you
   run(`state.dropBonus=50`);                                            // drop rate bonus scales loot
   near(run(`huntMob0(${mob},2)`).loot, 750 * 3600 / sec);
   run(`state.dropBonus=0;C().a.zeny=100`);                              // Mammonite-style zeny per use comes off each kill
   near(run(`huntMob0(${mob},2)`).zk, 500 - 100 * run(`usesPerKill(${mob})`));
   run(`C().a.zeny=0;C().potOn=true;C().potMin=30;C().potPrice=1000`);   // an ASPD potion every 30 min: 2,000 z/hr
   const p = run(`huntMob0(${mob},2)`);
-  near(p.cost, 2000); near(p.net, p.loot - 2000);
+  near(p.cost, 2000 + p.hpZ); near(p.net, p.loot - 2000 - p.hpZ);
   run(`C().potOn=false`);
   // Myst has no EXP in rozerodb but still drops loot, so it counts towards zeny on its map
   const map = run(`huntMap0("mjo_d03",2)`);
-  assert.ok(map.earn.some(x => x.m.name === "Myst") && map.epm > 0 && map.net > 0);
+  assert.ok(map.earn.some(x => x.m.name === "Myst") && map.epm > 0 && map.loot > 0);  // net can go below 0: this character loses ~4k HP/min there
   // monsters you skip are left out
   const id = run(`MOBS.find(m=>m.name==="Myst").id`);
   run(`state.skipMobs=[${id}]`);
@@ -626,7 +627,7 @@ t("Zeny Hunter monster picks: passing monsters by drops them from the map and le
   assert.equal(run("canTele()"), false);                                     // no Creamy Card, no Teleport skill: Fly Wings cost too much, so it walks
   near(r.walk, walked); assert.equal(r.tele, 0);
   run(`CRD().creamy=true;state.teleSec=0`);                                 // Creamy Card: free, instant teleports beat the longer walk
-  const cr = run(`huntMap0("mjo_d03",2)`); near(cr.tele, jumps); near(cr.walk, 2); near(cr.cost, r.cost);
+  const cr = run(`huntMap0("mjo_d03",2)`); near(cr.tele, jumps); near(cr.walk, 2); near(cr.cost - cr.hpZ, r.cost - r.hpZ);  // HP lost / min is time-weighted, so the walk moves its HP items
   run(`state.noTele=["mjo_d03"]`);                                            // a map that blocks teleport only walks
   const nt = run(`huntMap0("mjo_d03",2)`); near(nt.walk, walked); assert.equal(nt.tele, 0);
   run(`state.noTele=[];CRD().creamy=false;C().skills={teleport:1}`);        // the Teleport skill works the same
@@ -657,10 +658,127 @@ t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", ()
   run(`state.prices={909:200};state.npcPrices={909:10}`);                 // a market price replaces the NPC price you'd get with Overcharge
   near(run(`zenyKill(${mob})`), 124 + (200 - Math.floor(10 * 1.24)) * 0.10);
   near(run(`potCostHr()`), 2000 * 0.76);                                  // Discount −24% on what you buy from NPCs
+  run(`REC().spItem="custom"`);                                          // a Custom SP item (typed 1,000 z) takes Discount from NPCs
   near(run(`spItemPrice()`), 760);
   run(`C().npcBuy=false`);                                                // bought from players: no Discount
   near(run(`potCostHr()`), 2000);
   run(`state.prices={};state.npcPrices={};C().skills={};C().potOn=false`);
+});
+
+t("recovery items: cost per HP / SP, the cheapest pick and healing per hour", () => {
+  setup("Merchant", { st: {}, autoSp: false, potOn: false, cons: [] });
+  run(`state.recovery={discount:true}`);
+  const per = id => run(`recItem("${id}").per`);
+  near(per(501), 8 / 45); assert.equal(+per(501).toFixed(3), 0.178);       // Red Potion at the Discount price
+  near(per(548), 23 / 32); assert.equal(+per(548).toFixed(2), 0.72);        // Cheese: 25–39 SP, avg 32
+  near(per(510), 49 / 62); assert.equal(+per(510).toFixed(2), 0.79);        // Blue Herb: 51–73, avg 62
+  near(per(578), 200 / 101); assert.equal(+per(578).toFixed(2), 1.98);      // Strawberry at the 200 z player price
+  assert.equal(per(505), null);                                             // Blue Potion: not sold by NPCs, no price
+  assert.equal(run(`recCheapest("hp").name`), "Red Potion");
+  assert.equal(run(`recCheapest("sp").name`), "Cheese");
+  assert.equal(run(`recPick("hp").auto`), true);                            // Auto (cheapest) by default
+  // healing per hour: 202 HP lost / min ≈ 2.2k z/hr with Red Potions, 1,089 ≈ 11.6k
+  near(run(`hpHeal(202).z`), 202 * 60 / 45 * 8); assert.equal(Math.round(run(`hpHeal(202).z`) / 100) / 10, 2.2);
+  assert.equal(Math.round(run(`hpHeal(1089).z`) / 100) / 10, 11.6);
+  near(run(`hpHeal(202).n`), 202 * 60 / 45);
+  assert.equal(run(`hpHeal(null).z`), 0);
+  // Discount off: the NPC price
+  run(`state.recovery.discount=false`);
+  near(per(501), 10 / 45); near(per(548), 28 / 32); near(per(578), 200 / 101);
+  run(`state.recovery.discount=true`);
+  // your values per item: a dearer Cheese makes Blue Herb the cheapest; a price on Blue Potion lets it be picked
+  run(`REC().overrides={"548":{disc:100}}`);
+  assert.equal(run(`recCheapest("sp").name`), "Blue Herb");
+  run(`REC().overrides["505"]={player:6}`);
+  near(per(505), 0.1); assert.equal(run(`recCheapest("sp").name`), "Blue Potion");
+  run(`REC().overrides={"501":{min:40,max:50,w:5}}`);
+  near(run(`recItem("501").avg`), 45); near(run(`recItem("501").perW`), 9); assert.equal(run(`recItem("501").edited`), true);
+  run(`REC().overrides={}`);
+  // a picked item; one with no price falls back to the cheapest
+  run(`REC().spItem="578"`);
+  near(run(`spItemAmt()`), 101); near(run(`spItemPrice()`), 200);
+  run(`REC().spItem="505"`);
+  assert.equal(run(`recPick("sp").name`), "Cheese"); assert.equal(run(`recPick("sp").want.name`), "Blue Potion");
+  run(`REC().hpItem="504"`);
+  near(run(`hpHeal(100).z`), 100 * 60 / 325 * 996);
+  // Custom: the restores / costs boxes, as before
+  run(`REC().spItem="custom";C().itemSp=50;C().itemPrice=300;C().skills={}`);
+  near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300);
+  // Scale by stats (off by default): × (100 + VIT × 2) / 100 for HP, against the reference stats
+  run(`REC().spItem="auto";REC().hpItem="auto";C().st={vit:"50",dex:"1",str:"1",agi:"1",luk:"1"};C().intTxt="25"`);
+  near(run(`recItem("501").avg`), 45);
+  run(`REC().scaleByStats=true`);
+  near(run(`recItem("501").avg`), 45 * 200 / 100);
+  near(run(`recItem("548").avg`), 32 * 150 / 100);
+  run(`REC().refStats={vit:50,int:25}`);
+  near(run(`recItem("501").avg`), 45); near(run(`recItem("548").avg`), 32);
+  run(`REC().refStats={};REC().scaleByStats=false`);
+});
+
+t("recovery items: SP items in the SP model, Heal cost / hr and Net zeny / hr in the EXP Hunter", () => {
+  const sk = { name: "x", type: "phys", pct: 300, hits: 1, el: "Neutral", cast: 0, delay: 1, sp: 40, targets: 1 };
+  setup("Merchant", { atkTxt: "100+300", wAtk: 0, st: {}, a: sk, autoSp: true, potOn: false, cons: [], spRegen: 5, maxSp: 300 });
+  run(`state.recovery={discount:true};state.skipMobs=[]`);
+  const mob = MOB.replace("drops:[]", "drops:[],loot:5000");
+  // SP items per second cover what regen doesn't, at the Cheese's 32 SP each
+  const short = run(`(()=>{SG_MOB=${mob};try{return spNeedPerSec()-regenPerSec()}finally{SG_MOB=null}})()`);
+  assert.ok(short > 0);
+  near(run(`(()=>{SG_MOB=${mob};try{return itemsPerSec()}finally{SG_MOB=null}})()`), short / 32);
+  const r = run(`mobRow0(${mob},2)`);
+  near(r.hc, r.sph * 23); near(r.sph, short / 32 * 3600);
+  const m = run(`mapStats0("prt_f08",2)`);
+  near(m.zb, m.zph + m.spZ); near(m.heal, m.hpZ + m.spZ); near(m.net, m.zb - m.heal);
+  near(m.spZ, m.spHr * 23);
+  if (m.hpm != null) near(m.hpZ, m.hpm * 60 / 45 * 8);
+  near(run(`mapSpShort("prt_f08",2,null)`) / 32, m.spHr);                 // auto-use on: the items cover the whole shortfall
+  // Zeny Hunter: Costs / hr hold HP items for the HP lost, SP items, the ASPD potion and ground buffs
+  const hm = run(`huntMob0(${mob},2)`);
+  assert.ok(hm.hpm > 0 && hm.hpZ > 0);
+  near(hm.hpZ, hm.hpm * 60 / 45 * 8); near(hm.spZ, hm.spHr * 23); near(hm.cost, hm.hpZ + hm.spZ + hm.other); near(hm.net, hm.loot - hm.cost);
+  near(hm.cost, run(`huntCostHr(${mob})`) + hm.hpZ);
+  const hmap = run(`huntMap0("prt_f08",2)`);
+  near(hmap.cost, hmap.hpZ + hmap.spZ + hmap.other); near(hmap.net, hmap.loot - hmap.cost);
+  if (hmap.hpm != null) near(hmap.hpZ, hmap.hpm * 60 / 45 * 8);
+  run(`C().autoSp=false`);                                                  // auto-use off: you rest, no SP items bought
+  const m2 = run(`mapStats0("prt_f08",2)`);
+  assert.equal(m2.spZ, 0); near(m2.net, m2.zph - m2.hpZ);
+});
+
+t("recovery items: saves load with defaults, older SP items carry over, bad values are dropped", () => {
+  const S = [{ id: "s1", name: "t", mobIds: [1002], entries: [{ t: 1, lv: 50, pct: 1 }, { t: 60001, lv: 50, pct: 2 }], pauses: [{ from: 10, to: 20 }] }];
+  const app = load({ job: "Merchant", current: "s1", sessions: S, chars: { Merchant: { itemSp: 37, itemPrice: 200 }, Sage: { itemSp: 60, itemPrice: 450 },
+    Wizard: { recovery: { hpItem: 501, spItem: "548", scaleByStats: "yes", refStats: { vit: "40", int: "x", job: 3 }, overrides: { 548: { disc: "30", w: -1, bogus: 5 }, 999: { disc: 1 }, 501: "x" } } } } });
+  assert.equal(app("state.chars.Merchant.recovery.spItem"), "auto");       // the 37 SP for 200 z default: Auto (cheapest)
+  assert.equal(app("JSON.stringify(state.chars.Sage.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "custom", scaleByStats: false, refStats: {}, overrides: {} }));
+  assert.equal(app("JSON.stringify(state.chars.Wizard.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "548", scaleByStats: false, refStats: { vit: 40 }, overrides: { 548: { disc: 30 } } }));
+  assert.equal(app("state.recovery.discount"), true);                      // Buy with Discount: on by default
+  assert.equal(app("JSON.stringify(state.sessions[0].entries)"), JSON.stringify(S[0].entries));
+  assert.equal(app("JSON.stringify(state.sessions[0].pauses)"), JSON.stringify(S[0].pauses));
+  assert.equal(load({ sessions: S, recovery: { discount: false } })("state.recovery.discount"), false);
+});
+
+t("recovery items: three accounts load, switch and keep their own settings", () => {
+  const bk = JSON.parse(readFileSync(new URL("tests/fixtures/backup-2-accounts.json", root), "utf8"));
+  const gem = { job: "Alchemist", current: "g1", sessions: [{ id: "g1", name: "Gemini", mobIds: [], entries: [] }], chars: { Alchemist: { baseLv: 55 } } };
+  const store = { "rozero-farm-planner-accounts": JSON.stringify({ list: [{ id: "a0", name: "Kona" }, { id: "aFX", name: "FXFighter" }, { id: "aGem", name: "Gemini" }], active: "a0" }),
+    "rozero-farm-planner-v1": JSON.stringify(bk.accounts[0].data), "rozero-farm-planner-v1:aFX": JSON.stringify(bk.accounts[1].data), "rozero-farm-planner-v1:aGem": JSON.stringify(gem) };
+  const want = { a0: "Sage", aFX: "Merchant", aGem: "Alchemist" };
+  for (const id of ["a0", "aFX", "aGem"]) {
+    store["rozero-farm-planner-accounts"] = JSON.stringify({ ...JSON.parse(store["rozero-farm-planner-accounts"]), active: id });
+    const app = load(null, store);                                           // the page reloads on each account switch
+    assert.equal(app("state.job"), want[id], id);
+    assert.equal(app(`REC().hpItem`), "auto", id);
+    app(`REC().overrides={"501":{disc:${id === "aFX" ? 7 : 9}}};state.recovery.discount=${id !== "aGem"};save()`);
+  }
+  assert.equal(JSON.parse(store["rozero-farm-planner-v1:aFX"]).chars.Merchant.recovery.overrides["501"].disc, 7);
+  assert.equal(JSON.parse(store["rozero-farm-planner-v1"]).chars.Sage.recovery.overrides["501"].disc, 9);
+  assert.equal(JSON.parse(store["rozero-farm-planner-v1:aGem"]).recovery.discount, false);
+  assert.equal(JSON.parse(store["rozero-farm-planner-v1:aFX"]).sessions.length, bk.accounts[1].data.sessions.length);
+  const app = load(null, store);                                             // aGem is still the active one: its settings came back
+  assert.equal(app(`recItem("501").price`), 10);                             // Discount off for this account: NPC price
+  run(`state.job="Merchant";state.chars={};REC().overrides={"548":{disc:20}};REC().spItem="custom"`);  // and a share link keeps them
+  const after = JSON.parse(run(`JSON.stringify(unpackState(JSON.parse(JSON.stringify(packState(state)))))`));
+  assert.deepEqual(after.chars.Merchant.recovery, { hpItem: "auto", spItem: "custom", scaleByStats: false, refStats: {}, overrides: { 548: { disc: 20 } } });
 });
 
 t("spawn counts come from the client's navigation table (normal channels)", () => {

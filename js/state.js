@@ -30,7 +30,13 @@ for(const j in state.chars){const c=state.chars[j];if(!c||typeof c!=="object"){d
   if(c.build&&typeof c.build==="object"&&c.build.check!=null)c.build.check=numMap(c.build.check);
   // your price per skill item (item id → zeny) and support casts per kill: numbers of 0 or more
   if(c.itemPrices!=null)c.itemPrices=Object.fromEntries(Object.entries(numMap(c.itemPrices)).filter(([k,v])=>/^\d+$/.test(k)&&v>=0));
-  if(c.supCasts!=null)c.supCasts=Object.fromEntries(Object.entries(numMap(c.supCasts)).filter(([,v])=>v>=0))}
+  if(c.supCasts!=null)c.supCasts=Object.fromEntries(Object.entries(numMap(c.supCasts)).filter(([,v])=>v>=0));
+  // recovery items (the Recovery items card): the HP / SP item picked (text), Scale by stats (true/false), and the reference stats and your values per item
+  // (numbers of 0 or more). A save from before it with its own SP item typed (not the 37 SP for 200 z default) keeps that as the Custom SP item
+  if(c.recovery==null&&((c.itemSp!=null&&+c.itemSp!==37)||(c.itemPrice!=null&&+c.itemPrice!==200)))c.recovery={spItem:"custom"};
+  if(c.recovery!=null){const r=c.recovery&&typeof c.recovery==="object"&&!Array.isArray(c.recovery)?c.recovery:{},o=r.overrides&&typeof r.overrides==="object"?r.overrides:{},keys=(x,ks)=>Object.fromEntries(Object.entries(numMap(x)).filter(([k,v])=>ks.includes(k)&&v>=0));
+    c.recovery={hpItem:typeof r.hpItem==="string"?r.hpItem:"auto",spItem:typeof r.spItem==="string"?r.spItem:"auto",scaleByStats:r.scaleByStats===true,refStats:keys(r.refStats,["vit","int","isr","lp"]),
+      overrides:Object.fromEntries(Object.entries(o).filter(([id])=>Object.hasOwn(RECOVERY,id)).map(([id,x])=>[id,keys(x,["min","max","w","npc","disc","player"])]).filter(([,x])=>Object.keys(x).length))}}}
 // market prices you typed for items, and optionally what an NPC pays for them (item id → zeny); numbers only, so a pasted backup can't put anything else in
 state.prices=Object.fromEntries(Object.entries(numMap(state.prices)).filter(([k,v])=>/^\d+$/.test(k)&&v>=0)); // keys are item ids
 state.npcPrices=Object.fromEntries(Object.entries(numMap(state.npcPrices)).filter(([k,v])=>v>=0&&k in state.prices));
@@ -45,6 +51,8 @@ state.tsort=Object.fromEntries(Object.entries(objOr(state.tsort)).filter(([,v])=
 [["bestTable","bestSort","bestDir"],["huntTable","huntSort","huntDir"]].forEach(([id,k,d])=>{if(typeof state[k]==="string"&&!state.tsort[id])state.tsort[id]=[state[k],state[d]===1?1:-1];delete state[k];delete state[d]});
 state.tfilt=Object.fromEntries(Object.entries(objOr(state.tfilt)).map(([k,v])=>[k,Object.fromEntries(Object.entries(objOr(v)).filter(([,x])=>typeof x==="string"))]));
 state.noTele=(Array.isArray(state.noTele)?state.noTele:[]).map(String);
+// recovery items, per account: buy at the Discount price (on unless switched off)
+state.recovery={discount:!(state.recovery&&state.recovery.discount===false)};
 delete state.flyPrice;
 ["teleSec","tripEarly","tripMin"].forEach(k=>{if(state[k]!=null&&!(Number.isFinite(+state[k])&&+state[k]>=0))delete state[k]});
 if(!state.current||!state.sessions.some(s=>s.id===state.current))state.current=state.sessions[0].id;
