@@ -12,9 +12,9 @@ Put a dagger, one-handed sword or one-handed axe in the left hand. In Status win
 
 Basic attacks hit with both hands: the right hand × Righthand Mastery (50 + 10 per level %), the left hand × Lefthand Mastery (30 + 10 per level %), each with its own weapon ATK, size penalty and element. The left hand counts status ATK once, Double Attack repeats only the right hand, and skills use the right hand only. The left weapon costs a quarter of its delay in ASPD: −10 for a dagger and −12 for a one-handed sword or axe (rAthena renewal rules, whose Assassin ASPD table matches Zero's). Without a skill tree, both masteries count as Lv 5.
 
-## Consumables & buffs
+## Consumables
 
-Read your status window with these off; they add on top. If your typed numbers already include your buffs and items, untick the box under the status window stats and nothing is added (the ASPD potion still costs zeny).
+One card for everything you buy and use up: the Discount setting, HP and SP items (below) and the ASPD potion, converters, food and buffs. Read your status window with these off; they add on top. If your typed numbers already include your buffs and items, untick the box under the status window stats and nothing is added (the ASPD potion still costs zeny).
 
 - **ASPD potion**
 - **Elemental converter:** one element at a time. Pick Fire, Water, Earth or Wind, or let it pick the best per monster and map; it shows each one's element-table rate against the monster you picked.
@@ -70,13 +70,15 @@ Under Attack details you see what a use costs, the zeny and weight per hour agai
 
 ## Overcharge and Discount
 
-A Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for the ASPD potion, skill items and a Custom SP item; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10. Recovery items have their own Discount setting (below).
+A Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces (7, 9, 11 … 23, 24% for Lv 1–10).
 
-## Recovery items
+**Buy with Discount** in the Consumables card (on by default, saved for the whole account) takes it that a Merchant on the account with Discount Lv 10 buys for every character: −24% on the ASPD potion, skill items and a Custom SP item, and the Discount price for HP and SP items. Untick it to use NPC prices. The character's own Discount level isn't used.
 
-HP and SP items with what they really cost per HP / SP: Red, Orange, Yellow and White Potion, Cheese, Blue Herb, Strawberry and Blue Potion. The amounts were measured in Ragnarok Zero Global on a Merchant (they don't match classic RO) and the average of min and max is counted.
+## HP and SP items
 
-- **Buy with Discount** (on by default, saved for the whole account, since a Merchant on the account can buy for the others) uses the Discount price, else the NPC price. Items NPCs don't sell (Strawberry, Blue Potion) use a player price you type; Blue Potion has none until you do, shows n/a and is never picked as the cheapest.
+In the Consumables card: HP and SP items with what they really cost per HP / SP: Red, Orange, Yellow and White Potion, Cheese, Blue Herb, Strawberry and Blue Potion. The amounts were measured in Ragnarok Zero Global on a Merchant (they don't match classic RO) and the average of min and max is counted.
+
+- With **Buy with Discount** each item uses its Discount price, else the NPC price. Items NPCs don't sell (Strawberry, Blue Potion) use a player price you type; Blue Potion has none until you do, shows n/a and is never picked as the cheapest.
 - Edit any item's min, max, price or weight in the table (saved per job); "reset" goes back to the defaults. Sort by any column; the item in use is marked.
 - Uses, zeny and weight per hour are worked out for the Map planner's map (else the monster you picked): HP items cover its HP lost / min, SP items the SP your attack uses beyond regen and cards.
 - Pick the HP and SP item per job, leave them on Auto (cheapest), or pick None to use no item: no HP item means HP loss costs nothing (regen, cards, heals cover it), no SP item means you rest. The SP item is the one "SP items: auto-use when needed" and Sage Hindsight use; Custom keeps the restores / costs boxes. Older saves with their own SP item typed carry it over as Custom.

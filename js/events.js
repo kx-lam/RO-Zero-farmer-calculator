@@ -51,7 +51,6 @@ STATS.forEach(k=>$("st_"+k).addEventListener("change",e=>{const c=C();if(!c.st)c
 const numK=["lwAtk","jobLv","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","wAtk","baseLv","aspd","maxHp","maxSp","spRegen","dmgBonus","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"];
 ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","lwAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","spRegen","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen","curW","maxW","gymLv","townMin"].forEach(k=>
   $(k).addEventListener("input",e=>{const v=e.target.value;const c0=C();const before=(k==="baseLv"||k==="intTxt")?derived(c0):null;C()[k]=numK.includes(k)?(v===""?(k==="hitScale"?0.3:0):num(v)):v;if(k==="mobInterval"&&!(C()[k]>0))C()[k]=1.5;if(before){shiftByStats(c0,before);["atkTxt","matkTxt","hitTxt","fleeTxt","defTxt"].forEach(x=>{if(document.activeElement!==$(x))$(x).value=c0[x]})}save();renderAll()}));
-$("npcBuy").addEventListener("change",e=>{C().npcBuy=e.target.checked;save();renderAll()});
 $("sellAt").addEventListener("input",e=>{const v=+e.target.value;C().sellAt=v>0?Math.min(90,v):70;save();renderAll()});
 ["weapon","wElem","nameType","lw","lwElem"].forEach(k=>$(k).addEventListener("change",e=>{const c=C();
   if(k==="weapon"||k==="lw"){const next={...c,[k]:e.target.value};if(k==="lw"&&BUILD.dualOk(state.job,next.weapon,next.lw))next.shield=false;aspdMove(c,next);c.shield=next.shield;$("shield").checked=!!c.shield}
@@ -86,7 +85,7 @@ Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target
 // items skills use up: casts per kill of support skills and your price per item (blank = NPC price), saved per job
 $("useItems").addEventListener("input",e=>{const i=e.target,c=C();if(i.dataset.supk){c.supCasts=c.supCasts||{};c.supCasts[i.dataset.supk]=Math.max(0,num(i.value))}
   else if(i.dataset.iprice){c.itemPrices=c.itemPrices||{};if(i.value==="")delete c.itemPrices[i.dataset.iprice];else c.itemPrices[i.dataset.iprice]=Math.max(0,num(i.value))}else return;save();renderAll()});
-// Recovery items: HP / SP item picks (per job), Buy with Discount (per account), your values per item
+// Consumables: HP / SP item picks (per job), Buy with Discount (per account, also for the ASPD potion and skill items), your values per item
 $("recHp").addEventListener("change",e=>{REC().hpItem=e.target.value;save();renderAll()});
 $("recSp").addEventListener("change",e=>{REC().spItem=e.target.value;save();renderAll()});
 $("recDisc").addEventListener("change",e=>{state.recovery.discount=e.target.checked;save();renderAll()});

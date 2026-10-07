@@ -25,7 +25,10 @@ const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)));
 const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILLS[state.job]||[])for(const s of t.skills)if(s.slug===slug){const r=String((s.lv[lv-1]||[])[7]||"").match(/(\d+)%/);return r?+r[1]:0}return 0};
 const ocMul=()=>1+skRate("overcharge")/100;
 // Discount only helps with what you buy from an NPC: untick "from NPCs" when you buy SP items and potions from players
-const discMul=()=>C().npcBuy===false?1:1-skRate("discount")/100;
+// Discount on what you buy from NPCs (ASPD potion, skill items, a Custom SP item): the account's Buy with Discount box, taken as
+// a Merchant on the account with Discount Lv 10 (−24%) buying for every character. Recovery items use their measured Discount prices
+const DISC_LV10=24;
+const discMul=()=>recDisc()?1-DISC_LV10/100:1;
 const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
 // zeny per hour spent on the ASPD potion (consumables carry no price; Blessing of Yggdrasil's items come from the KP shop)
 const potCostHr=()=>potOnlyHr();
@@ -150,7 +153,7 @@ const spNeedPerSec=()=>isSF()?sgUpkeep()+defSP()+hsFullSP()*hsSustain():skillSPP
 // SP back per second: natural regen (stops when you're overweight) plus SP from cards (cardSPPerSec), which keeps going
 const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8)+cardSPPerSec();
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
-// the SP item is the one picked in Recovery items (spItemAmt: SP it restores, spItemPrice: what it costs)
+// the SP item is the one picked in Consumables (spItemAmt: SP it restores, spItemPrice: what it costs)
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&spItemAmt()>0?Math.max(0,spNeedPerSec()-regenPerSec())/spItemAmt():0;
 const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&spItemAmt()>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
 const rawFight=m=>{const u=usesPerKill(m);return isFinite(u)?u*useSec()/targets():Infinity};

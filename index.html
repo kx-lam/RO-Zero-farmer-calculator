@@ -229,10 +229,51 @@
         <label class="bar" style="flex-direction:row;gap:4px">Lv <input data-sg="dbLv" type="number" min="1" max="5" style="width:56px"></label>
       </div>
       <div class="note" id="sageInfo"></div>
-      <div class="note">SP items (below) only count with Hindsight on: regen pays SP first, items cover the rest.</div>
+      <div class="note">SP items (Consumables card) only count with Hindsight on: regen pays SP first, items cover the rest.</div>
     </details>
+    <div class="bar note"><span>Weight:</span>
+      <label class="bar" style="flex-direction:row;gap:4px">carrying <input id="curW" type="number" min="0" style="width:72px" title="What you carry when you leave town: gear, potions, scrolls… Only the room above it fills with loot"> of max <input id="maxW" type="number" min="0" placeholder="off" style="width:72px" title="Worked out from STR, job and skills; type a number to override"></label>
+      <label class="bar" style="flex-direction:row;gap:4px" title="Gym Membership (KP shop) teaches it: +200 Max Weight per level, kept forever">Increase Capacity Lv <input id="gymLv" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">go sell at <input id="sellAt" type="number" min="1" max="90" step="1" placeholder="70" style="width:56px" title="Where you stop to sell, e.g. 65 to stay clear of 70% (no HP/SP regen). Past 70% you fight with no regen; 90% is the most">%</label>
+      <label class="bar" style="flex-direction:row;gap:4px">town and back <input id="townMin" type="number" step="0.5" min="0" placeholder="3" style="width:64px"> min</label>
+      <span class="muted">at 70% weight HP and SP don't regenerate; at 90% you can't attack or use skills</span>
+    </div>
+    <div class="bar note"><span>Taking damage:</span>
+      <label class="bar" style="flex-direction:row;gap:4px">HP back per minute <input id="hpRegen" type="number" style="width:80px"> <span class="muted">(regen, cards, heals)</span></label>
+    </div>
+    <details class="note">
+      <summary>Advanced: monster attack timing</summary>
+      <div class="bar" style="margin-top:6px">
+        <label class="bar" style="flex-direction:row;gap:4px">monster swing every <input id="mobInterval" type="number" step="0.1" placeholder="1.5" style="width:64px">s</label>
+        <label class="bar" style="flex-direction:row;gap:4px">× <input id="hitScale" type="number" step="0.01" min="0" placeholder="0.3" style="width:70px"> of swings reach you</label>
+      </div>
+      <div style="margin-top:4px">Not in the database: default is a swing every 1.5 s, 0.3 of them reaching you. Change only if your HP loss doesn't match; clear to reset.</div>
+    </details>
+    <div class="calc" id="charTiles"></div>
+  </section>
+
+  <section class="card" data-tab="char" id="recCard">
+    <div class="bar"><h2 class="grow">Consumables</h2><span class="note" id="recNote"></span></div>
+    <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px" title="Saved for the whole account: a Merchant on the account with Discount Lv 10 (−24%) buys for the others. Covers recovery items, the ASPD potion, skill items and a Custom SP item. Off: the NPC price"><input type="checkbox" id="recDisc" style="width:auto"> Buy with Discount <span class="muted">(Lv 10 on another character, this account)</span></label>
+      <span id="mercNote"></span>
+    </div>
+    <div class="bar note" id="recSet">
+      <label class="bar" style="flex-direction:row;gap:4px">HP item <select id="recHp" style="width:auto"></select></label>
+      <label class="bar" style="flex-direction:row;gap:4px">SP item <select id="recSp" style="width:auto"></select></label>
+      <span id="recCustom" class="bar" hidden>
+        <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
+        <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
+      </span>
+    </div>
+    <div class="bar note"><span>SP items:</span>
+      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
+      <span id="spItemUse"></span>
+      <span id="itemInfo"></span>
+    </div>
+    <div class="scroll"><table id="recTable"><thead><tr><th data-sk="name">Item</th><th data-sk="kind">Type</th><th data-sk="avg" title="min – max restored (edit them); the average is what's counted">Avg amount</th><th data-sk="price" title="With Buy with Discount: the Discount price, else the NPC price; player-only items use the player price">Price used</th><th data-sk="per">Cost per HP / SP</th><th data-sk="perW" title="restored per point of weight (edit the weight)">HP or SP per weight</th><th data-sk="uph">Uses / hr</th><th data-sk="zph">Cost / hr</th><th data-sk="wph">Weight / hr</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. Pick None to use no HP or SP item. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
     <details class="card sub" id="consPanel" open>
-      <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they add on top</span></summary>
+      <summary><b>ASPD potion, converters, food &amp; buffs</b> <span class="note">read your status window with these off; they add on top</span></summary>
       <div class="warnc" id="consOff" hidden>Not added: the status window box above says your numbers already include buffs and items.</div>
       <div class="bar note"><span>ASPD potion:</span>
         <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="potOn" style="width:auto"> using one</label>
@@ -257,47 +298,6 @@
       <div class="note"><b>Buffs from others</b></div>
       <div id="pbuffList" class="eqlist"></div>
     </details>
-    <div class="bar note"><span>SP items:</span>
-      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
-      <span id="spItemUse"></span>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Discount only cuts what you buy from an NPC; untick when you buy the ASPD potion, skill items and a Custom SP item from players. Recovery items have their own Buy with Discount box"><input type="checkbox" id="npcBuy" style="width:auto"> from NPCs</label>
-      <span id="itemInfo"></span>
-      <span id="mercNote"></span>
-    </div>
-    <div class="bar note"><span>Weight:</span>
-      <label class="bar" style="flex-direction:row;gap:4px">carrying <input id="curW" type="number" min="0" style="width:72px" title="What you carry when you leave town: gear, potions, scrolls… Only the room above it fills with loot"> of max <input id="maxW" type="number" min="0" placeholder="off" style="width:72px" title="Worked out from STR, job and skills; type a number to override"></label>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Gym Membership (KP shop) teaches it: +200 Max Weight per level, kept forever">Increase Capacity Lv <input id="gymLv" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">go sell at <input id="sellAt" type="number" min="1" max="90" step="1" placeholder="70" style="width:56px" title="Where you stop to sell, e.g. 65 to stay clear of 70% (no HP/SP regen). Past 70% you fight with no regen; 90% is the most">%</label>
-      <label class="bar" style="flex-direction:row;gap:4px">town and back <input id="townMin" type="number" step="0.5" min="0" placeholder="3" style="width:64px"> min</label>
-      <span class="muted">at 70% weight HP and SP don't regenerate; at 90% you can't attack or use skills</span>
-    </div>
-    <div class="bar note"><span>Taking damage:</span>
-      <label class="bar" style="flex-direction:row;gap:4px">HP back per minute <input id="hpRegen" type="number" style="width:80px"> <span class="muted">(regen, cards, heals)</span></label>
-    </div>
-    <details class="note">
-      <summary>Advanced: monster attack timing</summary>
-      <div class="bar" style="margin-top:6px">
-        <label class="bar" style="flex-direction:row;gap:4px">monster swing every <input id="mobInterval" type="number" step="0.1" placeholder="1.5" style="width:64px">s</label>
-        <label class="bar" style="flex-direction:row;gap:4px">× <input id="hitScale" type="number" step="0.01" min="0" placeholder="0.3" style="width:70px"> of swings reach you</label>
-      </div>
-      <div style="margin-top:4px">Not in the database: default is a swing every 1.5 s, 0.3 of them reaching you. Change only if your HP loss doesn't match; clear to reset.</div>
-    </details>
-    <div class="calc" id="charTiles"></div>
-  </section>
-
-  <section class="card" data-tab="char" id="recCard">
-    <div class="bar"><h2 class="grow">Recovery items</h2><span class="note" id="recNote"></span></div>
-    <div class="bar note" id="recSet">
-      <label class="bar" style="flex-direction:row;gap:4px">HP item <select id="recHp" style="width:auto"></select></label>
-      <label class="bar" style="flex-direction:row;gap:4px">SP item <select id="recSp" style="width:auto"></select></label>
-      <span id="recCustom" class="bar" hidden>
-        <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
-        <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
-      </span>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Saved for the whole account: a Merchant with Discount (FXFighter) can buy for the other characters. Off: the NPC price"><input type="checkbox" id="recDisc" style="width:auto"> Buy with Discount <span class="muted">(this account)</span></label>
-    </div>
-    <div class="scroll"><table id="recTable"><thead><tr><th data-sk="name">Item</th><th data-sk="kind">Type</th><th data-sk="avg" title="min – max restored (edit them); the average is what's counted">Avg amount</th><th data-sk="price" title="With Buy with Discount: the Discount price, else the NPC price; player-only items use the player price">Price used</th><th data-sk="per">Cost per HP / SP</th><th data-sk="perW" title="restored per point of weight (edit the weight)">HP or SP per weight</th><th data-sk="uph">Uses / hr</th><th data-sk="zph">Cost / hr</th><th data-sk="wph">Weight / hr</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. Pick None to use no HP or SP item. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
   </section>
 
   <section class="card" data-tab="char" id="skillCard">
@@ -400,7 +400,7 @@
     <div class="bar" id="autoLoot" style="align-items:center"><b>Auto loot</b></div>
     <div class="calc" id="huntTiles"></div>
     <div class="scroll"><table id="huntTable"><thead><tr><th data-sk="rank">#</th><th data-sk="name">Map / monster</th><th data-sk="from" title="maps: the monsters you hunt there; monsters: its map and every drop">Earns from</th><th data-sk="net" title="Loot / hr less Costs / hr">Net zeny / hr</th><th data-sk="loot">Loot / hr</th><th data-sk="cost" title="HP items for the HP lost / min and SP items (priced in Recovery items), the ASPD potion and ground buffs. Hover a row for each">Costs / hr</th><th data-sk="kph">Kills / hr</th><th data-sk="zk">Zeny / kill</th><th data-sk="epm">EXP / min</th><th data-sk="hpm">HP lost / min</th></tr><tr class="filters"><td><input type="search" data-tf="rank" placeholder="<=5"></td><td><input type="search" data-tf="name" placeholder="map or monster"></td><td><input type="search" data-tf="from" placeholder="card"></td><td><input type="search" data-tf="net" placeholder=">50000"></td><td><input type="search" data-tf="loot" placeholder=">50000"></td><td><input type="search" data-tf="cost" placeholder="<5000"></td><td><input type="search" data-tf="kph" placeholder=">300"></td><td><input type="search" data-tf="zk" placeholder=">100"></td><td><input type="search" data-tf="epm" placeholder=">2000"></td><td><input type="search" data-tf="hpm" placeholder="<500"></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Open maps ranked by net zeny / hr: loot after drop bonus and level penalty, minus skill items, HP and SP items (Recovery items on the Character tab) and consumables. Bosses and skipped monsters are left out; unticked auto-loot groups count as 0 everywhere. Click a monster on a map to stop or start hunting it; skipping monsters costs extra walking, or teleports if you have a Creamy Card or the Teleport skill (never Fly Wings: they cost too much). Click "teleport ok" if a map blocks teleport.</div>
+    <div class="note">Open maps ranked by net zeny / hr: loot after drop bonus and level penalty, minus skill items, HP and SP items (Consumables on the Character tab) and consumables. Bosses and skipped monsters are left out; unticked auto-loot groups count as 0 everywhere. Click a monster on a map to stop or start hunting it; skipping monsters costs extra walking, or teleports if you have a Creamy Card or the Teleport skill (never Fly Wings: they cost too much). Click "teleport ok" if a map blocks teleport.</div>
   </section>
 
   <section class="card" id="mapCard" data-tab="maps">
@@ -555,13 +555,13 @@
 <script src="build.js?v=99fe625055"></script>
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
 <script src="js/game.js?v=4e3b2fd995"></script>
-<script src="js/state.js?v=25ad991139"></script>
-<script src="js/model.js?v=b1d99c0f9a"></script>
-<script src="js/render.js?v=182c938503"></script>
-<script src="js/events.js?v=8d335894f4"></script>
+<script src="js/state.js?v=e38bd4c3f3"></script>
+<script src="js/model.js?v=33231cb3b3"></script>
+<script src="js/render.js?v=fec4e52d44"></script>
+<script src="js/events.js?v=07a2c4143b"></script>
 <script src="js/skills.js?v=4e9e35293d"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>
-<script src="js/ref.js?v=0cc8633f35"></script>
+<script src="js/ref.js?v=9933bc86b4"></script>
 <script src="js/start.js?v=cc10b74f5b"></script>
 </body>
 </html>

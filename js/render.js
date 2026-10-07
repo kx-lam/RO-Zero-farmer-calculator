@@ -26,10 +26,9 @@ function renderChar(){renderAspdBuffs();potInfo();
   if(a.type==="spellfist")$("atkSummary").textContent+=` · each attack also lands its physical hit (ATK, weapon element)`;
   if(dualOn()){const h=handPct();$("atkSummary").textContent+=a.type==="auto"?` · dual wield: right hand ${h.right}% + left ${c.lw} ${h.left}% (${leftEl()})`:" · dual wield: skills use the right hand only"}
   const us=useSec(),need=spNeedPerSec()*60,reg=regenPerSec()*60,ips=itemsPerSec(),rf=restFactor();
-  {const oc=skRate("overcharge"),dc=skRate("discount");$("npcBuy").checked=c.npcBuy!==false;
-    $("mercNote").textContent=oc||dc?[oc?`Overcharge: NPCs pay you +${oc}%`:"",dc?`Discount: NPCs charge you −${dc}%${c.npcBuy===false?" (off: bought from players)":""}`:""].filter(Boolean).join(" · "):""}
+  {const oc=skRate("overcharge");$("mercNote").textContent=oc?`Overcharge: NPCs pay you +${oc}%`:""}
   renderUseItems();
-  {const p=recPick("sp");$("spItemUse").innerHTML=p?`<b>${esc(p.name)}</b> (${fmtSig(p.avg)} SP, ${fmtSig(p.price)} z${p.auto?", cheapest":""}) <span class="muted">· pick it in Recovery items</span>`:REC().spItem==="none"?'<span class="muted">no SP item (None in Recovery items): you rest</span>':""}
+  {const p=recPick("sp");$("spItemUse").innerHTML=p?`<b>${esc(p.name)}</b> (${fmtSig(p.avg)} SP, ${fmtSig(p.price)} z${p.auto?", cheapest":""})`:REC().spItem==="none"?'<span class="muted">no SP item (None): you rest</span>':""}
   $("itemInfo").textContent=c.autoSp?(ips>0?`≈ ${(ips*60).toFixed(1)} items/min · ${fmtN(ips*3600*spItemPrice())} z/hr`:"not needed: regen covers it"):"";
   const atk=a.type==="magic"||a.type==="spellfist"?`MATK ${fmtN(sumStat(c.matkTxt))}`:`ATK ${fmtN(sumStat(c.atkTxt))}`;
   {const cd=CRD(),m=calcMob(),k0=SG_MOB;SG_MOB=m;try{const hf=hfHpPerSec(),hs=m?healsPerSec(m):0,sh=m?healShare(m):0,parts=[];
@@ -78,7 +77,7 @@ function renderUseItems(){const c=C(),a=c.a,ui=useItems(),sup=supOf(),fb=Object.
     parts.push(!m?"pick a monster to see the cost per hour":!h?`can't hurt ${esc(m.name)}`:`vs ${esc(m.name)}: ~${fmtN(h.z)} z/hr${h.items.length?` (${h.items.map(x=>`${fmtN(x.n)} ${esc(consName(x.id))}`).join(", ")})`:""}, taken off zeny/hr`
       +(h.w>0?` · uses ~${h.w<10?h.w.toFixed(1):fmtN(h.w)} weight/hr${mw>0?`; restock every ${fmtDur(mw/h.w).split("\n").pop()} (Max Weight ${fmtN(mw)})`:""}`:""))}
   $("useInfo").innerHTML=parts.join(" · ")}
-// ---- render: Recovery items: the HP / SP item picks and every item's cost per HP / SP, and uses per hour on a map ----
+// ---- render: Consumables: the HP / SP item picks and every item's cost per HP / SP, and uses per hour on a map ----
 const fmtSig=n=>n==null||!isFinite(n)?"n/a":n>=100?fmtN(n):String(+n.toPrecision(3));
 const fmtQty=n=>n==null||!isFinite(n)?"–":n<10?n.toFixed(1):fmtN(n);
 const REC_SRC={disc:"Discount",npc:"NPC",player:"players"};

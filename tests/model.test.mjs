@@ -33,7 +33,8 @@ const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ""} ${a}
 // a made-up monster, so the expected numbers don't depend on the exported tables
 const MOB = "({id:-1,name:'Dummy',lv:50,hp:10000,exp:2000,el:'Water',elv:1,size:'L',race:'Brute',def:20,mdef:10,vit:30,int:20,hit100:200,flee95:250,atkMin:100,atkMax:200,drops:[]})";
 // pick a job and character fields, then redo what renderAll does before the maths reads them
-const setup = (job, fields) => run(`state.job=${JSON.stringify(job)};state.chars={};Object.assign(C(),${JSON.stringify(fields)});
+// Buy with Discount off unless a test turns it on, so prices are the NPC prices
+const setup = (job, fields) => run(`state.job=${JSON.stringify(job)};state.chars={};state.recovery={discount:false};Object.assign(C(),${JSON.stringify(fields)});
   if(C().a&&${JSON.stringify(!!fields.a)})C().a={...C().a};SKFX=skillEffects(C());applyBuild();applyConsumables();`);
 
 t("element table and weapon size modifiers", () => {
@@ -419,7 +420,7 @@ t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts 
 
 t("skill items: catalysts and arrows per use, your prices, support casts and ground buffs come off zeny", () => {
   const pre = (job, name) => `({...JOBS.${job}.p.find(p=>p.name.startsWith(${JSON.stringify(name)}))})`;
-  setup("Alchemist", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed axe", st: {}, autoSp: false, potOn: false, cons: [], npcBuy: true });
+  setup("Alchemist", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed axe", st: {}, autoSp: false, potOn: false, cons: [], });
   run(`C().a=${pre("Alchemist", "Acid Bomb")}`);
   assert.equal(run(`useItems().map(x=>consName(x.id)+" "+x.qty).join()`), "Acid Bottle 1,Bottle Grenade 1");
   near(run(`useZeny()`), 200 + 200);                                     // NPC prices from data/consumables.js
@@ -680,7 +681,7 @@ t("Zeny Hunter level filter: monsters outside the Lv range, or with a drop penal
   run(`state.huntNoPen=false;C().baseLv=1`);
 });
 
-t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", () => {
+t("Overcharge raises NPC sales; Buy with Discount (Lv 10 on the account) cuts NPC purchases", () => {
   const atk = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
   setup("Blacksmith", { atkTxt: "100+300", st: {}, a: atk, skills: {}, itemPrice: 1000, potOn: true, potMin: 30, potPrice: 1000, cons: [] });
   const mob = "({id:-3,name:'Seller',lv:50,loot:100,drops:[[909,10]]})";
@@ -694,10 +695,14 @@ t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", ()
   near(run(`zenyKill(${mob})`), 124);                                     // NPC loot value +24%
   run(`state.prices={909:200};state.npcPrices={909:10}`);                 // a market price replaces the NPC price you'd get with Overcharge
   near(run(`zenyKill(${mob})`), 124 + (200 - Math.floor(10 * 1.24)) * 0.10);
-  near(run(`potCostHr()`), 2000 * 0.76);                                  // Discount −24% on what you buy from NPCs
-  run(`REC().spItem="custom"`);                                          // a Custom SP item (typed 1,000 z) takes Discount from NPCs
+  near(run(`potCostHr()`), 2000);                                         // this character's own Discount doesn't count
+  run(`state.recovery.discount=true`);                                    // Buy with Discount: −24% (Lv 10) on what you buy from NPCs
+  near(run(`potCostHr()`), 2000 * 0.76);
+  run(`REC().spItem="custom"`);                                          // a Custom SP item (typed 1,000 z) takes it too
   near(run(`spItemPrice()`), 760);
-  run(`C().npcBuy=false`);                                                // bought from players: no Discount
+  run(`C().skills={}`);                                                   // on any job, not only the Merchant line
+  near(run(`potCostHr()`), 2000 * 0.76);
+  run(`state.recovery.discount=false`);                                   // off: NPC prices
   near(run(`potCostHr()`), 2000);
   run(`state.prices={};state.npcPrices={};C().skills={};C().potOn=false`);
 });
@@ -740,7 +745,8 @@ t("recovery items: cost per HP / SP, the cheapest pick and healing per hour", ()
   near(run(`hpHeal(100).z`), 100 * 60 / 325 * 996);
   // Custom: the restores / costs boxes, as before
   run(`REC().spItem="custom";C().itemSp=50;C().itemPrice=300;C().skills={}`);
-  near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300);
+  near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300 * 0.76);     // with Buy with Discount
+  run(`state.recovery.discount=false`); near(run(`spItemPrice()`), 300); run(`state.recovery.discount=true`);
   // None: no HP item (HP loss costs nothing) and no SP item (auto-use has nothing to use, so you rest)
   run(`REC().hpItem="none";REC().spItem="none"`);
   assert.equal(run(`recPick("hp")`), null); assert.equal(run(`recPick("sp")`), null);
