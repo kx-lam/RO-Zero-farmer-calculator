@@ -210,8 +210,8 @@ $("closedMaps").addEventListener("change",e=>{state.closed=[...new Set(e.target.
 ROOTQ("[data-hunt]").forEach(b=>b.addEventListener("click",()=>{state.huntMode=b.dataset.hunt;save();renderHunt()}));
 $("huntMin").addEventListener("input",renderHunt);$("huntN").addEventListener("change",renderHunt);
 $("huntAuto").addEventListener("change",e=>{state.huntAuto=e.target.checked;save();renderHunt()});
-$("flyPrice").value=state.flyPrice??250;$("teleSec").value=state.teleSec??1;
-["flyPrice","teleSec"].forEach(id=>$(id).addEventListener("input",e=>{if(e.target.value==="")delete state[id];else state[id]=Math.max(0,num(e.target.value));save();renderHunt()}));
+$("teleSec").value=state.teleSec??1;
+$("teleSec").addEventListener("input",e=>{if(e.target.value==="")delete state.teleSec;else state.teleSec=Math.max(0,num(e.target.value));save();renderHunt()});
 // auto loot: one tick box per group; it changes zeny everywhere
 $("autoLoot").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-loot="${g}" style="width:auto"> ${n}</label>`).join(""));
 $("autoLoot").addEventListener("change",e=>{const i=e.target.closest("[data-loot]");if(!i)return;state.autoLoot[i.dataset.loot]=i.checked;save();renderAll()});
