@@ -948,6 +948,12 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`JSON.stringify(C().pbuffs)`), "{}");
   assert.equal(run(`potCostHr()`), 0);                                       // consumables carry no zeny cost
   assert.equal(run(`PBUFF.some(b=>b.k==="bandage")`), false);               // Yggdrasil's Blessing (Battle Bandage) is gone
+  // the effect text follows the level you typed
+  const eff = (k, lv) => run(`pbEff(PBUFF.find(b=>b.k==="${k}"),${lv})`);
+  assert.equal(eff("blessing", 5), "STR +5, INT +5, DEX +5, HIT +10");
+  assert.equal(eff("incAgi", 3), "AGI +5, ASPD +3%");
+  assert.equal(eff("riff", 3), "ASPD +5%");
+  assert.equal(eff("clementia", 70), "STR +17, INT +17, DEX +17 (Blessing Lv 10 + Priest Job Lv/10)");
   run(`C().pbuffs={bandage:{on:true}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
   assert.equal(run(`statVal(C(),"luk")`), 1);                               // an old save's tick adds nothing
   run(`C().pbuffs={};C().consStat={...C().consStat,dex:{n:7},luk:{n:7}};C().cons=[{on:true,name:"x",eff:"HIT +5"}];applyConsumables()`);

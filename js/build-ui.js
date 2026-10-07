@@ -37,18 +37,19 @@ const potOk=(k,job=state.job)=>{const p=ASPD_POT[k];return !!p&&!(p.no||[]).incl
 // the potion in use: the one picked, else the strongest this job can drink (older saves had a flat "+ASPD" box instead)
 const potKey=c=>potOk(c.potType)?c.potType:["bers","awak","conc"].find(k=>potOk(k));
 const AXE_MACE=["One-handed axe","Two-handed axe","One-handed mace","Two-handed mace"];
-// lv: [min, max, default, label]; fx(level) -> bonus lines; eff: what it does, when the lines don't say it plainly
+// lv: [min, max, default, label]; fx(level) -> bonus lines; eff: what it does, when the lines don't say it plainly; how: where the numbers come from
 const PBUFF=[
   {k:"blessing",name:"Blessing",lv:[1,10,10],fx:l=>[["str",l],["int",l],["dex",l],["hit",2*l]]},
   {k:"clementia",name:"Clementia (Priest)",lv:[1,70,50,"Priest Job Lv"],fx:j=>{const v=10+Math.floor(j/10);return [["str",v],["int",v],["dex",v]]},
-    eff:"Blessing Lv 10 + Priest Job Lv/10 to STR, INT, DEX"},
+    how:"Blessing Lv 10 + Priest Job Lv/10"},
   {k:"incAgi",name:"Increase AGI",lv:[1,10,10],fx:l=>[["agi",2+l],["aspd_percent",l]]},
   {k:"canto",name:"Canto Candidus (Priest)",fx:()=>[["agi",19],["aspd_percent",17]]},
   {k:"riff",name:"Impressive Riff (Bard)",lv:[1,10,10],fx:l=>[["aspd_percent",l===10?20:1+2*(l-1)]]},
   {k:"adren",name:"Adrenaline Rush (from a Blacksmith)",w:AXE_MACE,fx:()=>[["aspd_mod",6],["aspd_percent",10]],eff:"potion/skill value 6, ASPD +10%; axes and maces"}];
 const pbuffOf=c=>{if(!c.pbuffs||typeof c.pbuffs!=="object")c.pbuffs={};return c.pbuffs};
 const pbLv=(b,o)=>b.lv?Math.min(b.lv[1],Math.max(b.lv[0],num(o.lv,b.lv[2]))):0;
-const pbEff=b=>b.eff||b.fx(b.lv?b.lv[2]:0).map(([t,v])=>t==="aspd_percent"?`ASPD +${v}%`:t==="aspd_mod"?`potion/skill value ${v}`:`${t.toUpperCase()} +${v}`).join(", ");
+// what it does at level lv (the level you typed, else the default)
+const pbEff=(b,lv=b.lv?b.lv[2]:0)=>b.eff||b.fx(lv).map(([t,v])=>t==="aspd_percent"?`ASPD +${v}%`:t==="aspd_mod"?`potion/skill value ${v}`:`${t.toUpperCase()} +${v}`).join(", ")+(b.how?` (${b.how})`:"");
 // a buff counts when ticked and it fits your weapon. It doesn't stack with the same buff switched on in your Skills card, and
 // Clementia replaces Blessing, Canto Candidus replaces Increase AGI
 const PB_SELF={blessing:"blessing",incAgi:"increase-agility",adren:"adrenaline-rush"},PB_OVER={blessing:"clementia",incAgi:"canto"};
@@ -94,9 +95,11 @@ function renderAspdBuffs(){const c=C(),k=potKey(c),act=document.activeElement;$(
   if(!$("pbuffList").contains(act))$("pbuffList").innerHTML=PBUFF.map(b=>{const o=pbuffOf(c)[b.k]||{},off=b.w&&!b.w.includes(c.weapon),own=PB_SELF[b.k]&&(c.buffs||{})[PB_SELF[b.k]]&&skLv(c,PB_SELF[b.k]);
     return `<div class="eqrow" data-pb="${b.k}"><label class="bar" style="flex-direction:row;gap:6px;min-width:250px"><input type="checkbox" data-f="on" ${o.on?"checked":""} style="width:auto">${esc(b.name)}</label>
     ${b.lv?`<label class="bar" style="flex-direction:row;gap:4px">${b.lv[3]||"Lv"} <input data-f="lv" type="number" min="${b.lv[0]}" max="${b.lv[1]}" value="${pbLv(b,o)}" style="width:60px"></label>`:""}
-    <span class="note">${esc(pbEff(b))}${off?' · <span class="warnc">not with this weapon</span>':own?" · on in your Skills card, counted there":""}</span></div>`}).join("")}
+    <span class="note"><span data-pbeff>${esc(pbEff(b,pbLv(b,o)))}</span>${off?' · <span class="warnc">not with this weapon</span>':own?" · on in your Skills card, counted there":""}</span></div>`}).join("")}
 $("pbuffList").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.target.closest("[data-pb]");if(!f||!row)return;const o=pbuffOf(C())[row.dataset.pb]||(pbuffOf(C())[row.dataset.pb]={});
-  o[f]=f==="on"?e.target.checked:num(e.target.value);save();renderAll()});
+  o[f]=f==="on"?e.target.checked:num(e.target.value);
+  // the list isn't redrawn while you type in it, so the effect text follows the level here
+  {const b=PBUFF.find(x=>x.k===row.dataset.pb),el=row.querySelector("[data-pbeff]");if(b&&el)el.textContent=pbEff(b,pbLv(b,o))}save();renderAll()});
 $("addOnTop").addEventListener("change",e=>{C().addOnTop=e.target.checked;save();renderAll()});
 $("potType").addEventListener("change",e=>{C().potType=e.target.value;save();renderAll()});
 const consNote=()=>{const {bad}=consLines();$("consNote").innerHTML=bad.length?`<span class="bad">Not understood: ${bad.map(esc).join(", ")}</span>`:""};
