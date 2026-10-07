@@ -42,12 +42,14 @@ const vctFactor=()=>{const c=C();const dex=statVal(c,"dex");if(dex==null)return 
 const cardInGear=(c,ids)=>c.mode==="build"&&Object.values((c.build&&c.build.gear)||{}).some(g=>g&&(g.cards||[]).some(id=>ids.includes(+id)));
 // Phen (4077) and Bloody Butterfly (4327) Cards: casts can't be interrupted, variable cast +25% / +30%
 const PHEN=4077,BBFLY=4327;
-const noBreak=()=>{const cd=CRD();return !!(cd.phen||cd.bbfly)||cardInGear(C(),[PHEN,BBFLY])};
+const noBreak=()=>{const cd=CRD();return !!(cd.phen||cd.bbfly)||cardInGear(C(),[PHEN,BBFLY])||consSum("no_break")>0};
+// fixed cast % cut: only the highest one counts (the box, or a consumable such as Challenge Drink)
+const fctPctEff=()=>Math.max(num(C().fctPct),-consSum("fct_percent"));
 const vctCards=()=>{const cd=CRD(),c=C();return (cd.phen&&!cardInGear(c,[PHEN])?25:0)+(cd.bbfly&&!cardInGear(c,[BBFLY])?30:0)};
 const castSec=()=>{const c=C(),a=c.a,vp=num(c.vctPct)-vctCards();
-  if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-vp/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-num(c.fctPct)/100));
+  if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-vp/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-fctPctEff()/100));
   const base=num(a.cast),f=Math.min(100,Math.max(0,num(c.fixedShare)))/100;
-  return Math.max(0,base*(1-f)*vctFactor()*(1-vp/100))+Math.max(0,(base*f-num(c.fctSec))*(1-num(c.fctPct)/100))};
+  return Math.max(0,base*(1-f)*vctFactor()*(1-vp/100))+Math.max(0,(base*f-num(c.fctSec))*(1-fctPctEff()/100))};
 // a hit that lands while you cast interrupts it and you start again (SP is only spent on a cast that finishes). With λ hits landing per
 // second from the monster in play, a T-second cast takes (e^(λT) − 1)/λ on average. Not with Phen or Bloody Butterfly
 const castEff=()=>{const T=castSec();if(T<=0||noBreak())return T;const l=hitsOnYou(SG_MOB||calcMob());return l>0?Math.expm1(l*T)/l:T};
@@ -77,8 +79,8 @@ const expGear=m=>{const c=C();return c.bx?(c.bx.exp.all||0)+((c.bx.exp.race||{})
 // matching the in-game kills noted at partyN). Gear EXP counts for base and job EXP; an item's "EXP +X%" is base EXP only and
 // only "Job EXP +X%" raises job EXP (checked in game: a Captain with 10% gear gave +10% to both, an "EXP +10%" item +10% base only)
 const partyCut=(v,s=cur())=>Math.floor(v*(100+partyBonus(s))/100/partyN(s));
-const killExp=(m,s=cur())=>Math.floor(partyCut(m.exp,s)*(1+(expGear(m)+num(state.bonus))/100));
-const killJobExp=(m,s=cur())=>Math.floor(partyCut(m.job,s)*(1+(expGear(m)+num(state.jobBonus))/100));
+const killExp=(m,s=cur())=>Math.floor(partyCut(m.exp,s)*(1+(expGear(m)+num(state.bonus)+consSum("exp_base"))/100));
+const killJobExp=(m,s=cur())=>Math.floor(partyCut(m.job,s)*(1+(expGear(m)+num(state.jobBonus)+consSum("exp_job"))/100));
 const takenMul=m=>{const c=C();if(!c.bx)return 1;const t=c.bx.taken;return (1+(t.race[m.race]||0)/100)*(1+(t.ele[m.el||"Neutral"]||0)/100)*(1+(t.kind[m.boss?"boss":"normal"]||0)/100)};
 // ignore DEF / MDEF %: lowers the monster's hard defence before the (4000+DEF)/(4000+10·DEF) or (1000+MDEF)/(1000+10·MDEF) factor
 const effDef=m=>(m.def||0)*(1-Math.min(100,Math.max(0,num(C().ignDef)))/100);
@@ -131,7 +133,7 @@ const critChance=m=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(1
 // uses needed per kill: whole hits that land, spread over misses
 // average damage of one use: hits that land (crits always do, × 1.4 × (1 + crit damage %)) plus auto-casts, which only proc on swings that connect
 const procPerUse=m=>ssDmg(m)*SS_CHANCE+acDmg(m)*acChance();
-const useAvg=(m,per,proc)=>{const cr=critChance(m),hc=hitChance(m)/100;return per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hc)+proc*(cr+(1-cr)*hc)};
+const useAvg=(m,per,proc)=>{const cr=critChance(m),hc=hitChance(m)/100;return per*(cr*1.4*(1+(num(C().critDmg)+consSum("crit_dmg"))/100)+(1-cr)*hc)+proc*(cr+(1-cr)*hc)};
 const dpsOf=m=>{if(isSF())return null;return useAvg(m,perUse(m),procPerUse(m))*targets()/useSec()};
 function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const per=perUse(m),proc=procPerUse(m);if(per<=0&&proc<=0)return Infinity;
   // Shadow Spell and card auto-casts are averaged into each attack
@@ -146,12 +148,22 @@ const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVa
 // Vitata Card's +25% counts when ticked, unless build mode already has the card in your gear
 const vitInGear=c=>cardInGear(c,[4053]);
 const vitPct=()=>CRD().vitata&&!vitInGear(C())?num(CRD().spBonus):0;
-const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100+vitPct()/100)};
+// consumables' lines the status window doesn't show (parseCons in build-ui.js): "SP consumption −x%" and HP / SP restored over time
+// (only your own rows make them; summed once per change of those rows, as regen is asked for on every monster)
+let CONS_SUM={k:null,v:{}};
+const consSum=t=>{const c=C(),rows=OWN_LISTS.flatMap(L=>rowsOf(c,L.key)).filter(r=>r.on),k=rows.map(r=>r.eff).join("\n");
+  if(CONS_SUM.k!==k){const v={};rows.forEach(r=>parseCons(r.eff).lines.forEach(([x,,,n])=>v[x]=(v[x]||0)+num(n)));CONS_SUM={k,v}}return CONS_SUM.v[t]||0};
+const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100+vitPct()/100+consSum("sp_cost_percent")/100)};
+// SP / HP per second from consumables such as Small Mana Potion (5% of Max SP every 5 s); like cards it keeps going when you're overweight
+const consSPPerSec=()=>consSum("sp_regen")+consSum("sp_regen_pct")*num(cf("maxSp"))/100;
+const consHPPerSec=()=>consSum("hp_regen")+consSum("hp_regen_pct")*num(cf("maxHp"))/100;
+// Increase SP Recovery (Mage, Wizard, Sage; Skills card): every 10 s, Lv × (3 + 0.2% of Max SP) on top of natural regen (Zero's skill data)
+const isrPer10=()=>{const l=skLv(C(),"increase-sp-recovery");return l>0?Math.floor(l*(3+num(cf("maxSp"))*0.002)):0};
 // SP the attack itself costs per second (Spell Fist: its upkeep); defSP adds Energy Coat and Vitata's heals against the monster in play
 const skillSPPerSec=()=>num(C().a.sp)*spCostMul()/useSec();
 const spNeedPerSec=()=>isSF()?sgUpkeep()+defSP()+hsFullSP()*hsSustain():skillSPPerSec()+defSP();
-// SP back per second: natural regen (stops when you're overweight) plus SP from cards (cardSPPerSec), which keeps going
-const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8)+cardSPPerSec();
+// SP back per second: natural regen and Increase SP Recovery (stop when you're overweight) plus SP from cards and consumables, which keep going
+const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8+isrPer10()/10)+cardSPPerSec()+consSPPerSec();
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
 // the SP item is the one picked in Consumables (spItemAmt: SP it restores, spItemPrice: what it costs)
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&spItemAmt()>0?Math.max(0,spNeedPerSec()-regenPerSec())/spItemAmt():0;
@@ -163,7 +175,7 @@ const defParts=()=>{const p=String(cf("defTxt")||"0").split("+").map(x=>parseFlo
 // dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
 const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(cf("fleeTxt"))-m.flee95));
 const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,((m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)*takenMul(m))};
-const hpLossPerMin=m=>{const d=defense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)):null};
+const hpLossPerMin=m=>{const d=defense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)-consHPPerSec()*60):null};
 // ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, SP items; Energy Coat from ECO(), Vitata, Hunter Fly and Side Winder from CRD()) ----
 const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5};
 const G=()=>{const c=C();if(!c.sage)c.sage={};for(const k in SAGE_D)if(c.sage[k]==null)c.sage[k]=JSON.parse(JSON.stringify(SAGE_D[k]));return c.sage};

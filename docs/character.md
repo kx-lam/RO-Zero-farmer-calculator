@@ -20,6 +20,8 @@ One card for everything you buy and use up: the Discount setting, HP and SP item
 - **Elemental converter:** one element at a time. Pick Fire, Water, Earth or Wind, or let it pick the best per monster and map; it shows each one's element-table rate against the monster you picked.
 - **Blessing of Yggdrasil:** a World Tree Dew or Zelstar from the KP shop each hour: all stats +7, ATK +30, MATK +30, HIT +5, FLEE +5.
 - **Food and other consumables:** type them as + and +% per main stat (STR … LUK; +% is a share of the total stat, rounded down), anything else as effect lines ("ATK +20, ASPD +10%"). Other consumables carry no zeny cost.
+- **Event items:** "+ event item…" adds Challenge Drink, Mimir's Well, Small Mana / Healing Potion, Unlimited Drink, Premium Course Meal, Enriched Abrasive or Growth Elixir as an editable row. Effect lines can also say "SP +5% every 5s" or "HP +20 every 5s" (restored over time, even when overweight), "SP consumption -10%", "Fixed cast -30%" (only the highest % cut counts), "Crit damage +5%", "Base/Job EXP +50%", "All stats +5", "Casting cannot be interrupted", and "ATK/MATK +30" for both. These count whether or not your status window already has your buffs.
+- **Buffs from others:** "+ Add" under the list takes a buff that isn't there, written the same way.
 - **Buffs from others:** tick Blessing, Increase AGI, Impressive Riff…
 
 ## Auto-cast spells
@@ -37,6 +39,10 @@ Any job, Mages included, can add a spell from a card, weapon or scroll that proc
 ## Interrupted casts
 
 A hit that lands while you cast interrupts it and you start again, so with λ hits landing per second (from "swings reach you" and your dodge) a T-second cast takes (e^(λT) − 1)/λ on average. No SP is spent on an interrupted cast. Phen and Bloody Butterfly turn this off. Basic attacks and Spell Fist have no cast.
+
+## SP regen
+
+Left blank, SP regen per 8 s is worked out: 1 + Max SP/100 + INT/6, plus more from INT 120, raised by SP Recovery +% gear. Increase SP Recovery from your Skills card adds Lv × (3 + 0.2% of Max SP) every 10 s on top, and consumables that restore SP over time add theirs, so type only the natural tick if you type one. Natural regen and Increase SP Recovery stop at 70% weight.
 
 ## SP back from cards
 

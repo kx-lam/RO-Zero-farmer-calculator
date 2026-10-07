@@ -1058,6 +1058,48 @@ t("Energy Coat: a Sage's old setting moves out of Sage options", () => {
   assert.equal(run("state.job='Sage';state.chars={};ecOn()"), true);       // and still is for a new Sage
 });
 
+t("SP regen: Increase SP Recovery adds to auto regen; consumables restore SP / HP over time and cut SP cost", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Wizard", { atkTxt: "100+300", maxSp: 500, maxHp: 4000, spRegen: 0, st: { int: "30" }, intTxt: "30", skills: {}, cons: [], a: AUTO });
+  const base = run("regenPerSec()");
+  near(base, (1 + 5 + 5) / 8);
+  run(`C().skills={"increase-sp-recovery":10}`);                           // Lv 10: 10 × (3 + 0.2% of 500) = 40 SP every 10 s
+  assert.equal(run("isrPer10()"), 40); near(run("regenPerSec()"), base + 4);
+  near(run("withRegenOff(()=>regenPerSec())"), 0);                         // none at 70% weight, like natural regen
+  run(`C().skills={};C().cons=[{on:true,name:"Small Mana Potion",eff:"SP +5% every 5s"}]`);
+  near(run("consSPPerSec()"), 500 * 0.05 / 5); near(run("regenPerSec()"), base + 5);
+  near(run("withRegenOff(()=>regenPerSec())"), 5);                         // keeps going when overweight
+  run(`C().cons=[{on:true,name:"",eff:"HP +5% every 5s, SP +2/s"}]`);
+  near(run("consHPPerSec()"), 4000 * 0.05 / 5); near(run("consSPPerSec()"), 2);
+  run(`C().cons=[{on:true,name:"Mimir's Well",eff:"Max SP +10%, SP consumption -10%"}]`);
+  near(run("spCostMul()"), 0.9);
+  run(`C().cons[0].on=false`); near(run("spCostMul()"), 1); near(run("consSPPerSec()"), 0);
+});
+
+t("event consumables: presets and the effect lines they use", () => {
+  setup("Wizard", { atkTxt: "100+300", st: {}, skills: {}, cons: [], fctPct: 10 });
+  const lines = eff => run(`JSON.stringify(parseCons(${JSON.stringify(eff)}))`);
+  assert.equal(lines("ATK/MATK +30, HIT/FLEE +30"), JSON.stringify({ lines: [["atk", null, null, 30], ["matk", null, null, 30], ["hit", null, null, 30], ["flee", null, null, 30]], bad: [] }));
+  assert.equal(JSON.parse(lines("All stats +5")).lines.length, 6);
+  assert.equal(lines("Base/Job EXP +50%"), JSON.stringify({ lines: [["exp_base", null, null, 50], ["exp_job", null, null, 50]], bad: [] }));
+  assert.equal(lines("Casting cannot be interrupted, Crit damage +5%"), JSON.stringify({ lines: [["no_break", null, null, 1], ["crit_dmg", null, null, 5]], bad: [] }));
+  // every preset reads without leftovers
+  assert.equal(run(`CONS_PRESETS.flatMap(p=>parseCons(p.eff).bad).join()`), "");
+  // fixed cast: only the highest % cut counts
+  assert.equal(run("fctPctEff()"), 10);
+  run(`C().cons=[{on:true,name:"Challenge Drink",eff:CONS_PRESETS[0].eff}]`);
+  assert.equal(run("fctPctEff()"), 30); near(run("spCostMul()"), 0.95);
+  assert.equal(run("noBreak()"), false);
+  run(`C().cons.push({on:true,name:"Unlimited Drink",eff:CONS_PRESETS[4].eff})`); assert.equal(run("noBreak()"), true);
+  // Growth Elixir: +50% base and job EXP per kill
+  const mob = "({id:-4,name:'E',lv:10,exp:100,job:60,drops:[]})";
+  run(`state.bonus=0;state.jobBonus=0`);
+  assert.equal(run(`killExp(${mob})`), 100); assert.equal(run(`killJobExp(${mob})`), 60);
+  run(`C().cons=[{on:true,name:"Growth Elixir",eff:"Base/Job EXP +50%"}]`);
+  assert.equal(run(`killExp(${mob})`), 150); assert.equal(run(`killJobExp(${mob})`), 90);
+  run(`C().cons=[]`);
+});
+
 t("SP back from cards: Dracula, Dark Priest, +5 SP per kill, SP recovery %", () => {
   const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
   setup("Knight", { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", weapon: "Two-handed sword", hitTxt: "300", crit: 0, aspd: 170, maxSp: 500, spRegen: 0,

@@ -29,9 +29,39 @@ const consStatOf=c=>{if(!c.consStat||typeof c.consStat!=="object")c.consStat={};
   return c.consStat};
 // Blessing of Yggdrasil (World Tree Dew or Zelstar, 1 hour): all stats +7, ATK +30, MATK +30, HIT +5, FLEE +5
 const YGG_FX=[...["str","agi","vit","int","dex","luk"].map(k=>[k,7]),["atk",30],["matk",30],["hit",5],["flee",5]];
+// effect lines the status window can't show, read before the usual options (they count whether or not "add on top" is ticked):
+// "SP +5% every 5s" / "HP +20 every 5 sec" / "SP +2/s" -> restored per second (sp_regen, sp_regen_pct of Max SP, same for HP),
+// "SP consumption -10%" -> sp_cost_percent, "Fixed cast -30%" -> fct_percent (only the highest % cut counts), "Crit damage +5%" -> crit_dmg,
+// "Base/Job EXP +50%" -> exp_base / exp_job, "Casting cannot be interrupted" -> no_break. "All stats +5" is the six stats;
+// "ATK/MATK +30" and "Max HP/Max SP +5%" are split into one line each
+const TIMED_RE=/^(max\s*hp|mhp|hp|max\s*sp|msp|sp)\s*\+\s*(\d+(?:\.\d+)?)\s*(%?)\s*(?:every|per|\/)\s*(\d+(?:\.\d+)?)?\s*s(?:ec(?:onds?)?)?$/i;
+function parseCons(txt){const lines=[],rest=[];
+  String(txt||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(p=>{let m=p.match(TIMED_RE);
+    if(m){const k=/hp/i.test(m[1])?"hp":"sp";lines.push([k+(m[3]?"_regen_pct":"_regen"),null,null,parseFloat(m[2])/(m[4]?parseFloat(m[4]):1)]);return}
+    const pct=(re,t)=>{const x=p.match(re);if(x)lines.push([t,null,null,parseFloat(x[x.length-1].replace(/\s/g,""))]);return !!x};
+    if(pct(/^(?:skill\s*)?sp\s*consumption\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"sp_cost_percent"))return;
+    if(pct(/^fixed\s*cast(?:ing)?(?:\s*time)?\s*(-\s*\d+(?:\.\d+)?)\s*%$/i,"fct_percent"))return;
+    if(pct(/^crit(?:ical)?\s*damage\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"crit_dmg"))return;
+    if((m=p.match(/^(base|job|base\s*\/\s*job)\s*exp\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i))){const v=parseFloat(m[2].replace(/\s/g,""));
+      if(/base/i.test(m[1]))lines.push(["exp_base",null,null,v]);if(/job/i.test(m[1]))lines.push(["exp_job",null,null,v]);return}
+    if(/^cast(?:ing)?\s*(?:can\s*not|cannot|can't)\s*be\s*interrupted$/i.test(p)){lines.push(["no_break",null,null,1]);return}
+    if((m=p.match(/^all\s*stats?\s*([+-]\s*\d+)$/i))){STAT6_UI.forEach(k=>rest.push(k+" "+m[1]));return}
+    if((m=p.match(/^([a-z ]+(?:\/[a-z ]+)+?)\s*([+-].*)$/i))){m[1].split("/").forEach(n=>rest.push(n.trim()+" "+m[2]));return}
+    rest.push(p)});
+  const o=BUILD.parseOptions(rest.join(","));return {lines:[...lines,...o.lines],bad:o.bad}}
+// Ragnarok Zero event consumables (30 minutes each), added as rows you can edit. note: what isn't counted
+const CONS_PRESETS=[
+  {name:"Challenge Drink",eff:"ATK/MATK +30, ATK/MATK +1%, HIT/FLEE +30, ASPD +1, SP consumption -5%, Fixed cast -30%"},
+  {name:"Mimir's Well",eff:"Max SP +10%, SP consumption -10%"},
+  {name:"Small Mana Potion",eff:"SP +5% every 5s"},
+  {name:"Small Healing Potion",eff:"HP +5% every 5s"},
+  {name:"Unlimited Drink",eff:"Max HP/Max SP +5%, Crit damage +5%, Casting cannot be interrupted",note:"ranged physical / magic damage +5% not counted: add it to Melee / ranged dmg %"},
+  {name:"Premium Course Meal",eff:"All stats +5, ATK/MATK +20"},
+  {name:"Enriched Abrasive",eff:"CRIT +30"},
+  {name:"Growth Elixir",eff:"Base/Job EXP +50%"}];
 const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C());if(C().yggOn)YGG_FX.forEach(([t,v])=>lines.push([t,null,null,v]));
   STAT6_UI.forEach(k=>{const o=cs[k]||{};if(num(o.n))lines.push([k,null,null,num(o.n)]);if(num(o.p))lines.push([k+"_percent",null,null,num(o.p)])});
-  OWN_LISTS.forEach(L=>rowsOf(C(),L.key).filter(r=>r.on).forEach(r=>{const o=BUILD.parseOptions(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||L.what}: ${x}`))}));return {lines,bad}};
+  OWN_LISTS.forEach(L=>rowsOf(C(),L.key).filter(r=>r.on).forEach(r=>{const o=parseCons(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||L.what}: ${x}`))}));return {lines,bad}};
 // ---- ASPD potions and buffs from others, from the RO樂園攻速計算機 sheet (2026-09-07, "增益"). "aspd_mod" is the sheet's potion/skill
 // value: it adds value × AGI/200 to ASPD1 (see build.js) ----
 const ASPD_POT={conc:{name:"Concentration Potion",mod:4},awak:{name:"Awakening Potion",mod:6,no:["Novice","Acolyte","Priest","Bard","Dancer"]},
@@ -105,10 +135,13 @@ $("pbuffList").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.tar
   {const b=PBUFF.find(x=>x.k===row.dataset.pb),el=row.querySelector("[data-pbeff]");if(b&&el)el.textContent=pbEff(b,pbLv(b,o))}save();renderAll()});
 $("addOnTop").addEventListener("change",e=>{C().addOnTop=e.target.checked;save();renderAll()});
 $("potType").addEventListener("change",e=>{C().potType=e.target.value;save();renderAll()});
-const consNote=()=>OWN_LISTS.forEach(L=>{const bad=rowsOf(C(),L.key).filter(r=>r.on).flatMap(r=>BUILD.parseOptions(r.eff).bad.map(x=>`${r.name||L.what}: ${x}`));
+const consNote=()=>OWN_LISTS.forEach(L=>{const bad=rowsOf(C(),L.key).filter(r=>r.on).flatMap(r=>parseCons(r.eff).bad.map(x=>`${r.name||L.what}: ${x}`));
   $(L.note).innerHTML=bad.length?`<span class="bad">Not understood: ${bad.map(esc).join(", ")}</span>`:""});
 $("consStats").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.target.closest("[data-cs]");if(!f||!row)return;const cs=consStatOf(C());
   (cs[row.dataset.cs]||(cs[row.dataset.cs]={}))[f]=e.target.value===""?"":num(e.target.value);save();renderAll()});
+$("consPreset").innerHTML='<option value="">+ event item…</option>'+CONS_PRESETS.map((p,i)=>`<option value="${i}" title="${esc(p.eff)}">${esc(p.name)}</option>`).join("");
+$("consPreset").addEventListener("change",e=>{const p=CONS_PRESETS[+e.target.value];e.target.value="";if(!p)return;
+  consOf(C()).push({on:true,name:p.name,eff:p.eff});save();renderCons();renderAll();if(p.note)$("consNote").innerHTML+=` <span class="muted">${esc(p.name)}: ${esc(p.note)}</span>`});
 OWN_LISTS.forEach(L=>{
   $(L.add).addEventListener("click",()=>{rowsOf(C(),L.key).push({on:true,name:"",eff:""});save();renderCons();renderAll()});
   $(L.list).addEventListener("click",e=>{if(!e.target.closest("[data-del]"))return;rowsOf(C(),L.key).splice(+e.target.closest(".eqrow").dataset.i,1);save();renderCons();renderAll()});
