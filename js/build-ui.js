@@ -19,7 +19,10 @@ function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqTo
 // ---- consumables & buffs: the main stats as {str:{n, p}, ...} (+n and +n% of the total stat), then rows {on, name, eff} for
 // anything else, typed like random options ("ATK +20, ASPD +10%") ----
 const STAT6_UI=["str","agi","vit","int","dex","luk"];
-const consOf=c=>{if(!Array.isArray(c.cons))c.cons=[];return c.cons};
+// your own rows {on, name, eff}: other consumables (c.cons) and your own buffs from others (c.pbuffOwn), read like random options
+const rowsOf=(c,key)=>{if(!Array.isArray(c[key]))c[key]=[];return c[key]};
+const consOf=c=>rowsOf(c,"cons");
+const OWN_LISTS=[{list:"consList",add:"consAdd",note:"consNote",key:"cons",what:"Consumable"},{list:"pbuffOwn",add:"pbuffAdd",note:"pbuffNote",key:"pbuffOwn",what:"Buff"}];
 // older saves had AGI / DEX food among the buffs from others: move a ticked one into the stat table once
 const consStatOf=c=>{if(!c.consStat||typeof c.consStat!=="object")c.consStat={};const pb=c.pbuffs||{};
   [["agiFood","agi"],["dexFood","dex"]].forEach(([k,st])=>{if(!pb[k])return;if(pb[k].on){const o=c.consStat[st]||(c.consStat[st]={});o.n=num(o.n)+Math.min(10,Math.max(1,num(pb[k].lv,10)))}delete pb[k]});
@@ -28,7 +31,7 @@ const consStatOf=c=>{if(!c.consStat||typeof c.consStat!=="object")c.consStat={};
 const YGG_FX=[...["str","agi","vit","int","dex","luk"].map(k=>[k,7]),["atk",30],["matk",30],["hit",5],["flee",5]];
 const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C());if(C().yggOn)YGG_FX.forEach(([t,v])=>lines.push([t,null,null,v]));
   STAT6_UI.forEach(k=>{const o=cs[k]||{};if(num(o.n))lines.push([k,null,null,num(o.n)]);if(num(o.p))lines.push([k+"_percent",null,null,num(o.p)])});
-  consOf(C()).filter(r=>r.on).forEach(r=>{const o=BUILD.parseOptions(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||"Consumable"}: ${x}`))});return {lines,bad}};
+  OWN_LISTS.forEach(L=>rowsOf(C(),L.key).filter(r=>r.on).forEach(r=>{const o=BUILD.parseOptions(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||L.what}: ${x}`))}));return {lines,bad}};
 // ---- ASPD potions and buffs from others, from the RO樂園攻速計算機 sheet (2026-09-07, "增益"). "aspd_mod" is the sheet's potion/skill
 // value: it adds value × AGI/200 to ASPD1 (see build.js) ----
 const ASPD_POT={conc:{name:"Concentration Potion",mod:4},awak:{name:"Awakening Potion",mod:6,no:["Novice","Acolyte","Priest","Bard","Dancer"]},
@@ -84,11 +87,11 @@ function renderCons(){const c=C(),cs=consStatOf(c);
   $("consStats").tBodies[0].innerHTML=STAT6_UI.map(k=>{const o=cs[k]||{};return `<tr data-cs="${k}"><td>${k.toUpperCase()}</td>
     <td><input data-f="n" type="number" step="1" value="${esc(o.n??"")}" placeholder="0" aria-label="${k.toUpperCase()} +"></td>
     <td><input data-f="p" type="number" step="1" value="${esc(o.p??"")}" placeholder="0" aria-label="${k.toUpperCase()} +%"></td></tr>`}).join("");
-  $("consList").innerHTML=consOf(c).map((r,i)=>`<div class="eqrow" data-i="${i}">
+  OWN_LISTS.forEach(L=>$(L.list).innerHTML=rowsOf(c,L.key).map((r,i)=>`<div class="eqrow" data-i="${i}">
     <input type="checkbox" data-f="on" ${r.on?"checked":""} aria-label="Use it" style="width:auto">
     <input data-f="name" value="${esc(r.name||"")}" placeholder="name" style="width:150px">
     <input data-f="eff" value="${esc(r.eff||"")}" placeholder="e.g. ATK +20, HIT +10, ASPD +10%" style="flex:1;min-width:200px">
-    <button type="button" class="small danger" data-del aria-label="Remove">✕</button></div>`).join("")||'<div class="note">None yet.</div>';consNote()}
+    <button type="button" class="small danger" data-del aria-label="Remove">✕</button></div>`).join("")||(L.key==="cons"?'<div class="note">None yet.</div>':""));consNote()}
 // redrawn on every render (job and weapon change what's allowed), except while you're typing in it
 function renderAspdBuffs(){const c=C(),k=potKey(c),act=document.activeElement;$("consOff").hidden=c.mode==="build"||addOnTop(c);
   if(act!==$("potType"))$("potType").innerHTML=Object.entries(ASPD_POT).filter(([key])=>potOk(key)).map(([key,p])=>`<option value="${key}"${key===k?" selected":""}>${p.name} (${p.mod})</option>`).join("");
@@ -102,13 +105,15 @@ $("pbuffList").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.tar
   {const b=PBUFF.find(x=>x.k===row.dataset.pb),el=row.querySelector("[data-pbeff]");if(b&&el)el.textContent=pbEff(b,pbLv(b,o))}save();renderAll()});
 $("addOnTop").addEventListener("change",e=>{C().addOnTop=e.target.checked;save();renderAll()});
 $("potType").addEventListener("change",e=>{C().potType=e.target.value;save();renderAll()});
-const consNote=()=>{const {bad}=consLines();$("consNote").innerHTML=bad.length?`<span class="bad">Not understood: ${bad.map(esc).join(", ")}</span>`:""};
+const consNote=()=>OWN_LISTS.forEach(L=>{const bad=rowsOf(C(),L.key).filter(r=>r.on).flatMap(r=>BUILD.parseOptions(r.eff).bad.map(x=>`${r.name||L.what}: ${x}`));
+  $(L.note).innerHTML=bad.length?`<span class="bad">Not understood: ${bad.map(esc).join(", ")}</span>`:""});
 $("consStats").addEventListener("input",e=>{const f=e.target.dataset.f,row=e.target.closest("[data-cs]");if(!f||!row)return;const cs=consStatOf(C());
   (cs[row.dataset.cs]||(cs[row.dataset.cs]={}))[f]=e.target.value===""?"":num(e.target.value);save();renderAll()});
-$("consAdd").addEventListener("click",()=>{consOf(C()).push({on:true,name:"",eff:""});save();renderCons();renderAll()});
-$("consList").addEventListener("click",e=>{if(!e.target.closest("[data-del]"))return;consOf(C()).splice(+e.target.closest(".eqrow").dataset.i,1);save();renderCons();renderAll()});
-$("consList").addEventListener("input",e=>{const f=e.target.dataset.f;if(!f)return;const r=consOf(C())[+e.target.closest(".eqrow").dataset.i];
-  r[f]=f==="on"?e.target.checked:e.target.value;save();renderAll();consNote()});
+OWN_LISTS.forEach(L=>{
+  $(L.add).addEventListener("click",()=>{rowsOf(C(),L.key).push({on:true,name:"",eff:""});save();renderCons();renderAll()});
+  $(L.list).addEventListener("click",e=>{if(!e.target.closest("[data-del]"))return;rowsOf(C(),L.key).splice(+e.target.closest(".eqrow").dataset.i,1);save();renderCons();renderAll()});
+  $(L.list).addEventListener("input",e=>{const f=e.target.dataset.f;if(!f)return;const r=rowsOf(C(),L.key)[+e.target.closest(".eqrow").dataset.i];
+    r[f]=f==="on"?e.target.checked:e.target.value;save();renderAll();consNote()})});
 // ---- equipment stats (status-window mode): the % lines from the game's Equipment Stats window, as rows {by, t, ch, v} ----
 const EQ_KINDS=[["race","Damage to race",true],["size","Damage to size",true],["ele","Damage to element",true],["kind","Damage to boss / normal",true],["group","Damage to monster group",true],
   ["myEle","Magic damage of an element (your spells)"],["takenRace","Damage taken from race"],["takenEle","Damage taken from element"],["takenKind","Damage taken from boss / normal"],

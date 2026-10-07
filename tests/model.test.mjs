@@ -974,6 +974,11 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`statVal(C(),"luk")`), 1);
   const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
   assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
+  // your own buffs (+ Add under Buffs from others) count like other consumables, only while ticked
+  setup("Merchant", { atkTxt: "100+0", st: { str: "50" }, cons: [], pbuffs: {}, buffs: {}, skills: {}, pbuffOwn: [{ on: true, name: "Guild buff", eff: "STR +5, ATK +20" }] });
+  assert.equal(run(`JSON.stringify(consLines().lines)`), JSON.stringify([["str", null, null, 5], ["atk", null, null, 20]]));
+  run(`C().pbuffOwn[0].eff="STR +5, nonsense"`); assert.equal(run(`consLines().bad.join()`), "Guild buff: nonsense");
+  run(`C().pbuffOwn[0].on=false`); assert.equal(run(`consLines().lines.length`), 0);
 });
 
 t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
