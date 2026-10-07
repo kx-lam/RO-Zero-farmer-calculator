@@ -30,6 +30,8 @@ const spItemPrice=()=>num(C().itemPrice)*discMul();
 const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
 // zeny per hour spent on the ASPD potion (consumables carry no price; Blessing of Yggdrasil's items come from the KP shop)
 const potCostHr=()=>potOnlyHr();
+// zeny per hour that doesn't depend on kills: the ASPD potion and Sage ground buffs (SP items come on top, see huntCostHr)
+const hourCostHr=()=>potCostHr()+fieldCostHr();
 const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 // seconds per use: basic attacks follow ASPD; skills take cast + delay but can't beat your attack speed
 // variable cast time factor: 1 − sqrt((2·DEX + INT) / 530), 0 at 530 (uses your DEX if typed)
@@ -241,13 +243,44 @@ function applyHsAuto(){
   const top=MAPMOBS[mp].filter(x=>!x.m.boss&&!isSkipped(x.m)&&!x.m.expUnknown&&x.m.atkMin!=null).sort((a,b)=>b.n-a.n)[0];const mm=top?top.m:null;
   const run=v=>withHs(v,()=>{const k=SG_MOB;SG_MOB=mm;try{return {r:mapStats(mp,w),items:sgItemsPerSec()}}finally{SG_MOB=k}});
   const on=run(true),off=run(false);if(!on.r||!off.r){g._note="Auto: no result for "+mp;return}
-  const costHr=(on.items-off.items)*3600*spItemPrice(),gain=(on.r.epm-off.r.epm)*60/L*100,net=costHr-(on.r.zph-off.r.zph),per=gain>0?net/gain:Infinity;
+  const costHr=(on.items-off.items)*3600*spItemPrice(),gain=(on.r.epm-off.r.epm)*60/L*100,net=costHr-(on.r.zg-off.r.zg),per=gain>0?net/gain:Infinity;
   const want=gain>0&&(net<=0||per<=num(g.hsWorth));g.hsOn=want;
   g._note=`Hindsight auto: ${want?"on":"off"} on ${mapCode(mp)} · ${gain<=0?"no EXP gain":net<=0?"extra loot pays for the SP items":`~${fmtN(per)} z per 1% EXP vs your ${fmtN(num(g.hsWorth))} z limit`} (+${gain.toFixed(2)}%/hr)`;
 }
 // drop rate bonus % scales every drop chance
-// zeny a skill costs per kill (Mammonite): zeny per use × uses per kill, shared across monsters hit
-const skillZeny=m=>{const z=num(C().a.zeny);if(!z)return 0;const u=usesPerKill(m);return isFinite(u)?z*u/targets():0};
+// ---- items skills use up (catalysts, arrows; data/consumables.js) and the zeny they cost ----
+// price: the one you typed for the item (c.itemPrices, saved per job like the SP item price), else its NPC buy price, less Discount from NPCs
+const CONS_ID={};Object.entries(CONSUM).forEach(([id,[n]])=>CONS_ID[n]=id);
+const consName=id=>(CONSUM[id]||[])[0]||"#"+id;
+const consNpc=id=>num((CONSUM[id]||[])[1]);
+const consPrice=id=>{const v=(C().itemPrices||{})[id];return (v!=null&&v!==""?num(v):consNpc(id))*discMul()};
+const consW=id=>num((CONSUM[id]||[])[2]);
+// bows, instruments and whips fire arrows: one per basic attack, a.arrows per use of a skill. The arrow is the attack's element
+const ARROW_WEAPONS=["Bow","Musical instrument","Whip"];
+const ARROW_OF={Neutral:"Arrow",Fire:"Fire Arrow",Water:"Crystal Arrow",Earth:"Stone Arrow",Wind:"Arrow of Wind",Holy:"Silver Arrow",Shadow:"Arrow of Shadow",Ghost:"Immaterial Arrow",Poison:"Poison Arrow"};
+const usesArrows=(a=C().a)=>ARROW_WEAPONS.includes(C().weapon)&&(a.type==="auto"||num(a.arrows)>0);
+// [{id, qty}] one use of the attack takes
+function useItems(a=C().a){const out=[],add=(name,qty)=>{const id=CONS_ID[name];if(id&&qty>0)out.push({id,qty})};
+  (a.consumes||[]).forEach(x=>add(x.item,num(x.qty,1)));if(usesArrows(a))add(ARROW_OF[atkEl()]||"Arrow",a.type==="auto"?1:num(a.arrows));return out}
+// zeny one use costs: its zeny (Mammonite) plus the items it uses up
+const useZeny=()=>num(C().a.zeny)+useItems().reduce((t,x)=>t+x.qty*consPrice(x.id),0);
+// support casts (traps, Stone Curse, Bomb: SUPPORT in game.js) for this job, and the items they take per kill at the casts per kill you typed
+const supOf=()=>SUPPORT.filter(s=>s.jobs.includes(state.job));
+const supCasts=k=>Math.max(0,num((C().supCasts||{})[k]));
+const supItemsKill=()=>supOf().flatMap(s=>s.items.map(([n,q])=>({id:CONS_ID[n],qty:q*supCasts(s.key)}))).filter(x=>x.id&&x.qty>0);
+// zeny skills cost per kill: zeny per use × uses per kill, shared across monsters hit, plus support casts
+const skillZeny=m=>{const sup=supItemsKill().reduce((t,x)=>t+x.qty*consPrice(x.id),0),z=useZeny();if(!z)return sup;const u=usesPerKill(m);return (isFinite(u)?z*u/targets():0)+sup};
+// what the attack, support casts and ground buffs use up in an hour on one monster farmed on its own (fight + walk + selling trips):
+// items [{id, n per hour, z zeny, w weight}], zeny per hour (items + skill zeny such as Mammonite) and weight per hour
+function useHour(m,w){const r=mobRow(m,w);if(!r||!isFinite(r.tot)||!(r.tot>0))return null;const kph=3600/r.tot,per={};let skz=0;
+  const add=(id,n)=>{if(n>0)per[id]=(per[id]||0)+n};
+  withEl(r.el2,()=>{const u=usesPerKill(m);if(!isFinite(u))return;const uph=u/targets()*kph;useItems().forEach(x=>add(x.id,x.qty*uph));skz=num(C().a.zeny)*uph});
+  supItemsKill().forEach(x=>add(x.id,x.qty*kph));fieldBuffs().forEach(f=>add(f.id,f.perHr));
+  const items=Object.entries(per).map(([id,n])=>({id,n,z:n*consPrice(id),w:n*consW(id)}));
+  return {kph,items,el:r.el2,skz,z:skz+items.reduce((t,x)=>t+x.z,0),w:items.reduce((t,x)=>t+x.w,0)}}
+// Sage ground buffs you switched on (FIELD_ITEM in game.js): an item every 60 s × level, as zeny per hour like the ASPD potion
+const fieldBuffs=()=>{const c=C();return Object.keys(FIELD_ITEM).filter(k=>(c.buffs||{})[k]&&skLv(c,k)>0).map(k=>({k,id:CONS_ID[FIELD_ITEM[k]],perHr:60/skLv(c,k)}))};
+const fieldCostHr=()=>fieldBuffs().reduce((t,f)=>t+f.perHr*consPrice(f.id),0);
 // zeny per kill: the exported loot value (rozerodb, NPC prices) scaled by your drop rate bonus. A drop you sell to players
 // counts at the market price you typed instead: the loot value already holds its NPC price, so the market price adds only what
 // it beats the NPC price by. Its chance is scaled by the drop bonus and the level penalty, capped at 100%
@@ -405,16 +438,20 @@ function tripInfo(m,w){const k=SG_MOB;SG_MOB=m;try{if(!wOn())return null;const w
   const {rA,rB,totB}=tripParts(m,tot,w);return {wk,kills:(rA+rB)/wk,min:(rA*tot+(rB?rB*totB:0))/wk/60,fell:sellFell(rA,rB)}}finally{SG_MOB=k}}
 function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally{SG_MOB=kSG}}
 function mobRow00(m,w){
-  const sec=fightSec(m),tot=tripTot(m,sec+w,w),epk=killExp(m),jpk=killJobExp(m);
-  return {sec,tot,epm:isFinite(tot)&&tot>0?epk/tot*60:0,epk,jpm:isFinite(tot)&&tot>0?jpk/tot*60:0,jpk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk:zenyKill(m)-skillZeny(m)};
+  const sec=fightSec(m),tot=tripTot(m,sec+w,w),epk=killExp(m),jpk=killJobExp(m),ok=isFinite(tot)&&tot>0;
+  // zk: zeny per kill after what the skills use up; hc: SP items, ASPD potion and ground buffs per hour; zph: net zeny per hour
+  const zc=skillZeny(m),zk=zenyKill(m)-zc,hc=huntCostHr(m);
+  return {sec,tot,epm:ok?epk/tot*60:0,epk,jpm:ok?jpk/tot*60:0,jpk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk,zc,hc,zph:ok?zk/tot*3600-hc:0};
 }
 // map averages, weighted by spawn counts; monsters you can't hurt are skipped (you walk past them)
 function mapStats0(mp,w){
-  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,fight=0,z=0,hp=0,hpN=0;const skip=[],unk=[];
+  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,fight=0,z=0,zc=0,hc=0,hp=0,hpN=0;const skip=[],unk=[];
   list.forEach(({m,n:c})=>{N+=c;if(m.expUnknown){unk.push(m.name);return}const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
-    n+=c;exp+=c*r.epk;time+=c*r.tot;fight+=c*r.sec;z+=c*r.zk;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
+    n+=c;exp+=c*r.epk;time+=c*r.tot;fight+=c*r.sec;z+=c*r.zk;zc+=c*r.zc;hc+=c*r.hc*r.tot;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
   if(!n)return null;
-  return {mp,N,epm:exp/time*60,secT:time/n,sec:fight/n,walk:w,sell:time/n-fight/n-w,epk:exp/n,zph:z/time*3600,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,unk:unk.length,unkNames:unk};
+  // zg: zeny / hr after skill items and zeny; zph also takes off SP items, the ASPD potion and ground buffs (per monster, over the time spent on it)
+  const zg=z/time*3600,hcHr=hc/time;
+  return {mp,N,epm:exp/time*60,secT:time/n,sec:fight/n,walk:w,sell:time/n-fight/n-w,epk:exp/n,zg,zph:zg-hcHr,zcost:zc/time*3600+hcHr,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,unk:unk.length,unkNames:unk};
 }
 // best converter per monster (by EXP/min) and one converter per map
 function mobRow(m,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mobRow0(m,w));r.el2=el;if(!best||r.epm>best.epm)best=r});return best}
@@ -447,9 +484,9 @@ function startTrip(s,now=Date.now()){const min=tripMinutes(s);if(!(min>0))return
 
 
 // ---- Zeny Hunter: maps and monsters ranked by net zeny per hour ----
-// loot per hour (with your drop bonus, less skill costs such as Mammonite) minus SP items and the ASPD potion.
+// loot per hour (with your drop bonus, less skill costs such as Mammonite, catalysts and arrows) minus SP items, the ASPD potion and ground buffs.
 // Unlike the EXP rankings, monsters with no EXP in rozerodb still count here: they drop loot all the same
-const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*spItemPrice()+potCostHr()}finally{SG_MOB=k}};
+const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*spItemPrice()+hourCostHr()}finally{SG_MOB=k}};
 // the monsters you hunt on a map (in-game Monster tab): state.huntOff[map] lists the ones you pass by, set by hand in the Zeny Hunter.
 // "Best-paying only" (state.huntAuto) picks for the maps you haven't set: monsters ranked by zeny per second (fight + walk), keeping as many
 // as give the most net zeny/hr while still hunting at least minN spawns (the Zeny Hunter's "Min monsters on map"): a rare spawn is

@@ -34,6 +34,7 @@ It's a single page that runs entirely in your browser. There's no server, no log
 - **SP back from cards:** Dracula (attacks have a chance to restore SP every second for 7 s), Dark Priest (a Sage gets 1 SP per physical hit that lands) and the +5 SP per kill weapon cards (Beetle King, Caterpillar, Driller, Nereid, Phendark, Tri-Joint, Zombie Master: when a melee physical attack kills that race, spread over the fight; not with Spell Fist). Card SP keeps coming when you're overweight, unlike natural regen. "SP Recovery +x%" (Eggyra, Sohee, Merman) raises natural SP regen: build mode reads it from your gear, and in Status window mode you add an "SP recovery" line under Equipment stats. HP Recovery +x% cards aren't modelled; count them in "HP back per minute".
 - **Energy Coat (Mage, Wizard, Sage):** cuts damage taken by 6–30% for 1–3% of Max SP per hit, the fuller your SP the more of both. Your SP level is the fullest that regen can hold after your attack's own SP; when it can't, SP items hold it at the level you set, and without items your SP runs low (−6%).
 - **Sage options:** Spell Fist with the best bolt per monster, Hindsight (switched on or off automatically against your zeny limit), Double Bolt and SP items. The cards and Energy Coat above count for Spell Fist too: Side Winder's 2nd hit also procs Spell Fist.
+- **Items skills use up:** each use of an attack takes its catalysts and arrows: Acid Terror (an Acid Bottle), Acid Bomb (an Acid Bottle and a Bottle Grenade), Magnus Exorcismus (a Blue Gemstone), and one arrow per shot with a bow, instrument or whip (basic attacks, Double Strafe, Arrow Shower, Focused Arrow Strike, Arrow Vulcan…; Triangle Shot takes 3). The arrow matches your attack element (Fire Arrow, Crystal Arrow, Silver Arrow…). Mammonite costs 100 z × its level. Hunters (traps), Mages, Wizards and Sages (Stone Curse) and Alchemists (Bomb) can type how many support casts they make per kill, and Sage ground buffs (Volcano, Deluge, Whirlwind) cost a gemstone every 60 s × level while switched on. Under Attack details you see what a use costs, the zeny and weight per hour against the monster you picked and how long Max Weight's worth lasts. Each item defaults to its NPC price; type your own (a market price) per item, saved per job. Every zeny/hr figure takes these off.
 - **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for SP items and the ASPD potion; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10.
 - **Weight:** enter what you carry when you leave town (gear, potions, scrolls), your Max Weight, where you sell (any % up to 90, such as 65% to stay clear of 70%) and how long a town trip takes.
   - At 70% weight HP and SP stop regenerating, and at 90% you can't attack or use skills, so each trip ends at your sell point. Only the room above your starting weight fills with loot.
@@ -49,20 +50,20 @@ It's a single page that runs entirely in your browser. There's no server, no log
 
 ### Monsters & maps
 
-- **Monster table:** every non-MVP monster with HP, EXP, EXP/HP, your damage, kill time, EXP/min, dodge, HP lost and zeny per kill.
+- **Monster table:** every non-MVP monster with HP, EXP, EXP/HP, your damage, kill time, EXP/min, dodge, HP lost, zeny per kill (after skill items) and net zeny/hr (after skill items, SP items, the ASPD potion and ground buffs).
 - **Map planner:** with an elemental converter (or Spell Fist bolts), a table shows each element's rate against every monster on the map and the map's EXP/min with it, and warns about the monsters the one in use is weak against (for example Fire against Jakk, Fire 2, on Geffen Dungeon B2F). An Element % column shows the rate per monster. For physical attacks the rate applies to weapon ATK; status ATK always hits as Neutral.
 - **EXP Hunter:** open maps ranked by EXP/min, weighted by spawn counts.
   - Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F). You can also type the database code (`sp_d05`).
   - Monsters with no EXP data yet (Myst, Isis, Anubis…) show EXP `?` and are left out of EXP/min.
   - Skip monsters you don't want to fight, and mark regions that aren't open yet as closed.
-- **Zeny Hunter:** open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite), SP items and the ASPD potion.
+- **Zeny Hunter:** open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite zeny, catalysts, arrows, support casts), SP items, the ASPD potion and Sage ground buffs.
   - Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
   - Converters are picked by zeny rather than EXP. Monsters with no EXP data still count, since they drop loot.
   - Monsters mode lists every drop with your chance and what it adds per kill.
   - **Auto loot:** tick the item groups you loot, like the game's Looting tab (weapons, armor, consumables, cards, miscellaneous, costumes). Unticked groups count as 0 zeny everywhere. The random option grade on equipment isn't modelled.
   - **Monster picks:** like the game's Monster tab, click a monster on a map to stop or start hunting it. **Hunt only the best-paying monsters** picks for you, keeping at least "Min monsters on map" spawns.
   - Skipping monsters costs time. You either walk further (walking × √(all / hunted)) or teleport past them ((all / hunted − 1) teleports per kill, at your seconds per teleport). Each map uses whichever nets more. Teleporting only counts with a Creamy Card (ticked or in build gear) or the Teleport skill learned; Fly Wings cost too much to burn on every landing, so without either it walks. The data doesn't say which maps block teleport, so click "teleport ok" on a map to mark it "no teleport".
-- **Map planner:** per-map averages, kills/hr, EXP/hr and zeny/hr.
+- **Map planner:** per-map averages, kills/hr, EXP/hr and net zeny/hr. The EXP Hunter's Zeny / hr column is net the same way.
 
 ### Monster info
 
@@ -145,6 +146,7 @@ Each table lives in its own file, so a re-export after a patch only touches that
 | `items.js` | Item names |
 | `prices.js` | NPC sell price for every drop. Written by `tools/export_prices.py`. |
 | `weights.js` | Item weight for every drop; items with no weight count as weightless. Written by `tools/export_prices.py`. |
+| `consumables.js` | Items skills use up (gemstones, traps, bottles, arrows): NPC buy price and weight, from rAthena until Zero's buy prices are exported. |
 | `itemtypes.js` | Auto-loot group for every drop, from item categories. Written by `tools/export_prices.py`. |
 | `mstat.js` | Monster DEF/MDEF/ATK |
 | `elem.js` | Monster element, HIT/FLEE |
