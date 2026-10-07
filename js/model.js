@@ -455,15 +455,17 @@ const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600
 // as give the most net zeny/hr while still hunting at least minN spawns (the Zeny Hunter's "Min monsters on map"): a rare spawn is
 // rarely waiting for you, and nothing here knows respawn times. Passing monsters by thins out your targets: the next one is about
 // 1/√density away, so walking per kill grows by √(monsters you can hurt / ones you hunt)
-// Or teleport past them (Fly Wing or the Teleport skill), on maps you haven't marked "no teleport" (rozerodb has no map flags):
-// each landing finds a hunted monster about hunted/all of the time, so a kill takes all/hunted − 1 extra jumps, each costing a
-// Fly Wing (state.flyPrice, less Discount; 0 for the Teleport skill or a Creamy Card) and state.teleSec seconds. Each pick uses whichever of the two nets more.
+// Or teleport past them, but only with a free teleport (a Creamy Card or the Teleport skill): Fly Wings cost too much to burn one
+// on every landing, so without one you walk. Not on maps you've marked "no teleport" either (rozerodb has no map flags).
+// Each landing finds a hunted monster about hunted/all of the time, so a kill takes all/hunted − 1 extra jumps of state.teleSec
+// seconds each. Each pick uses whichever of the two nets more.
 // Kill time includes selling trips (tripTot), like every other ranking
 const huntOffOf=mp=>(state.huntOff||{})[mp];
 const killTot=(m,sec,walk)=>{const k=SG_MOB;SG_MOB=m;try{return tripTot(m,sec+walk,walk)}finally{SG_MOB=k}};
 const noTele=mp=>(state.noTele||[]).includes(mp);
-const flyPrice=()=>state.flyPrice==null?250:num(state.flyPrice);
-const flyCost=()=>CRD().creamy?0:flyPrice()*discMul();
+const CREAMY=4040;
+const creamyOn=()=>!!CRD().creamy||cardInGear(C(),[CREAMY]);
+const canTele=()=>creamyOn()||skLv(C(),"teleport")>0;
 const teleSec=()=>state.teleSec==null?1:num(state.teleSec);
 function huntMap0(mp,w,minN=0){
   const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));const N=list.reduce((a,x)=>a+x.n,0);
@@ -471,11 +473,11 @@ function huntMap0(mp,w,minN=0){
   const all=ok.reduce((a,x)=>a+x.n,0);if(!all)return null;
   const at0=(h,n,walk,tele)=>{let time=0,z=0,exp=0,expT=0,hp=0,hpN=0;
     h.forEach(({m,n:c,r})=>{const tot=killTot(m,r.sec,walk);time+=c*tot;z+=c*r.zk;if(!m.expUnknown){exp+=c*r.epk;expT+=c*tot}if(r.hpm!=null){hp+=c*r.hpm*tot;hpN+=c*tot}});
-    const top=h.reduce((a,x)=>!a||x.n>a.n?x:a,null),kph=n/time*3600,loot=z/time*3600,cost=huntCostHr(top.m)+tele*kph*flyCost();
+    const top=h.reduce((a,x)=>!a||x.n>a.n?x:a,null),kph=n/time*3600,loot=z/time*3600,cost=huntCostHr(top.m);
     return {mp,N,n,walk,tele,kph,secT:time/n,loot,cost,net:loot-cost,zk:z/n,epm:expT?exp/expT*60:null,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,
       earn:h.map(({m,n,r})=>({m,n,zk:r.zk})).sort((a,b)=>b.n*b.zk-a.n*a.zk)}};
   const at=h=>{const n=h.reduce((a,x)=>a+x.n,0);if(!n)return null;const walked=at0(h,n,w*Math.sqrt(all/n),0);
-    if(n>=all||noTele(mp))return walked;const jumps=all/n-1,tp=at0(h,n,w+jumps*teleSec(),jumps);return tp.net>walked.net?tp:walked};
+    if(n>=all||!canTele()||noTele(mp))return walked;const jumps=all/n-1,tp=at0(h,n,w+jumps*teleSec(),jumps);return tp.net>walked.net?tp:walked};
   const off=huntOffOf(mp);let best;
   if(off){best=at(ok.filter(x=>!off.includes(x.m.id)));if(best)best.manual=true}
   else if(state.huntAuto){const rank=ok.slice().sort((a,b)=>b.r.zk/(b.r.sec+w)-a.r.zk/(a.r.sec+w));

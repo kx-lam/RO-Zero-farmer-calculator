@@ -566,18 +566,16 @@ t("Zeny Hunter monster picks: passing monsters by drops them from the map and le
   const r = run(`huntMap0("mjo_d03",2)`);
   assert.ok(r.manual && !r.earn.some(x => x.m.id === off.m.id) && r.mobs.find(x => x.m.id === off.m.id).on === false);
   assert.equal(r.n, rest);
-  const walked = 2 * Math.sqrt(all.n / rest), jumps = all.n / rest - 1;        // walking past it, or teleporting: whichever nets more
-  if (r.tele) { near(r.tele, jumps); near(r.walk, 2 + jumps * 1) } else near(r.walk, walked);
+  const walked = 2 * Math.sqrt(all.n / rest), jumps = all.n / rest - 1;
+  assert.equal(run("canTele()"), false);                                     // no Creamy Card, no Teleport skill: Fly Wings cost too much, so it walks
+  near(r.walk, walked); assert.equal(r.tele, 0);
+  run(`CRD().creamy=true;state.teleSec=0`);                                 // Creamy Card: free, instant teleports beat the longer walk
+  const cr = run(`huntMap0("mjo_d03",2)`); near(cr.tele, jumps); near(cr.walk, 2); near(cr.cost, r.cost);
   run(`state.noTele=["mjo_d03"]`);                                            // a map that blocks teleport only walks
   const nt = run(`huntMap0("mjo_d03",2)`); near(nt.walk, walked); assert.equal(nt.tele, 0);
-  run(`state.noTele=[];state.flyPrice=0;state.teleSec=0`);                   // free, instant teleports: no time lost, no cost
-  const ft = run(`huntMap0("mjo_d03",2)`); near(ft.tele, jumps); near(ft.walk, 2); near(ft.cost, nt.cost);
-  run(`state.teleSec=0;delete state.flyPrice;CRD().creamy=true`);           // Creamy Card: Teleport Lv1, so no Fly Wings either
-  assert.equal(run("flyCost()"), 0);
-  const cr = run(`huntMap0("mjo_d03",2)`); near(cr.tele, jumps); near(cr.cost, nt.cost);
-  run(`CRD().creamy=false`);
-  assert.ok(run("flyCost()") > 0);
-  run(`delete state.flyPrice;delete state.teleSec`);
+  run(`state.noTele=[];CRD().creamy=false;C().skills={teleport:1}`);        // the Teleport skill works the same
+  assert.equal(run("canTele()"), true); near(run(`huntMap0("mjo_d03",2)`).tele, jumps);
+  run(`C().skills={};delete state.teleSec`);
   run(`state.huntOff={};state.huntAuto=true`);                              // best-paying: never worse than hunting everything
   const a = run(`huntMap0("mjo_d03",2)`);
   assert.ok(a.net >= all.net - 1e-6 && !a.manual);
