@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=70af187631">
+<link rel="stylesheet" href="style.css?v=c113f4ee84">
 </head>
 <body>
 <div class="wrap">
@@ -257,9 +257,8 @@
     </details>
     <div class="bar note"><span>SP items:</span>
       <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
-      <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
-      <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Discount only cuts what you buy from an NPC; untick when you buy SP items and potions from players"><input type="checkbox" id="npcBuy" style="width:auto"> from NPCs</label>
+      <span id="spItemUse"></span>
+      <label class="bar" style="flex-direction:row;gap:4px" title="Discount only cuts what you buy from an NPC; untick when you buy the ASPD potion, skill items and a Custom SP item from players. Recovery items have their own Buy with Discount box"><input type="checkbox" id="npcBuy" style="width:auto"> from NPCs</label>
       <span id="itemInfo"></span>
       <span id="mercNote"></span>
     </div>
@@ -282,6 +281,29 @@
       <div style="margin-top:4px">Not in the database: default is a swing every 1.5 s, 0.3 of them reaching you. Change only if your HP loss doesn't match; clear to reset.</div>
     </details>
     <div class="calc" id="charTiles"></div>
+  </section>
+
+  <section class="card" data-tab="char" id="recCard">
+    <div class="bar"><h2 class="grow">Recovery items</h2><span class="note" id="recNote"></span></div>
+    <div class="bar note" id="recSet">
+      <label class="bar" style="flex-direction:row;gap:4px">HP item <select id="recHp" style="width:auto"></select></label>
+      <label class="bar" style="flex-direction:row;gap:4px">SP item <select id="recSp" style="width:auto"></select></label>
+      <span id="recCustom" class="bar" hidden>
+        <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
+        <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
+      </span>
+      <label class="bar" style="flex-direction:row;gap:4px" title="Saved for the whole account: a Merchant with Discount (FXFighter) can buy for the other characters. Off: the NPC price"><input type="checkbox" id="recDisc" style="width:auto"> Buy with Discount <span class="muted">(this account)</span></label>
+      <label class="bar" style="flex-direction:row;gap:4px" title="Off by default: Ragnarok Zero's values don't follow classic RO. On: × (100 + VIT × 2 for HP, INT × 2 + Increase SP Recovery Lv × 10 for SP, + Potion Research Lv × 5) / 100, relative to the stats the values were measured on"><input type="checkbox" id="recScale" style="width:auto"> Scale by stats</label>
+    </div>
+    <div class="bar note" id="recRef" hidden><span>Values measured on a Merchant with</span>
+      <label class="bar" style="flex-direction:row;gap:4px">VIT <input data-rref="vit" type="number" min="0" placeholder="0" style="width:60px"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">INT <input data-rref="int" type="number" min="0" placeholder="0" style="width:60px"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">Increase SP Recovery Lv <input data-rref="isr" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
+      <label class="bar" style="flex-direction:row;gap:4px">Potion Research Lv <input data-rref="lp" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
+      <span id="recScaleNote"></span>
+    </div>
+    <div class="scroll"><table id="recTable"><thead><tr><th data-sk="name">Item</th><th data-sk="kind">Type</th><th data-sk="avg" title="min – max restored (edit them); the average is what's counted">Avg amount</th><th data-sk="price" title="With Buy with Discount: the Discount price, else the NPC price; player-only items use the player price">Price used</th><th data-sk="per">Cost per HP / SP</th><th data-sk="perW" title="restored per point of weight (edit the weight)">HP or SP per weight</th><th data-sk="uph">Uses / hr</th><th data-sk="zph">Cost / hr</th><th data-sk="wph">Weight / hr</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr.</div>
   </section>
 
   <section class="card" data-tab="char" id="skillCard">
@@ -360,7 +382,7 @@
       <label>Min monsters on map<input id="bestMin" type="number" value="40" style="width:90px"></label>
       <label>Show<select id="bestN"><option>10</option><option>20</option><option>50</option></select></label>
     </div>
-    <div class="scroll"><table id="bestTable"><thead><tr><th data-sk="rank">#</th><th data-sk="mp">Map</th><th data-sk="main" title="filters on every monster you hunt there, not only the top 3">Main monsters</th><th data-sk="epm">EXP / min</th><th data-sk="secT">Sec / kill (fight + walk)</th><th data-sk="epk">EXP / kill</th><th data-sk="zph" title="Net: loot less skill items, SP items, the ASPD potion and ground buffs">Zeny / hr</th><th data-sk="hpm">HP lost / min</th><th data-sk="skip">Can't hurt</th><th data-sk="N">Monsters</th><th data-sk="proj">Projected</th></tr><tr class="filters"><td><input type="search" data-tf="rank" placeholder="<=5"></td><td><input type="search" data-tf="mp" placeholder="map"></td><td><input type="search" data-tf="main" placeholder="monster"></td><td><input type="search" data-tf="epm" placeholder=">2000"></td><td><input type="search" data-tf="secT" placeholder="<5"></td><td><input type="search" data-tf="epk" placeholder=">500"></td><td><input type="search" data-tf="zph" placeholder=">10000"></td><td><input type="search" data-tf="hpm" placeholder="<500"></td><td><input type="search" data-tf="skip" placeholder="-"></td><td><input type="search" data-tf="N" placeholder=">30"></td><td><input type="search" data-tf="proj" placeholder=">2"></td></tr></thead><tbody></tbody></table></div>
+    <div class="scroll"><table id="bestTable"><thead><tr><th data-sk="rank">#</th><th data-sk="mp">Map</th><th data-sk="main" title="filters on every monster you hunt there, not only the top 3">Main monsters</th><th data-sk="epm">EXP / min</th><th data-sk="secT">Sec / kill (fight + walk)</th><th data-sk="epk">EXP / kill</th><th data-sk="zph" title="Loot less skill items, the ASPD potion and ground buffs; healing comes off in Net zeny / hr">Zeny / hr</th><th data-sk="heal" title="HP items for the HP lost / min and SP items, priced in Recovery items (Character tab)">Heal cost / hr</th><th data-sk="net" title="Zeny / hr less Heal cost / hr">Net zeny / hr</th><th data-sk="hpm">HP lost / min</th><th data-sk="skip">Can't hurt</th><th data-sk="N">Monsters</th><th data-sk="proj">Projected</th></tr><tr class="filters"><td><input type="search" data-tf="rank" placeholder="<=5"></td><td><input type="search" data-tf="mp" placeholder="map"></td><td><input type="search" data-tf="main" placeholder="monster"></td><td><input type="search" data-tf="epm" placeholder=">2000"></td><td><input type="search" data-tf="secT" placeholder="<5"></td><td><input type="search" data-tf="epk" placeholder=">500"></td><td><input type="search" data-tf="zph" placeholder=">10000"></td><td><input type="search" data-tf="heal" placeholder="<5000"></td><td><input type="search" data-tf="net" placeholder=">10000"></td><td><input type="search" data-tf="hpm" placeholder="<500"></td><td><input type="search" data-tf="skip" placeholder="-"></td><td><input type="search" data-tf="N" placeholder=">30"></td><td><input type="search" data-tf="proj" placeholder=">2"></td></tr></thead><tbody></tbody></table></div>
     <div class="note">Open maps ranked by EXP / min with your attack, weighted by spawns. "Can't hurt": your element does 0%. Projected = your session's %/hr scaled by each map's EXP / min. "EXP ?": no EXP data yet, left out. Click a row to open it in the map planner.</div>
     <div class="maps" id="regions"></div>
     <label>Other closed maps (comma separated)<input id="closedMaps" placeholder="e.g. gon_dun03, yuno_fild02"></label>
@@ -531,14 +553,15 @@
 <script src="data/refine.js?v=d8d0c9f03a"></script>
 <script src="data/jobs.js?v=11de79e714"></script>
 <script src="data/consumables.js?v=d87e716e0e"></script>
+<script src="data/recovery.js?v=ead6e4af72"></script>
 <script src="data/skills.js?v=25895412fe"></script>
 <script src="build.js?v=99fe625055"></script>
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
 <script src="js/game.js?v=4e3b2fd995"></script>
-<script src="js/state.js?v=466296a4ea"></script>
-<script src="js/model.js?v=f43f4e23bb"></script>
-<script src="js/render.js?v=c2a1dbf672"></script>
-<script src="js/events.js?v=c6095e0d94"></script>
+<script src="js/state.js?v=5eccbc31d6"></script>
+<script src="js/model.js?v=07aab84a0a"></script>
+<script src="js/render.js?v=e9da608ddd"></script>
+<script src="js/events.js?v=632ec50a86"></script>
 <script src="js/skills.js?v=4e9e35293d"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>
 <script src="js/ref.js?v=56276fbdb8"></script>

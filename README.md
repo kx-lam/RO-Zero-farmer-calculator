@@ -35,7 +35,13 @@ It's a single page that runs entirely in your browser. There's no server, no log
 - **Energy Coat (Mage, Wizard, Sage):** cuts damage taken by 6–30% for 1–3% of Max SP per hit, the fuller your SP the more of both. Your SP level is the fullest that regen can hold after your attack's own SP; when it can't, SP items hold it at the level you set, and without items your SP runs low (−6%).
 - **Sage options:** Spell Fist with the best bolt per monster, Hindsight (switched on or off automatically against your zeny limit), Double Bolt and SP items. The cards and Energy Coat above count for Spell Fist too: Side Winder's 2nd hit also procs Spell Fist.
 - **Items skills use up:** each use of an attack takes its catalysts and arrows: Acid Terror (an Acid Bottle), Acid Bomb (an Acid Bottle and a Bottle Grenade), Magnus Exorcismus (a Blue Gemstone), and one arrow per shot with a bow, instrument or whip (basic attacks, Double Strafe, Arrow Shower, Focused Arrow Strike, Arrow Vulcan…; Triangle Shot takes 3). The arrow matches your attack element (Fire Arrow, Crystal Arrow, Silver Arrow…). Mammonite costs 100 z × its level. Hunters (traps), Mages, Wizards and Sages (Stone Curse) and Alchemists (Bomb) can type how many support casts they make per kill, and Sage ground buffs (Volcano, Deluge, Whirlwind) cost a gemstone every 60 s × level while switched on. Under Attack details you see what a use costs, the zeny and weight per hour against the monster you picked and how long Max Weight's worth lasts. Each item defaults to its NPC price; type your own (a market price) per item, saved per job. Every zeny/hr figure takes these off.
-- **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for SP items and the ASPD potion; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10.
+- **Overcharge and Discount:** a Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces. Discount cuts what you pay NPCs for the ASPD potion, skill items and a Custom SP item; untick "from NPCs" if you buy them from players. Both go 7, 9, 11 … 23, 24% for Lv 1–10. Recovery items have their own Discount setting (below).
+- **Recovery items:** HP and SP items with what they really cost per HP / SP: Red, Orange, Yellow and White Potion, Cheese, Blue Herb, Strawberry and Blue Potion. The amounts were measured in Ragnarok Zero Global on a Merchant (they don't match classic RO) and the average of min and max is counted.
+  - **Buy with Discount** (on by default, saved for the whole account, since a Merchant on the account can buy for the others) uses the Discount price, else the NPC price. Items NPCs don't sell (Strawberry, Blue Potion) use a player price you type; Blue Potion has none until you do, shows n/a and is never picked as the cheapest.
+  - Edit any item's min, max, price or weight in the table (saved per job); "reset" goes back to the defaults. Sort by any column; the cheapest HP and SP item are highlighted.
+  - Uses, zeny and weight per hour are worked out for the Map planner's map (else the monster you picked): HP items cover its HP lost / min, SP items the SP your attack uses beyond regen and cards.
+  - Pick the HP and SP item per job, or leave them on Auto (cheapest). The SP item is the one "SP items: auto-use when needed" and Sage Hindsight use; Custom keeps the restores / costs boxes. Older saves with their own SP item typed carry it over as Custom.
+  - **Scale by stats** (off by default) multiplies recovery by (100 + VIT × 2 for HP, or INT × 2 + Increase SP Recovery Lv × 10 for SP, + Potion Research Lv × 5) / 100, relative to the stats the values were measured on, which you can fill in.
 - **Weight:** enter what you carry when you leave town (gear, potions, scrolls), your Max Weight, where you sell (any % up to 90, such as 65% to stay clear of 70%) and how long a town trip takes.
   - At 70% weight HP and SP stop regenerating, and at 90% you can't attack or use skills, so each trip ends at your sell point. Only the room above your starting weight fills with loot.
   - Kills per trip come from each drop's weight × chance. The trip time is spread over those kills in every EXP/min and zeny/hr figure.
@@ -53,6 +59,7 @@ It's a single page that runs entirely in your browser. There's no server, no log
 - **Monster table:** every non-MVP monster with HP, EXP, EXP/HP, your damage, kill time, EXP/min, dodge, HP lost, zeny per kill (after skill items) and net zeny/hr (after skill items, SP items, the ASPD potion and ground buffs).
 - **Map planner:** with an elemental converter (or Spell Fist bolts), a table shows each element's rate against every monster on the map and the map's EXP/min with it, and warns about the monsters the one in use is weak against (for example Fire against Jakk, Fire 2, on Geffen Dungeon B2F). An Element % column shows the rate per monster. For physical attacks the rate applies to weapon ATK; status ATK always hits as Neutral.
 - **EXP Hunter:** open maps ranked by EXP/min, weighted by spawn counts.
+  - Zeny / hr is loot less skill items, the ASPD potion and ground buffs. Heal cost / hr is the HP items for the map's HP lost / min plus the SP items, from Recovery items (hover it to see which items and how many an hour), and Net zeny / hr is what's left. Sort by any of them.
   - Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F). You can also type the database code (`sp_d05`).
   - Monsters with no EXP data yet (Myst, Isis, Anubis…) show EXP `?` and are left out of EXP/min.
   - Skip monsters you don't want to fight, and mark regions that aren't open yet as closed.
@@ -147,6 +154,7 @@ Each table lives in its own file, so a re-export after a patch only touches that
 | `prices.js` | NPC sell price for every drop. Written by `tools/export_prices.py`. |
 | `weights.js` | Item weight for every drop; items with no weight count as weightless. Written by `tools/export_prices.py`. |
 | `consumables.js` | Items skills use up (gemstones, traps, bottles, arrows): NPC buy price and weight, from rAthena until Zero's buy prices are exported. |
+| `recovery.js` | HP and SP recovery items: amount restored (measured in Ragnarok Zero Global on a Merchant), weight, NPC, Discount and player prices. |
 | `itemtypes.js` | Auto-loot group for every drop, from item categories. Written by `tools/export_prices.py`. |
 | `mstat.js` | Monster DEF/MDEF/ATK |
 | `elem.js` | Monster element, HIT/FLEE |
@@ -184,7 +192,7 @@ node tests/model.test.mjs    # damage and tracker maths, loaded with a stand-in 
 node tests/stamp.test.mjs    # every file in index.html carries its current ?v= hash
 ```
 
-`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time and the monster table filters. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`).
+`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time, the monster table filters and recovery item costs. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`).
 
 ## Data sources
 

@@ -172,3 +172,7 @@ td.muted{color:var(--muted)}
 table.convtab{width:auto}
 table.convtab th,table.convtab td{text-align:center;padding:4px 8px}
 table.convtab td.name{text-align:left}
+#recTable tbody tr{cursor:default}
+#recTable input{padding:3px 6px;font-size:13px}
+#recTable td.nowrap{white-space:nowrap}
+tr.cheap td{background:color-mix(in srgb,var(--good) 10%,transparent)}

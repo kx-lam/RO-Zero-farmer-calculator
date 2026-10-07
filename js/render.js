@@ -29,6 +29,7 @@ function renderChar(){renderAspdBuffs();potInfo();
   {const oc=skRate("overcharge"),dc=skRate("discount");$("npcBuy").checked=c.npcBuy!==false;
     $("mercNote").textContent=oc||dc?[oc?`Overcharge: NPCs pay you +${oc}%`:"",dc?`Discount: NPCs charge you −${dc}%${c.npcBuy===false?" (off: bought from players)":""}`:""].filter(Boolean).join(" · "):""}
   renderUseItems();
+  {const p=recPick("sp");$("spItemUse").innerHTML=p?`<b>${esc(p.name)}</b> (${fmtSig(p.avg)} SP, ${fmtSig(p.price)} z${p.auto?", cheapest":""}) <span class="muted">· pick it in Recovery items</span>`:""}
   $("itemInfo").textContent=c.autoSp?(ips>0?`≈ ${(ips*60).toFixed(1)} items/min · ${fmtN(ips*3600*spItemPrice())} z/hr`:"not needed: regen covers it"):"";
   const atk=a.type==="magic"||a.type==="spellfist"?`MATK ${fmtN(sumStat(c.matkTxt))}`:`ATK ${fmtN(sumStat(c.atkTxt))}`;
   {const cd=CRD(),m=calcMob(),k0=SG_MOB;SG_MOB=m;try{const hf=hfHpPerSec(),hs=m?healsPerSec(m):0,sh=m?healShare(m):0,parts=[];
@@ -77,6 +78,34 @@ function renderUseItems(){const c=C(),a=c.a,ui=useItems(),sup=supOf(),fb=Object.
     parts.push(!m?"pick a monster to see the cost per hour":!h?`can't hurt ${esc(m.name)}`:`vs ${esc(m.name)}: ~${fmtN(h.z)} z/hr${h.items.length?` (${h.items.map(x=>`${fmtN(x.n)} ${esc(consName(x.id))}`).join(", ")})`:""}, taken off zeny/hr`
       +(h.w>0?` · uses ~${h.w<10?h.w.toFixed(1):fmtN(h.w)} weight/hr${mw>0?`; restock every ${fmtDur(mw/h.w).split("\n").pop()} (Max Weight ${fmtN(mw)})`:""}`:""))}
   $("useInfo").innerHTML=parts.join(" · ")}
+// ---- render: Recovery items: the HP / SP item picks and every item's cost per HP / SP, and uses per hour on a map ----
+const fmtSig=n=>n==null||!isFinite(n)?"n/a":n>=100?fmtN(n):String(+n.toPrecision(3));
+const fmtQty=n=>n==null||!isFinite(n)?"–":n<10?n.toFixed(1):fmtN(n);
+const REC_SRC={disc:"Discount",npc:"NPC",player:"players"};
+// the map uses per hour are worked out on: the Map planner's, else the picked monster's best open map, else the session's. HP lost / min and SP short per hour there
+function recNeed(){let mp=mapKey(state.map);if(!MAPMOBS[mp]){const m=calcMob(),om=m?openMaps(m):[];mp=om.length?om[0][0]:currentMap()}if(!MAPMOBS[mp])return null;
+  const w=walkSec(),r=mapStats(mp,w);return {mp,hpm:r?r.hpm:null,sp:r?mapSpShort(mp,w,r.el2):0}}
+function renderRecovery(){const R=REC(),need=recNeed(),pick={hp:recPick("hp"),sp:recPick("sp")},ch={hp:recCheapest("hp"),sp:recCheapest("sp")};
+  const opts=kind=>`<option value="auto">Auto (cheapest${ch[kind]?": "+esc(ch[kind].name):""})</option>`+recItems(kind).map(x=>`<option value="${x.id}">${esc(x.name)}${x.per==null?" (no price)":""}</option>`).join("")+(kind==="sp"?'<option value="custom">Custom (type it)</option>':"");
+  $("recHp").innerHTML=opts("hp");$("recHp").value=RECOVERY[R.hpItem]&&RECOVERY[R.hpItem].kind==="hp"?R.hpItem:"auto";
+  $("recSp").innerHTML=opts("sp");$("recSp").value=R.spItem==="custom"||(RECOVERY[R.spItem]&&RECOVERY[R.spItem].kind==="sp")?R.spItem:"auto";
+  $("recHp").title=pick.hp&&pick.hp.want?`${pick.hp.want.name} has no price, so the cheapest is used`:"";$("recSp").title=pick.sp&&pick.sp.want?`${pick.sp.want.name} has no price, so the cheapest is used`:"";
+  $("recCustom").hidden=R.spItem!=="custom";$("recDisc").checked=recDisc();$("recScale").checked=!!R.scaleByStats;$("recRef").hidden=!R.scaleByStats;
+  ROOTQ("[data-rref]").forEach(i=>{if(document.activeElement!==i){const v=R.refStats[i.dataset.rref];i.value=v!=null?v:""}});
+  {const s=recStatsNow();$("recScaleNote").textContent=R.scaleByStats?`yours: VIT ${s.vit}, INT ${s.int}, Increase SP Recovery Lv ${s.isr}, Potion Research Lv ${s.lp} → HP items ×${recScale("hp").toFixed(2)}, SP items ×${recScale("sp").toFixed(2)}`:""}
+  $("recNote").textContent=need?`${state.job} on ${mapCode(need.mp)}: ${need.hpm==null?"HP loss unknown":`${fmtN(need.hpm)} HP lost/min`} · ${fmtN(need.sp/60)} SP/min short`+(pick.hp&&pick.sp?` · using ${pick.hp.name} and ${pick.sp.name}`:""):"pick a monster or a map (Map planner) to see uses per hour";
+  // don't rebuild the box you're typing in; the table catches up when you leave it
+  const f=document.activeElement;if(f&&f.tagName==="INPUT"&&$("recTable").tBodies[0].contains(f))return;
+  const rows=tableRows("recTable",recItems().map(x=>{const n=!need||!(x.avg>0)?null:x.kind==="hp"?(need.hpm==null?null:need.hpm*60/x.avg):need.sp/x.avg;
+    return {...x,uph:n,zph:n!=null&&x.price!=null?n*x.price:null,wph:n!=null?n*x.w:null}}));
+  const inp=(x,k,v,w)=>`<input type="number" min="0" step="any" data-rid="${x.id}" data-rk="${k}" value="${v??""}" placeholder="${k==="player"||RECOVERY[x.id][k]==null?"n/a":RECOVERY[x.id][k]}" aria-label="${esc(x.name)} ${k}" style="width:${w}px">`;
+  $("recTable").querySelector("tbody").innerHTML=rows.map(x=>{const best=ch[x.kind]&&ch[x.kind].id===x.id,use=pick[x.kind]&&pick[x.kind].id===x.id,u=x.kind.toUpperCase();
+    return `<tr class="${best?"cheap":""}"><td class="name"><b>${esc(x.name)}</b>${best?' <span class="pill up">cheapest</span>':""}${use?' <span class="pill">in use</span>':""}${x.edited?` <a href="#" data-rreset="${x.id}">reset</a>`:""}</td><td>${u}</td>
+      <td class="nowrap">${inp(x,"min",x.min,56)}–${inp(x,"max",x.max,56)} <b>${fmtSig(x.avg)}</b>${x.scale!==1?` <span class="note">×${x.scale.toFixed(2)}</span>`:""}</td>
+      <td class="nowrap">${inp(x,x.src||"player",x.price,72)} <span class="note">${x.src?REC_SRC[x.src]:"no price"}</span></td>
+      <td class="${best?"good":""}">${x.per==null?"n/a":`<b>${fmtSig(x.per)}</b> z/${u}`}</td>
+      <td class="nowrap">${x.perW==null?"–":fmtSig(x.perW)} <span class="note">per ${inp(x,"w",x.w,52)}${x.wOk?"":' <span title="weight not checked in game yet">?</span>'}</span></td>
+      <td>${fmtQty(x.uph)}</td><td>${x.per==null?"n/a":x.zph==null?"–":fmtN(x.zph)}</td><td>${fmtQty(x.wph)}</td></tr>`}).join("")}
 // ---- render: tracker ----
 function renderSessions(){$("sessionSel").innerHTML=state.sessions.map(s=>`<option value="${esc(s.id)}" ${s.id===state.current?"selected":""}>${esc(s.name)}</option>`).join("")}
 function renderTracker(){
@@ -332,6 +361,9 @@ ${weightTile(m)}
   const b=$("useMobBtn");if(b)b.addEventListener("click",()=>{toggleSessMob(m.id);state.calcMobId=null;save();renderAll()});
   const d=$("dropMobBtn");if(d)d.addEventListener("click",()=>{toggleSessMob(m.id);save();renderAll()});
 }
+// the EXP Hunter's Heal cost / hr: which items and how many an hour
+const healTip=r=>{const h=recPick("hp"),s=recPick("sp");return [r.hpm==null?"HP: no damage data":r.hpZ>0&&h?`HP: ${h.name} ×${fmtQty(r.hpHr)}/hr = ${fmtN(r.hpZ)} z`:"HP: none lost",
+  r.spHr>0&&s?`SP: ${s.name} ×${fmtQty(r.spHr)}/hr = ${fmtN(r.spZ)} z`:itemsOnNow()?"SP: regen covers it":"SP: no SP items (auto-use off, you rest)"].join("\n")};
 const UNK_PILL=' <span class="pill down" title="No EXP data for it yet, so it\'s left out of EXP / min">EXP ?</span>';
 function renderBest(){
   const min=num($("bestMin").value),lim=num($("bestN").value,10);const w=walkSec();const s=cur(),st=stats(s);const curMap=currentMap();
@@ -345,8 +377,8 @@ function renderBest(){
   $("bestTable").querySelector("tbody").innerHTML=shown.map(r=>{
     const main=MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>`<div>${esc(x.m.name)} <span class="note">×${x.n}</span>${x.m.expUnknown?UNK_PILL:""}</div>`).join("");
     const proj=r.proj;
-    return `<tr data-map="${r.mp}" class="${r.mp===curMap?"sel":""}"><td>${r.rank}</td><td class="name"><b class="mono">${mapCode(r.mp)}</b> <span class="note">${esc(mapName(r.mp))}</span>${r.mp===curMap?' <span class="pill">current</span>':""}${elTag(r.el2)}</td><td class="name mainmobs">${main}</td><td><b>${fmtN(r.epm)}</b></td><td>${r.sec.toFixed(1)}s + ${r.walk.toFixed(1)}s${sellTxt(r.sell," + ")}</td><td>${fmtN(r.epk)}</td><td>${fmtN(r.zph)}</td><td>${r.hpm==null?"–":fmtN(r.hpm)}</td><td>${r.skip?`<span class="pill down" title="${esc(r.skipNames.join(", "))}">${r.skip}</span>`:"–"}</td><td>≈${r.N}</td><td>${proj==null?"–":"~"+proj.toFixed(1)+"%/hr"}</td></tr>`}).join("")
-    ||'<tr><td colspan="11" class="name muted">No open maps match.</td></tr>';
+    return `<tr data-map="${r.mp}" class="${r.mp===curMap?"sel":""}"><td>${r.rank}</td><td class="name"><b class="mono">${mapCode(r.mp)}</b> <span class="note">${esc(mapName(r.mp))}</span>${r.mp===curMap?' <span class="pill">current</span>':""}${elTag(r.el2)}</td><td class="name mainmobs">${main}</td><td><b>${fmtN(r.epm)}</b></td><td>${r.sec.toFixed(1)}s + ${r.walk.toFixed(1)}s${sellTxt(r.sell," + ")}</td><td>${fmtN(r.epk)}</td><td>${fmtN(r.zb)}</td><td title="${esc(healTip(r))}">${r.heal>=0.5?fmtN(r.heal):"–"}</td><td class="${r.net>0?"good":"bad"}"><b>${fmtN(r.net)}</b></td><td>${r.hpm==null?"–":fmtN(r.hpm)}</td><td>${r.skip?`<span class="pill down" title="${esc(r.skipNames.join(", "))}">${r.skip}</span>`:"–"}</td><td>≈${r.N}</td><td>${proj==null?"–":"~"+proj.toFixed(1)+"%/hr"}</td></tr>`}).join("")
+    ||'<tr><td colspan="13" class="name muted">No open maps match.</td></tr>';
 }
 // ---- render: Zeny Hunter ----
 const itemName=id=>ITEMN[id]||"#"+id;
@@ -383,10 +415,11 @@ const TABLES={
   mobInfoMaps:{def:["n",-1],cols:{map:{t:r=>mapTxt(r.mp)},n:{n:r=>r.n},others:{t:r=>r.others.map(x=>x.m.name).join(", ")}}},
   itemTable:{def:["npc",-1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},group:{t:r=>GROUP_NAME[groupOf(r.id)]+(looted(r.id)?"":" not looted")},npc:{n:r=>r.npc},pl:{n:r=>r.pl},best:{n:r=>r.b.ch,t:r=>r.b.m.name},cnt:{n:r=>r.cnt}}},
   itemDropTable:{def:["ch",-1],cols:{name:{t:r=>r.m.name+(r.m.boss?" boss":"")},lv:{n:r=>r.m.lv},ch:{n:r=>r.ch},your:{n:r=>r.your},z:{n:r=>r.z},map:{t:r=>r.om.length?mapTxt(r.om[0][0]):""}}},
-  bestTable:{def:["epm",-1],cols:{rank:{n:r=>r.rank,asc:1},mp:{t:r=>mapTxt(r.mp)},main:{t:r=>MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).map(x=>x.m.name).join(", ")},epm:{n:r=>r.epm},secT:{n:r=>r.secT,asc:1},epk:{n:r=>r.epk},zph:{n:r=>r.zph},hpm:{n:r=>r.hpm,asc:1},skip:{n:r=>r.skip,asc:1},N:{n:r=>r.N},proj:{n:r=>r.proj}}},
+  bestTable:{def:["epm",-1],cols:{rank:{n:r=>r.rank,asc:1},mp:{t:r=>mapTxt(r.mp)},main:{t:r=>MAPMOBS[r.mp].filter(x=>!x.m.boss&&!isSkipped(x.m)).map(x=>x.m.name).join(", ")},epm:{n:r=>r.epm},secT:{n:r=>r.secT,asc:1},epk:{n:r=>r.epk},zph:{n:r=>r.zb},heal:{n:r=>r.heal,asc:1},net:{n:r=>r.net},hpm:{n:r=>r.hpm,asc:1},skip:{n:r=>r.skip,asc:1},N:{n:r=>r.N},proj:{n:r=>r.proj}}},
   huntTable:{def:["net",-1],cols:{rank:{n:r=>r.rank,asc:1},name:{t:r=>r.mp?mapTxt(r.mp):`${r.m.name} Lv ${r.m.lv}`},from:{t:r=>r.mp?r.earn.map(x=>x.m.name).join(", "):[mapTxt(openMaps(r.m)[0][0]),...(r.m.drops||[]).map(([id])=>itemName(id))].join(", ")},net:{n:r=>r.net},loot:{n:r=>r.loot},cost:{n:r=>r.cost,asc:1},kph:{n:r=>r.kph},zk:{n:r=>r.zk},epm:{n:r=>r.epm},hpm:{n:r=>r.hpm,asc:1}}},
   cmpTable:{def:["when",-1],cols:{name:{t:r=>r.s.name},job:{t:r=>r.s.job||""},mobs:{t:r=>[...r.ms.map(m=>m.name),sessMap(r.s)?mapTxt(sessMap(r.s)):""].join(", ")},when:{n:r=>r.st.es[0].t,t:r=>`${fmtD(r.st.es[0].t)} ${fmtT(r.st.es[0].t)}`},
     len:{n:r=>r.st.spanMin},pct:{n:r=>r.st.avgPct,t:r=>`B${r.st.last.lv}`},epm:{n:r=>r.st.avgRaw/60},kph:{n:r=>r.kph},spk:{n:r=>r.kph?3600/r.kph:null,asc:1}}},
+  recTable:{def:["per",1],cols:{name:{t:r=>r.name},kind:{t:r=>r.kind.toUpperCase()},avg:{n:r=>r.avg},price:{n:r=>r.price},per:{n:r=>r.per,asc:1},perW:{n:r=>r.perW},uph:{n:r=>r.uph,asc:1},zph:{n:r=>r.zph,asc:1},wph:{n:r=>r.wph,asc:1}}},
   priceTable:{def:["name",1],cols:{name:{t:r=>itemName(r.id)+" #"+r.id},pl:{n:r=>r.pl},npc:{n:r=>r.npc},best:{n:r=>r.d?r.d.ch:null,t:r=>r.d?r.d.m.name:""}}},
 };
 const tblSort=id=>{const s=state.tsort[id];return s&&Object.hasOwn(TABLES[id].cols,s[0])?s:TABLES[id].def};
@@ -490,5 +523,5 @@ function renderMap(){
   $("mapTable").querySelector("tbody").innerHTML=MAPMOBS[mp].slice().sort((a,b)=>b.n-a.n).map(({m,n})=>{const x=r&&r.el2?withEl(r.el2,()=>mobRow0(m,w)):mobRow(m,w);
     return `<tr data-id="${m.id}" class="${cur().mobIds.includes(m.id)?"sel":""}" style="${isSkipped(m)?"opacity:.55":""}"><td class="name">${esc(m.name)} <button type="button" class="small" data-sessmob="${m.id}">${cur().mobIds.includes(m.id)?"− Session":"+ Session"}</button>${m.boss?' <span class="pill">boss</span>':` <button type="button" class="small" data-skip="${m.id}">${isSkipped(m)?"Unskip":"Skip"}</button>`}</td><td>≈${n}</td><td>${m.boss?"–":isSkipped(m)?"skipped":Math.round(n/tot*100)+"%"}</td><td>${m.lv}</td><td>${m.el?`<span class="el ${m.el}">${m.el} ${m.elv}</span>`:"–"}</td><td>${(el=>elRateHtml(el,elemMult(m,el)))((r&&r.el2)||x.el2||atkEl())}</td><td>${m.size||"–"}</td><td class="${x.mult>100?"good":x.mult<=0?"bad":""}">${x.mult<=0?"can't hurt":Math.round(x.mult)+"%"}</td><td>${isFinite(x.sec)?x.sec.toFixed(1)+"s":"–"}</td><td>${fmtExp(m)}</td></tr>`}).join("");
 }
-function renderAll(){SKFX=skillEffects(C());const sgTree=sageFromTree(C());ROOTQ('[data-sg="sfLv"],[data-sg="boltLv"],[data-sg="hsLv"],[data-sg="dbLv"]').forEach(i=>{i.disabled=sgTree;i.title=sgTree?"Set by the Skills card":""});ROOTQ("[data-sgbolt]").forEach(i=>i.disabled=sgTree&&!skLv(C(),SG_BOLT[i.dataset.sgbolt]));applyBuild();applyConsumables();renderBuild();applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();if(state.tab==="maps")renderHunt();if(state.tab==="market")renderPrices();if(state.tab==="mobinfo")renderMobInfo();if(state.tab==="items")renderItems();renderMap();renderRef()}
+function renderAll(){SKFX=skillEffects(C());const sgTree=sageFromTree(C());ROOTQ('[data-sg="sfLv"],[data-sg="boltLv"],[data-sg="hsLv"],[data-sg="dbLv"]').forEach(i=>{i.disabled=sgTree;i.title=sgTree?"Set by the Skills card":""});ROOTQ("[data-sgbolt]").forEach(i=>i.disabled=sgTree&&!skLv(C(),SG_BOLT[i.dataset.sgbolt]));applyBuild();applyConsumables();renderBuild();applyHsAuto();renderSessions();renderChar();renderTracker();renderMobs();renderBest();renderRecovery();if(state.tab==="maps")renderHunt();if(state.tab==="market")renderPrices();if(state.tab==="mobinfo")renderMobInfo();if(state.tab==="items")renderItems();renderMap();renderRef()}
 

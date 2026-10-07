@@ -26,7 +26,6 @@ const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILL
 const ocMul=()=>1+skRate("overcharge")/100;
 // Discount only helps with what you buy from an NPC: untick "from NPCs" when you buy SP items and potions from players
 const discMul=()=>C().npcBuy===false?1:1-skRate("discount")/100;
-const spItemPrice=()=>num(C().itemPrice)*discMul();
 const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
 // zeny per hour spent on the ASPD potion (consumables carry no price; Blessing of Yggdrasil's items come from the KP shop)
 const potCostHr=()=>potOnlyHr();
@@ -151,8 +150,9 @@ const spNeedPerSec=()=>isSF()?sgUpkeep()+defSP()+hsFullSP()*hsSustain():skillSPP
 // SP back per second: natural regen (stops when you're overweight) plus SP from cards (cardSPPerSec), which keeps going
 const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8)+cardSPPerSec();
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
-const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&num(C().itemSp)>0?Math.max(0,spNeedPerSec()-regenPerSec())/num(C().itemSp):0;
-const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&num(C().itemSp)>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
+// the SP item is the one picked in Recovery items (spItemAmt: SP it restores, spItemPrice: what it costs)
+const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&spItemAmt()>0?Math.max(0,spNeedPerSec()-regenPerSec())/spItemAmt():0;
+const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&spItemAmt()>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
 const rawFight=m=>{const u=usesPerKill(m);return isFinite(u)?u*useSec()/targets():Infinity};
 const fightSec=m=>{const f=healShare(m);return f>=1?Infinity:rawFight(m)*restFactor()/(1-f)};
 // damage taken: monster ATK through your DEF, its hit chance on you, a swing every interval times "swings reach you"
@@ -204,10 +204,10 @@ const cardSPPerSec=()=>dracSPPerSec()+dpSPPerSec()+killSPPerSec();
 // Energy Coat: damage cut and SP per hit taken (% of Max SP) depend on how full your SP is
 const EC_BANDS=[[30,3,"100–81%"],[24,2.5,"80–61%"],[18,2,"60–41%"],[12,1.5,"40–21%"],[6,1,"20–1%"]];
 const hsFullSP=()=>atkPerSec()*hsChance()*hsProcSP();
-const sgItemsOn=()=>hsOnNow()&&num(C().itemSp)>0; // SP items go with Hindsight
+const sgItemsOn=()=>hsOnNow()&&spItemAmt()>0; // SP items go with Hindsight
 // damage taken, any attack: Energy Coat (Mage, Wizard, Sage), Hunter Fly and Vitata's heals. Energy Coat's cut and SP per hit depend on
 // how full your SP is: the fullest band your regen can hold after the attack's own SP, else where SP items keep it, else nearly empty
-const itemsOnNow=()=>isSF()?sgItemsOn():!!C().autoSp&&num(C().itemSp)>0;
+const itemsOnNow=()=>isSF()?sgItemsOn():!!C().autoSp&&spItemAmt()>0;
 // its hits that land on you per second: a swing every interval, times "swings reach you", less what you dodge
 const hitsOnYou=m=>{if(!m||m.atkMin==null)return 0;const dg=dodge(m);return Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5))};
 function defense(m){
@@ -227,7 +227,7 @@ const healsPerSec=m=>{const cd=CRD();if(!cd.vitata||!(num(cd.healHp)>0))return 0
 const healShare=m=>healsPerSec(m)*healSec();
 let SG_MOB=null; // monster the SP balance is worked out against
 const defSP=()=>{const m=SG_MOB||calcMob();const d=m?defense(m):null;return d?d.extra:0};
-const sgItemsPerSec=()=>sgItemsOn()?Math.max(0,sgUpkeep()+defSP()+hsFullSP()-regenPerSec())/num(C().itemSp):0;
+const sgItemsPerSec=()=>sgItemsOn()?Math.max(0,sgUpkeep()+defSP()+hsFullSP()-regenPerSec())/spItemAmt():0;
 // without SP items, Hindsight only fires as often as spare regen pays for
 const hsSustain=()=>{const f=hsFullSP();if(f<=0||sgItemsOn())return 1;return Math.max(0,Math.min(1,(regenPerSec()-sgUpkeep()-defSP())/f))};
 // the basic attack under Spell Fist still deals its own physical hit: weapon element, size, DEF, HIT and crits, plus card auto-casts
@@ -281,6 +281,39 @@ function useHour(m,w){const r=mobRow(m,w);if(!r||!isFinite(r.tot)||!(r.tot>0))re
 // Sage ground buffs you switched on (FIELD_ITEM in game.js): an item every 60 s × level, as zeny per hour like the ASPD potion
 const fieldBuffs=()=>{const c=C();return Object.keys(FIELD_ITEM).filter(k=>(c.buffs||{})[k]&&skLv(c,k)>0).map(k=>({k,id:CONS_ID[FIELD_ITEM[k]],perHr:60/skLv(c,k)}))};
 const fieldCostHr=()=>fieldBuffs().reduce((t,f)=>t+f.perHr*consPrice(f.id),0);
+// ---- recovery items (data/recovery.js): HP and SP items priced per HP / SP ----
+// per character (chars.<Job>.recovery): the HP and SP item you use ("auto" = the cheapest per HP / SP that has a price; SP "custom" = the restores / costs
+// boxes), Scale by stats with the stats the values were measured on (refStats), and your own min / max / weight / prices per item (overrides).
+// Per account (state.recovery.discount, on by default): buy at the Discount price, since a Merchant on the account can buy for the others
+const REC_D={hpItem:"auto",spItem:"auto",scaleByStats:false,refStats:{},overrides:{}};
+const REC=()=>{const c=C();if(!c.recovery||typeof c.recovery!=="object")c.recovery={};const r=c.recovery;for(const k in REC_D)if(r[k]==null||typeof r[k]!==typeof REC_D[k])r[k]=JSON.parse(JSON.stringify(REC_D[k]));return r};
+const recDisc=()=>!state.recovery||state.recovery.discount!==false;
+const REC_IDS=Object.keys(RECOVERY);
+// Scale by stats (off by default, as Zero's values don't follow classic RO): × (100 + VIT × 2 for HP, or INT × 2 + Increase SP Recovery Lv × 10 for SP,
+// + Potion Research (Learning Potion) Lv × 5) / 100, relative to the same worked out for the stats the values were measured on (blank counts as 0)
+const recFactor=(kind,s)=>(100+(kind==="hp"?2*num(s.vit):2*num(s.int)+10*num(s.isr))+5*num(s.lp))/100;
+const recStatsNow=()=>{const c=C();return {vit:statVal(c,"vit")||0,int:statVal(c,"int")||0,isr:skLv(c,"increase-sp-recovery"),lp:skLv(c,"potion-research")}};
+const recScale=kind=>REC().scaleByStats?recFactor(kind,recStatsNow())/recFactor(kind,REC().refStats):1;
+// one item with your changes: avg restored (min and max averaged, then scaled), the price used (Discount or NPC price, else the player price; null = n/a),
+// zeny per HP / SP and HP / SP per weight
+function recItem(id){const b=RECOVERY[id];if(!b)return null;const o=REC().overrides[id]||{},v=k=>o[k]!=null?o[k]:b[k];
+  const min=num(v("min")),max=Math.max(min,num(v("max"))),scale=recScale(b.kind),avg=(min+max)/2*scale,w=num(v("w")),npc=v("npc"),disc=v("disc"),player=v("player");
+  const src=npc!=null?(recDisc()&&disc!=null?"disc":"npc"):player!=null?"player":null,price=src?{disc,npc,player}[src]:null;
+  return {id,name:b.name,kind:b.kind,min,max,scale,avg,w,wOk:b.wOk!==false,npc,disc,player,src,price,per:price!=null&&avg>0?price/avg:null,perW:w>0?avg/w:null,edited:Object.keys(o).length>0}}
+const recItems=kind=>REC_IDS.filter(id=>!kind||RECOVERY[id].kind===kind).map(recItem);
+const recCheapest=kind=>recItems(kind).filter(x=>x.per!=null).sort((a,b)=>a.per-b.per)[0]||null;
+// the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price)
+function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];
+  if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
+  const it=RECOVERY[k]&&RECOVERY[k].kind===kind?recItem(k):null;if(it&&it.per!=null)return it;const ch=recCheapest(kind);return ch?{...ch,auto:true,want:it}:null}
+const spItemAmt=()=>{const p=recPick("sp");return p?num(p.avg):0};
+const spItemPrice=()=>{const p=recPick("sp");return p?num(p.price):0};
+// HP items to make up an HP loss per minute: items per hour (n), zeny per hour (z) and the item (p)
+const hpHeal=hpm=>{const p=recPick("hp");if(!p||!(hpm>0)||!(p.avg>0))return {n:0,z:0,p};const n=hpm*60/p.avg;return {n,z:n*num(p.price),p}};
+// SP your attack is short of per hour on a map (SP use less regen and cards), weighted by spawns and time like HP lost / min. It's what SP items
+// would cover; they're only bought with "auto-use when needed" on (Sage: with Hindsight), else you rest
+function mapSpShort(mp,w,el){let s=0,t=0;withEl(el,()=>(MAPMOBS[mp]||[]).forEach(({m,n})=>{if(m.boss||isSkipped(m)||m.expUnknown)return;const r=mobRow0(m,w);if(!isFinite(r.tot))return;
+  const k=SG_MOB;SG_MOB=m;try{s+=n*r.tot*Math.max(0,spNeedPerSec()-regenPerSec())}finally{SG_MOB=k}t+=n*r.tot}));return t?s/t*3600:0}
 // zeny per kill: the exported loot value (rozerodb, NPC prices) scaled by your drop rate bonus. A drop you sell to players
 // counts at the market price you typed instead: the loot value already holds its NPC price, so the market price adds only what
 // it beats the NPC price by. Its chance is scaled by the drop bonus and the level penalty, capped at 100%
@@ -440,18 +473,21 @@ function mobRow0(m,w){const kSG=SG_MOB;SG_MOB=m;try{return mobRow00(m,w)}finally
 function mobRow00(m,w){
   const sec=fightSec(m),tot=tripTot(m,sec+w,w),epk=killExp(m),jpk=killJobExp(m),ok=isFinite(tot)&&tot>0;
   // zk: zeny per kill after what the skills use up; hc: SP items, ASPD potion and ground buffs per hour; zph: net zeny per hour
-  const zc=skillZeny(m),zk=zenyKill(m)-zc,hc=huntCostHr(m);
-  return {sec,tot,epm:ok?epk/tot*60:0,epk,jpm:ok?jpk/tot*60:0,jpk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk,zc,hc,zph:ok?zk/tot*3600-hc:0};
+  // sph: SP items per hour (what huntCostHr counts)
+  const zc=skillZeny(m),zk=zenyKill(m)-zc,sph=itemsPerSec()*3600,hc=sph*spItemPrice()+hourCostHr();
+  return {sec,tot,epm:ok?epk/tot*60:0,epk,jpm:ok?jpk/tot*60:0,jpk,hitc:hitChance(m),mult:hitPctOf(m),uses:usesPerKill(m),dodge:dodge(m),hpm:hpLossPerMin(m),zk,zc,hc,sph,zph:ok?zk/tot*3600-hc:0};
 }
 // map averages, weighted by spawn counts; monsters you can't hurt are skipped (you walk past them)
 function mapStats0(mp,w){
-  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,fight=0,z=0,zc=0,hc=0,hp=0,hpN=0;const skip=[],unk=[];
+  const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));let N=0,n=0,exp=0,time=0,fight=0,z=0,zc=0,hc=0,spi=0,hp=0,hpN=0;const skip=[],unk=[];
   list.forEach(({m,n:c})=>{N+=c;if(m.expUnknown){unk.push(m.name);return}const r=mobRow0(m,w);if(!isFinite(r.sec)){skip.push(m.name);return}
-    n+=c;exp+=c*r.epk;time+=c*r.tot;fight+=c*r.sec;z+=c*r.zk;zc+=c*r.zc;hc+=c*r.hc*r.tot;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
+    n+=c;exp+=c*r.epk;time+=c*r.tot;fight+=c*r.sec;z+=c*r.zk;zc+=c*r.zc;hc+=c*r.hc*r.tot;spi+=c*r.sph*r.tot;if(r.hpm!=null){hp+=c*r.hpm*r.tot;hpN+=c*r.tot}});
   if(!n)return null;
   // zg: zeny / hr after skill items and zeny; zph also takes off SP items, the ASPD potion and ground buffs (per monster, over the time spent on it)
-  const zg=z/time*3600,hcHr=hc/time;
-  return {mp,N,epm:exp/time*60,secT:time/n,sec:fight/n,walk:w,sell:time/n-fight/n-w,epk:exp/n,zg,zph:zg-hcHr,zcost:zc/time*3600+hcHr,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,unk:unk.length,unkNames:unk};
+  // healing (Recovery items): SP items (spHr a hour, spZ zeny) and HP items for the HP lost (hpHr, hpZ). zb: zeny / hr before healing, net: after it
+  const zg=z/time*3600,hcHr=hc/time,hpm=hpN?hp/hpN:null,spHr=spi/time,spZ=spHr*spItemPrice(),hh=hpHeal(hpm);
+  return {mp,N,epm:exp/time*60,secT:time/n,sec:fight/n,walk:w,sell:time/n-fight/n-w,epk:exp/n,zg,zph:zg-hcHr,zcost:zc/time*3600+hcHr,hpm,skip:skip.length,skipNames:skip,unk:unk.length,unkNames:unk,
+    spHr,spZ,hpHr:hh.n,hpZ:hh.z,heal:hh.z+spZ,zb:zg-hcHr+spZ,net:zg-hcHr-hh.z};
 }
 // best converter per monster (by EXP/min) and one converter per map
 function mobRow(m,w){let best=null;elOptions().forEach(el=>{const r=withEl(el,()=>mobRow0(m,w));r.el2=el;if(!best||r.epm>best.epm)best=r});return best}
