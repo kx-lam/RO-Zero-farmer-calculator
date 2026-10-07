@@ -163,6 +163,16 @@ table.cstats input{width:72px;padding:4px 8px;font-size:13px}
 /* long monster list: scroll inside the card with the header and filters pinned */
 .scroll.tall{max-height:70vh;overflow:auto}
 .scroll.tall thead{position:sticky;top:0;z-index:1;background:var(--surface)}
+/* entries table: pauses are rows of their own; ✎ edits a row in place */
+#logTable tr.pauseRow td{color:var(--warn);font-size:12.5px;white-space:normal}
+#logTable td.acts{white-space:nowrap;text-align:right}
+#logTable tr.editRow td{vertical-align:middle}
+#logTable tr.editRow input{padding:3px 6px;font-size:13px}
+#logTable tr.editRow input[type="number"]{width:5.5em}
+#logTable tr.editRow input[data-f="lv"],#logTable tr.editRow input[data-f="jlv"]{width:4em}
+#logMsg{color:var(--bad)}
+#logMsg:empty{display:none}
+#chart .pauseMark{cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .tile .v{white-space:pre-line}
 @media (max-width:600px){.form[style]{grid-template-columns:repeat(2,minmax(0,1fr))!important}#bonusRow{grid-template-columns:1fr!important}}

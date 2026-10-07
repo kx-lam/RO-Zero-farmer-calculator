@@ -200,13 +200,14 @@ function renderChart(s){
   const md=multiDay(es),gap=md?84:48;let lastX=-1e9;const labs=[];es.forEach((e,i)=>{const x=X(i);if(x-lastX>=gap){labs.push(i);lastX=x}});
   if(labs[labs.length-1]!==n-1){if(n>1&&X(n-1)-X(labs[labs.length-1])<gap)labs.pop();labs.push(n-1)}
   labs.forEach((i,k)=>{const d=md&&(k===0||dayKey(es[i].t)!==dayKey(es[labs[k-1]].t));g+=`<text x="${X(i)}" y="${H-10}" text-anchor="${d&&n>1&&i===n-1?"end":"middle"}">${d?fmtD(es[i].t)+" ":""}${fmtT(es[i].t)}</text>`});
-  // paused time is squeezed out of the x-axis; a dashed line marks where each pause was
-  // labels that would overlap drop to a lower row (up to 3); with no room left the line keeps its length as a tooltip
-  const rowEnd=[-1e9,-1e9,-1e9];
-  (s.pauses||[]).filter(p=>p.from>t0&&p.from<t1).forEach(p=>{const x=XT(p.from),m=Math.round(((p.to??Date.now())-p.from)/6e4),txt=`paused ${m>=60?`${Math.floor(m/60)}h${m%60?` ${m%60}m`:""}`:`${m}m`}`;
-    g+=`<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="var(--warn)" stroke-dasharray="3 4"><title>${txt} (${fmtT(p.from)})</title></line>`;
+  // paused time is squeezed out of the x-axis; a dashed line marks where each pause was (one after the last entry sits on the right edge).
+  // labels that would overlap drop to a lower row (up to 3); with no room left the line keeps its times as a tooltip. Click one to edit it
+  const rowEnd=[-1e9,-1e9,-1e9],when=t=>`${md?fmtD(t)+" ":""}${fmtT(t)}`;
+  (s.pauses||[]).map((p,i)=>({p,i})).filter(({p})=>p.from>=t0).forEach(({p,i})=>{const x=XT(Math.min(p.from,t1)),txt=`paused ${fmtAway(p)}`;
+    const tip=`<title>Paused ${when(p.from)} → ${p.to!=null?when(p.to):"now"} · ${fmtAway(p)}${p.to!=null?"":" so far"} (click to edit)</title>`;
+    g+=`<g class="pauseMark" data-pedit="${i}">${tip}<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="var(--warn)" stroke-dasharray="3 4"/><line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="transparent" stroke-width="12"/></g>`;
     const w=txt.length*6.7,end=x+4+w>W-pr,a=end?x-4-w:x+4,r=rowEnd.findIndex(e=>a>=e+6);if(r<0)return;rowEnd[r]=a+w;
-    g+=`<text x="${end?x-4:x+4}" y="${pt+10+r*13}" text-anchor="${end?"end":"start"}" style="fill:var(--warn)">${txt}</text>`});
+    g+=`<text class="pauseMark" data-pedit="${i}" x="${end?x-4:x+4}" y="${pt+10+r*13}" text-anchor="${end?"end":"start"}" style="fill:var(--warn)">${tip}${txt}</text>`});
   const pts=y.map((v,i)=>`${X(i)},${Y(v)}`).join(" ");
   g+=`<polygon points="${X(0)},${H-pb} ${pts} ${X(n-1)},${H-pb}" fill="var(--accent-soft)" stroke="none"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.25" stroke-linejoin="round"/>`;
   y.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===n-1?5.5:4}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${md?fmtD(es[i].t)+" ":""}${fmtT(es[i].t)} · Lv ${esc(es[i].lv)} ${esc(es[i].pct)}%</title></circle>`});
@@ -214,10 +215,29 @@ function renderChart(s){
 }
 function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x)));const f=x/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
 function fmtP(v){return Number.isInteger(v)?String(v):v.toFixed(1)}
+// how long a pause lasted (or has lasted so far): 7h 50m
+const fmtAway=p=>{const m=Math.round(((p.to??Date.now())-p.from)/6e4);return m>=60?`${Math.floor(m/60)}h${m%60?` ${m%60}m`:""}`:`${m}m`};
+// a time as a datetime-local input value, in local time
+const dtLocal=t=>{const d=new Date(t),p=x=>String(x).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`};
+// the row being edited in the entries table: {sid, t} for an entry, {sid, p: index in s.pauses} for a pause
+let LOG_EDIT=null;
+// entries and pauses, newest first: a pause is a row of its own at the time it started; ✎ turns a row into inputs
 function renderLog(s){
-  const es=[...s.entries].sort((a,b)=>a.t-b.t);const base=es.length?es[0].lv:0,md=multiDay(es),jl=entryJobLvs(s);
-  $("logTable").querySelector("tbody").innerHTML=es.map((e,i)=>{let rate="";if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>=1/60?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):`<span title="under a minute of unpaused time since the last entry">–</span>`}
-    return `<tr data-t="${esc(e.t)}" style="cursor:default"><td>${md?fmtD(e.t)+" ":""}${fmtT(e.t)}</td><td>B${esc(e.lv)}${jl.get(e)?`/J${esc(jl.get(e))}`:""}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td><td><button class="small danger" data-del="${esc(e.t)}" aria-label="Delete entry">✕</button></td></tr>`}).reverse().join("")
+  const es=[...s.entries].sort((a,b)=>a.t-b.t);const base=es.length?es[0].lv:0,ps=s.pauses||[],md=multiDay([...es,...ps.map(p=>({t:p.from}))].sort((a,b)=>a.t-b.t)),jl=entryJobLvs(s);
+  const ed=LOG_EDIT&&LOG_EDIT.sid===s.id?LOG_EDIT:null,when=t=>`${md?fmtD(t)+" ":""}${fmtT(t)}`;
+  const btns=(edit,del,what)=>`<td class="acts"><button class="small" ${edit} aria-label="Edit ${what}" title="Edit ${what}">✎</button> <button class="small danger" ${del} aria-label="Delete ${what}" title="Delete ${what}">✕</button></td>`;
+  const saveBtns='<td class="acts" colspan="2"><button class="small primary" data-save>Save</button> <button class="small" data-cancel>Cancel</button></td>';
+  const inN=(f,v,a)=>`<input type="number" data-f="${f}" value="${v??""}" ${a}>`;
+  const rows=es.map((e,i)=>{
+    if(ed&&ed.t===e.t)return {t:e.t,k:0,h:`<tr class="editRow"><td><input type="datetime-local" data-f="t" value="${dtLocal(e.t)}" aria-label="Time"></td>
+      <td class="nowrap">B ${inN("lv",e.lv,'min="1" max="99" step="1" aria-label="Base level"')} J ${inN("jlv",jl.get(e),'min="1" max="70" step="1" placeholder="?" aria-label="Job level"')}</td>
+      <td>${inN("pct",e.pct,'min="0" max="100" step="0.01" aria-label="EXP %"')}</td><td>${inN("jpct",e.jpct,'min="0" max="100" step="0.01" placeholder="–" aria-label="Job EXP %"')}</td>${saveBtns}</tr>`};
+    let rate="";if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>=1/60?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):`<span title="under a minute of unpaused time since the last entry">–</span>`}
+    return {t:e.t,k:0,h:`<tr data-t="${esc(e.t)}" style="cursor:default"><td>${when(e.t)}</td><td>B${esc(e.lv)}${jl.get(e)?`/J${esc(jl.get(e))}`:""}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td>${btns(`data-edit="${esc(e.t)}"`,`data-del="${esc(e.t)}"`,"entry")}</tr>`}});
+  ps.forEach((p,i)=>rows.push({t:p.from,k:1,h:ed&&ed.p===i?`<tr class="pauseRow editRow"><td colspan="4">Paused from <input type="datetime-local" data-f="from" value="${dtLocal(p.from)}" aria-label="Paused from">
+      to <input type="datetime-local" data-f="to" value="${p.to!=null?dtLocal(p.to):""}" aria-label="Paused until"> <span class="note">empty: still paused</span></td>${saveBtns}</tr>`
+    :`<tr class="pauseRow"><td colspan="5">Paused ${when(p.from)} → ${p.to!=null?when(p.to):"now"} · ${fmtAway(p)}${p.to!=null?"":" so far"}</td>${btns(`data-pedit="${i}"`,`data-pdel="${i}"`,"pause")}</tr>`}));
+  $("logTable").querySelector("tbody").innerHTML=rows.sort((a,b)=>a.t-b.t||a.k-b.k).map(r=>r.h).reverse().join("")
     ||`<tr><td colspan="6" class="name muted">No entries yet. Add your current level and EXP %.</td></tr>`;
   $("setupNote").textContent=s.job&&s.job!==state.job?`This session was logged as ${s.job}. Switch Job to ${s.job} to see its pace and walking time.`:"";
 }

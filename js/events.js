@@ -153,8 +153,40 @@ $("tripBtns").addEventListener("click",e=>{const b=e.target.closest("[data-trip]
     if(wasPaused){save();renderAll();return}}
   save();renderTrip()});
 $("tripMin").addEventListener("input",e=>{const v=num(e.target.value);if(v>0)state.tripMin=v;else delete state.tripMin;save();renderTrip()});
-$("logTable").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=cur();s.entries=s.entries.filter(x=>x.t!==+b.dataset.del);save();renderAll()});
-const openSession=id=>{state.current=id;state.calcMobId=null;save();renderAll();resetForm()};
+// entries table: ✎ edits an entry or a pause in place (Enter saves, Esc cancels), ✕ deletes it
+$("logTable").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const s=cur(),d=b.dataset;$("logMsg").textContent="";
+  if(d.edit!=null||d.pedit!=null){LOG_EDIT=d.edit!=null?{sid:s.id,t:+d.edit}:{sid:s.id,p:+d.pedit};renderLog(s);const i=$("logTable").querySelector(".editRow input");if(i)i.focus();return}
+  if(d.cancel!=null){LOG_EDIT=null;renderLog(s);return}
+  if(d.del!=null)s.entries=s.entries.filter(x=>x.t!==+d.del);
+  else if(d.pdel!=null)(s.pauses||[]).splice(+d.pdel,1);
+  else if(d.save!=null){const err=saveLogEdit(s,b.closest("tr"));if(err){$("logMsg").textContent=err;return}}
+  else return;
+  LOG_EDIT=null;save();renderAll();syncChar()});
+$("logTable").addEventListener("keydown",e=>{const tr=e.target.closest(".editRow");if(!tr)return;
+  if(e.key==="Enter"){e.preventDefault();tr.querySelector("[data-save]").click()}else if(e.key==="Escape")tr.querySelector("[data-cancel]").click()});
+// a pause marked on the EXP progress chart opens for editing in the entries table
+$("chart").addEventListener("click",e=>{const m=e.target.closest("[data-pedit]");if(!m)return;const s=cur();LOG_EDIT={sid:s.id,p:+m.dataset.pedit};$("logMsg").textContent="";renderLog(s);
+  const tr=$("logTable").querySelector(".editRow");if(tr){tr.scrollIntoView({block:"center",behavior:"smooth"});tr.querySelector("input").focus({preventScroll:true})}});
+// saves the row being edited; returns what's wrong with it instead, leaving it unsaved
+function saveLogEdit(s,tr){const v=f=>{const i=tr.querySelector(`[data-f="${f}"]`);return i?i.value.trim():""},ed=LOG_EDIT;if(!ed||ed.sid!==s.id)return "";
+  // a time left as it was keeps its seconds
+  const when=(f,old)=>old!=null&&v(f)===dtLocal(old)?old:v(f)?new Date(v(f)).getTime():NaN;
+  if(ed.p!=null){const p=(s.pauses||[])[ed.p];if(!p)return "";const from=when("from",p.from),to=v("to")?when("to",p.to):null;
+    if(!isFinite(from))return "Pick when the pause started.";if(to!=null&&!(to>from))return "A pause has to end after it starts.";
+    if(s.pauses.some(q=>q!==p&&from<(q.to??Infinity)&&(to??Infinity)>q.from))return "That overlaps another pause.";
+    p.from=from;if(to==null)delete p.to;else p.to=to;return ""}
+  const e=s.entries.find(x=>x.t===ed.t);if(!e)return "";
+  const t=when("t",e.t),lv=+v("lv"),pc=+v("pct"),jp=v("jpct"),jl=v("jlv"),jcap=jobMax(jobTier(s.job||state.job)),was=entryJobLvs(s).get(e);
+  if(!isFinite(t))return "Pick a date and time.";if(t!==e.t&&s.entries.some(x=>x!==e&&x.t===t))return "Another entry already has that time.";
+  if(!(Number.isInteger(lv)&&lv>=1&&lv<=99))return "Base level is 1 to 99.";if(v("pct")===""||!(pc>=0&&pc<=100))return "EXP % is 0 to 100.";
+  if(jp!==""&&!(+jp>=0&&+jp<=100))return "Job EXP % is 0 to 100.";if(jl!==""&&!(Number.isInteger(+jl)&&+jl>=1&&+jl<=jcap))return `Job level is 1 to ${jcap}.`;
+  Object.assign(e,{t,lv,pct:pc});if(jp==="")delete e.jpct;else e.jpct=+jp;
+  // a job level you changed is saved on the entry; one left as worked out stays worked out
+  if(jl==="")delete e.jlv;else if(e.jlv||+jl!==was)e.jlv=+jl;
+  // the newest entry is where you are now
+  if(s===cur()&&(s.job||state.job)===state.job&&s.entries.every(x=>x.t<=t)){const c0=C();if(c0.baseLv!==lv){const b0=derived(c0);c0.baseLv=lv;shiftByStats(c0,b0)}if(e.jlv)c0.jobLv=e.jlv}
+  return ""}
+const openSession=id=>{state.current=id;state.calcMobId=null;LOG_EDIT=null;save();renderAll();resetForm()};
 // accounts: switching saves this one and reloads the page with the other one's data
 function renderAccts(){$("acctSel").innerHTML=accts.list.map(a=>`<option value="${esc(a.id)}" ${a.id===accts.active?"selected":""}>${esc(a.name)}</option>`).join("");$("delAcct").disabled=accts.list.length<2}
 const switchAcct=id=>{save();accts.active=id;saveAccts();location.reload()};
