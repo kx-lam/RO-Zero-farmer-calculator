@@ -363,6 +363,20 @@ t("monsters with no EXP in rozerodb are listed but left out of EXP averages", ()
   assert.ok(r.epk > 0 && isFinite(r.epm));
 });
 
+t("mini bosses are tagged apart from Boss class: Vocal is a mini boss, Owl Duke only Boss class", () => {
+  const mob = name => `MOBS.find(m=>m.name===${JSON.stringify(name)})`;
+  assert.equal(run(`JSON.stringify([${mob("Vocal")}.mini,${mob("Vocal")}.boss,${mob("Eclipse")}.mini,${mob("Eclipse")}.boss,${mob("Owl Duke")}.mini,${mob("Owl Duke")}.boss,${mob("Poring")}.mini])`),
+    JSON.stringify([true, false, true, true, false, true, false]));
+  // every listed mini boss is a monster we have, spawning at most twice on a map
+  assert.equal(run(`[...MINIBOSS].filter(id=>!MOBS.some(m=>m.id===id)).length`), 0);
+  assert.ok(run(`MOBS.filter(m=>m.mini).every(m=>(SPAWN[m.id]||[]).every(([,n])=>n<=5))`));
+  assert.ok(run(`BOSS_PILL(${mob("Vocal")})`).includes(">mini boss<") && run(`BOSS_PILL(${mob("Vocal")})`).includes("not Boss class"));
+  assert.ok(run(`BOSS_PILL(${mob("Owl Duke")})`).includes(">boss<"));
+  assert.equal(run(`BOSS_PILL(${mob("Poring")})`), "");
+  // the name filter text carries the tag, so "mini" finds them
+  assert.ok(run(`matchF("mini",null,colText(${mob("Vocal")},"name"))`) && !run(`matchF("mini",null,colText(${mob("Poring")},"name"))`));
+});
+
 t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts monsters with no EXP", () => {
   setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   const mob = MOB.replace("drops:[]", "drops:[],loot:500");
