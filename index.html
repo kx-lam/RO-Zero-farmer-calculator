@@ -7,12 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=70af187631">
+<link rel="stylesheet" href="style.css?v=9cffde9df8">
+<!-- full width is a per-device display choice: set it before the page draws so it doesn't jump -->
+<script>try{if(localStorage.getItem("rozero-farm-planner-wide")==="1")document.documentElement.classList.add("wide")}catch(e){}</script>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1 id="title">Rozero farm planner</h1><div class="note" id="subtitle"></div><div class="note" id="pauseNote" hidden></div>
+    <div class="titleRow"><h1 id="title">Rozero farm planner</h1><button type="button" class="small" id="wideBtn" aria-pressed="false" title="Let the page use the whole window width">Full width</button></div><div class="note" id="subtitle"></div><div class="note" id="pauseNote" hidden></div>
   </header>
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" data-tabbtn="acct">Account</button>
@@ -539,6 +541,6 @@
 <script src="js/skills.js?v=e8fa1aca96"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>
 <script src="js/ref.js?v=9650c97775"></script>
-<script src="js/start.js?v=f9a8bc32b7"></script>
+<script src="js/start.js?v=cc10b74f5b"></script>
 </body>
 </html>
