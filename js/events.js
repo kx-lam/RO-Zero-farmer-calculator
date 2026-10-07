@@ -86,6 +86,18 @@ Object.entries(aMap).forEach(([id,k])=>{const h=e=>{const c=C();const v=e.target
 // items skills use up: casts per kill of support skills and your price per item (blank = NPC price), saved per job
 $("useItems").addEventListener("input",e=>{const i=e.target,c=C();if(i.dataset.supk){c.supCasts=c.supCasts||{};c.supCasts[i.dataset.supk]=Math.max(0,num(i.value))}
   else if(i.dataset.iprice){c.itemPrices=c.itemPrices||{};if(i.value==="")delete c.itemPrices[i.dataset.iprice];else c.itemPrices[i.dataset.iprice]=Math.max(0,num(i.value))}else return;save();renderAll()});
+// Recovery items: HP / SP item picks, Scale by stats and its reference stats (per job), Buy with Discount (per account), your values per item
+$("recHp").addEventListener("change",e=>{REC().hpItem=e.target.value;save();renderAll()});
+$("recSp").addEventListener("change",e=>{REC().spItem=e.target.value;save();renderAll()});
+$("recDisc").addEventListener("change",e=>{state.recovery.discount=e.target.checked;save();renderAll()});
+$("recScale").addEventListener("change",e=>{REC().scaleByStats=e.target.checked;save();renderAll()});
+$("recRef").addEventListener("input",e=>{const k=e.target.dataset.rref;if(!k)return;const r=REC().refStats;if(e.target.value==="")delete r[k];else r[k]=Math.max(0,num(e.target.value));save();renderAll()});
+// a value typed back to the default (or cleared) drops the change
+$("recTable").addEventListener("input",e=>{const i=e.target,id=i.dataset.rid,k=i.dataset.rk;if(!id||!k||!RECOVERY[id])return;const O=REC().overrides,o=O[id]=O[id]||{};
+  if(i.value===""||+i.value===RECOVERY[id][k])delete o[k];else o[k]=Math.max(0,num(i.value));if(!Object.keys(o).length)delete O[id];save();renderAll()});
+$("recTable").addEventListener("change",e=>{if(e.target.dataset.rid)setTimeout(renderRecovery,0)});
+$("recTable").addEventListener("focusout",()=>setTimeout(renderRecovery,0));
+$("recTable").addEventListener("click",e=>{const a=e.target.closest("[data-rreset]");if(!a)return;e.preventDefault();delete REC().overrides[a.dataset.rreset];save();renderAll()});
 $("partyN").addEventListener("input",e=>{cur().partyN=num(e.target.value,1)||1;save();renderAll()});
 $("dropBonus").value=state.dropBonus||0;$("dropBonus").addEventListener("input",e=>{state.dropBonus=num(e.target.value);save();renderAll()});
 $("bonus").addEventListener("input",e=>{state.bonus=num(e.target.value);save();renderAll()});
@@ -246,7 +258,7 @@ $("mobInfoMaps").addEventListener("click",e=>{const tr=e.target.closest("tr[data
 $("itemGroup").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<option value="${g}">${n}</option>`).join(""));
 $("itemSearch").addEventListener("input",renderItems);$("itemGroup").addEventListener("change",renderItems);
 // Compare sessions, Monster info, Item info, Market and the Hunter tables: click a header to sort (again to flip it), type under it to filter; saved per table
-[["cmpTable",renderCompare],["bestTable",renderBest],["huntTable",renderHunt],["mobInfoDrops",renderMobInfo],["mobInfoMaps",renderMobInfo],["itemTable",renderItems],["itemDropTable",renderItems],["priceTable",renderPrices]].forEach(([id,render])=>{const t=$(id);
+[["cmpTable",renderCompare],["bestTable",renderBest],["huntTable",renderHunt],["recTable",renderRecovery],["mobInfoDrops",renderMobInfo],["mobInfoMaps",renderMobInfo],["itemTable",renderItems],["itemDropTable",renderItems],["priceTable",renderPrices]].forEach(([id,render])=>{const t=$(id);
   t.tHead.addEventListener("click",e=>{const th=e.target.closest("th[data-sk]");if(!th)return;const k=th.dataset.sk,[k0,d0]=tblSort(id);
     const c=TABLES[id].cols[k];state.tsort[id]=[k,k===k0?-d0:c.n&&!c.asc?-1:1];save();render()});
   t.querySelectorAll("[data-tf]").forEach(inp=>{inp.value=(state.tfilt[id]||{})[inp.dataset.tf]||"";
@@ -280,7 +292,7 @@ const unpackShare=async t=>new Response(new Blob([b64u.dec(t)]).stream().pipeThr
 // before deflating, a share link leaves out what the page fills back in by itself: character fields still at their defaults (C, AC, CRD, ECO
 // and G fill a missing one key by key), the gear totals applyBuild works out again (bx) and settings still at their defaults (D).
 // Log entries go in column by column, each time and level as the change from the entry before. unpackState puts it all back; $p marks a packed save
-const SHARE_SUB={ac:AC_D,cards:CARD_D,ec:EC_D,sage:SAGE_D};
+const SHARE_SUB={ac:AC_D,cards:CARD_D,ec:EC_D,sage:SAGE_D,recovery:REC_D};
 const isObj=o=>!!o&&typeof o==="object"&&!Array.isArray(o),jsEq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const shareRef=j=>{const d=charDefault(j);for(const k in SHARE_SUB)d[k]={...SHARE_SUB[k],...d[k]};return JSON.parse(JSON.stringify(d))};
 const SHARE_DELTA=["t","lv"];
@@ -324,7 +336,7 @@ $("bkRestore").addEventListener("click",()=>{let data;try{data=JSON.parse($("bkT
   $("bkMsg").textContent="Restored. Reloading…";try{location.reload()}catch(err){$("bkMsg").textContent="Restored. Reload the page to see it."}});
 // ---- show / hide table columns (saved per table) ----
 (function setupColPicks(){
-  const IDS=["cmpTable","mobTable","bestTable","huntTable","mapTable","priceTable","mobInfoDrops","mobInfoMaps","itemTable","itemDropTable"];
+  const IDS=["cmpTable","mobTable","bestTable","huntTable","recTable","mapTable","priceTable","mobInfoDrops","mobInfoMaps","itemTable","itemDropTable"];
   if(!state.hideCols)state.hideCols={};
   const st=document.createElement("style");document.body.appendChild(st);
   // hidden columns are saved by header name, so adding or moving a column doesn't hide the wrong one; the position is looked up here
