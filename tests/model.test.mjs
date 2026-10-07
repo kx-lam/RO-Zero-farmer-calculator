@@ -1097,6 +1097,13 @@ t("event consumables: presets and the effect lines they use", () => {
   assert.equal(run(`killExp(${mob})`), 100); assert.equal(run(`killJobExp(${mob})`), 60);
   run(`C().cons=[{on:true,name:"Growth Elixir",eff:"Base/Job EXP +50%"}]`);
   assert.equal(run(`killExp(${mob})`), 150); assert.equal(run(`killJobExp(${mob})`), 90);
+  // Ale's Blessing: HP / SP items and Heal received +20%
+  setup("Merchant", { st: {}, cons: [], autoSp: false, potOn: false });
+  run(`state.recovery={discount:true}`);
+  near(run(`recItem("501").avg`), 45);
+  run(`C().cons=[{on:true,name:"Ale's Blessing",eff:CONS_PRESETS.find(p=>p.name==="Ale's Blessing").eff}]`);
+  near(run(`recItem("501").avg`), 54); near(run(`recItem("548").avg`), 32 * 1.2);
+  run(`CRD().healHp=100`); near(run(`healHpEff()`), 120);
   run(`C().cons=[]`);
 });
 

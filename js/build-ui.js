@@ -32,7 +32,7 @@ const YGG_FX=[...["str","agi","vit","int","dex","luk"].map(k=>[k,7]),["atk",30],
 // effect lines the status window can't show, read before the usual options (they count whether or not "add on top" is ticked):
 // "SP +5% every 5s" / "HP +20 every 5 sec" / "SP +2/s" -> restored per second (sp_regen, sp_regen_pct of Max SP, same for HP),
 // "SP consumption -10%" -> sp_cost_percent, "Fixed cast -30%" -> fct_percent (only the highest % cut counts), "Crit damage +5%" -> crit_dmg,
-// "Base/Job EXP +50%" -> exp_base / exp_job, "Casting cannot be interrupted" -> no_break. "All stats +5" is the six stats;
+// "Base/Job EXP +50%" -> exp_base / exp_job, "Recovery items +20%" -> rec_item_pct (HP and SP items restore more), "Heal received +20%" -> heal_pct, "Casting cannot be interrupted" -> no_break. "All stats +5" is the six stats;
 // "ATK/MATK +30" and "Max HP/Max SP +5%" are split into one line each
 const TIMED_RE=/^(max\s*hp|mhp|hp|max\s*sp|msp|sp)\s*\+\s*(\d+(?:\.\d+)?)\s*(%?)\s*(?:every|per|\/)\s*(\d+(?:\.\d+)?)?\s*s(?:ec(?:onds?)?)?$/i;
 function parseCons(txt){const lines=[],rest=[];
@@ -42,6 +42,8 @@ function parseCons(txt){const lines=[],rest=[];
     if(pct(/^(?:skill\s*)?sp\s*consumption\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"sp_cost_percent"))return;
     if(pct(/^fixed\s*cast(?:ing)?(?:\s*time)?\s*(-\s*\d+(?:\.\d+)?)\s*%$/i,"fct_percent"))return;
     if(pct(/^crit(?:ical)?\s*damage\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"crit_dmg"))return;
+    if(pct(/^(?:recovery|healing)\s*items?\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"rec_item_pct"))return;
+    if(pct(/^(?:incoming\s*)?heal(?:\s*received)?\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i,"heal_pct"))return;
     if((m=p.match(/^(base|job|base\s*\/\s*job)\s*exp\s*([+-]\s*\d+(?:\.\d+)?)\s*%$/i))){const v=parseFloat(m[2].replace(/\s/g,""));
       if(/base/i.test(m[1]))lines.push(["exp_base",null,null,v]);if(/job/i.test(m[1]))lines.push(["exp_job",null,null,v]);return}
     if(/^cast(?:ing)?\s*(?:can\s*not|cannot|can't)\s*be\s*interrupted$/i.test(p)){lines.push(["no_break",null,null,1]);return}
@@ -58,7 +60,8 @@ const CONS_PRESETS=[
   {name:"Unlimited Drink",eff:"Max HP/Max SP +5%, Crit damage +5%, Casting cannot be interrupted",note:"ranged physical / magic damage +5% not counted: add it to Melee / ranged dmg %"},
   {name:"Premium Course Meal",eff:"All stats +5, ATK/MATK +20"},
   {name:"Enriched Abrasive",eff:"CRIT +30"},
-  {name:"Growth Elixir",eff:"Base/Job EXP +50%"}];
+  {name:"Growth Elixir",eff:"Base/Job EXP +50%"},
+  {name:"Ale's Blessing",eff:"Recovery items +20%, Heal received +20%"}];
 const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C());if(C().yggOn)YGG_FX.forEach(([t,v])=>lines.push([t,null,null,v]));
   STAT6_UI.forEach(k=>{const o=cs[k]||{};if(num(o.n))lines.push([k,null,null,num(o.n)]);if(num(o.p))lines.push([k+"_percent",null,null,num(o.p)])});
   OWN_LISTS.forEach(L=>rowsOf(C(),L.key).filter(r=>r.on).forEach(r=>{const o=parseCons(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||L.what}: ${x}`))}));return {lines,bad}};

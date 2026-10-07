@@ -228,7 +228,7 @@ const hitsOnYou=m=>{if(!m||m.atkMin==null)return 0;const dg=dodge(m);return Math
 function defense(m){
   const raw=mobHitDmg(m);if(raw==null)return null;const hits=hitsOnYou(m);
   const sf=isSF(),max=num(cf("maxSp")),ec=ecOn(),regen=regenPerSec(),up=sf?sgUpkeep():skillSPPerSec(),hs=sf?hsFullSP():0,spMul=sf?sgSpMult():spCostMul();
-  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),cd=CRD(),healSP=cd.vitata&&num(cd.healHp)>0?hp/num(cd.healHp)*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
+  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),cd=CRD(),healSP=cd.vitata&&healHpEff()>0?hp/healHpEff()*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
   const cost=b=>up+b.ecSP+b.healSP;
   let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
   if(!b){const p=num(ECO().spPct,50);b=itemsOnNow()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}
@@ -238,7 +238,9 @@ function defense(m){
 // or an attack's worth of time if that's longer) is time you aren't attacking. healShare is that share of your time; at 100% you can't keep up
 const HEAL_DELAY=0.3;
 const healSec=()=>Math.max(HEAL_DELAY,1/atkPerSec());
-const healsPerSec=m=>{const cd=CRD();if(!cd.vitata||!(num(cd.healHp)>0))return 0;const hp=(defense(m)||{}).hp;return hp>0?hp/num(cd.healHp):0};
+// HP one Vitata Heal gives you: the box, + "Heal received +x%" from consumables (Ale's Blessing)
+const healHpEff=()=>num(CRD().healHp)*(1+consSum("heal_pct")/100);
+const healsPerSec=m=>{const cd=CRD();if(!cd.vitata||!(healHpEff()>0))return 0;const hp=(defense(m)||{}).hp;return hp>0?hp/healHpEff():0};
 const healShare=m=>healsPerSec(m)*healSec();
 let SG_MOB=null; // monster the SP balance is worked out against
 const defSP=()=>{const m=SG_MOB||calcMob();const d=m?defense(m):null;return d?d.extra:0};
@@ -306,17 +308,19 @@ const REC_D={hpItem:"auto",spItem:"auto",overrides:{}};
 const REC=()=>{const c=C();if(!c.recovery||typeof c.recovery!=="object")c.recovery={};const r=c.recovery;for(const k in REC_D)if(r[k]==null||typeof r[k]!==typeof REC_D[k])r[k]=JSON.parse(JSON.stringify(REC_D[k]));return r};
 const recDisc=()=>!state.recovery||state.recovery.discount!==false;
 const REC_IDS=Object.keys(RECOVERY);
-// one item with your changes: avg restored (min and max averaged), the price used (Discount or NPC price, else the player price; null = n/a),
+// HP / SP items restore more with a consumable such as Ale's Blessing (+20%)
+const recMul=()=>1+consSum("rec_item_pct")/100;
+// one item with your changes: avg restored (min and max averaged, × recMul), the price used (Discount or NPC price, else the player price; null = n/a),
 // zeny per HP / SP and HP / SP per weight
 function recItem(id){const b=RECOVERY[id];if(!b)return null;const o=REC().overrides[id]||{},v=k=>o[k]!=null?o[k]:b[k];
-  const min=num(v("min")),max=Math.max(min,num(v("max"))),avg=(min+max)/2,w=num(v("w")),npc=v("npc"),disc=v("disc"),player=v("player");
+  const min=num(v("min")),max=Math.max(min,num(v("max"))),avg=(min+max)/2*recMul(),w=num(v("w")),npc=v("npc"),disc=v("disc"),player=v("player");
   const src=npc!=null?(recDisc()&&disc!=null?"disc":"npc"):player!=null?"player":null,price=src?{disc,npc,player}[src]:null;
   return {id,name:b.name,kind:b.kind,min,max,avg,w,wOk:b.wOk!==false,npc,disc,player,src,price,per:price!=null&&avg>0?price/avg:null,perW:w>0?avg/w:null,edited:Object.keys(o).length>0}}
 const recItems=kind=>REC_IDS.filter(id=>!kind||RECOVERY[id].kind===kind).map(recItem);
 const recCheapest=kind=>recItems(kind).filter(x=>x.per!=null).sort((a,b)=>a.per-b.per)[0]||null;
 // the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price); null with "none"
 function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];if(k==="none")return null;
-  if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
+  if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp)*recMul(),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
   const it=RECOVERY[k]&&RECOVERY[k].kind===kind?recItem(k):null;if(it&&it.per!=null)return it;const ch=recCheapest(kind);return ch?{...ch,auto:true,want:it}:null}
 const spItemAmt=()=>{const p=recPick("sp");return p?num(p.avg):0};
 const spItemPrice=()=>{const p=recPick("sp");return p?num(p.price):0};
