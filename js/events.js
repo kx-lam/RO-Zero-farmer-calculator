@@ -254,15 +254,18 @@ $("closedMaps").addEventListener("change",e=>{state.closed=[...new Set(e.target.
 ROOTQ("[data-hunt]").forEach(b=>b.addEventListener("click",()=>{state.huntMode=b.dataset.hunt;save();renderHunt()}));
 $("huntMin").addEventListener("input",renderHunt);$("huntN").addEventListener("change",renderHunt);
 $("huntAuto").addEventListener("change",e=>{state.huntAuto=e.target.checked;save();renderHunt()});
+// level filter: a Lv range (blank = any) and skipping monsters with a drop level penalty
+["huntMinLv","huntMaxLv"].forEach(id=>{$(id).value=state[id]??"";$(id).addEventListener("input",e=>{state[id]=e.target.value===""?null:Math.round(num(e.target.value));save();renderHunt()})});
+$("huntNoPen").checked=state.huntNoPen;$("huntNoPen").addEventListener("change",e=>{state.huntNoPen=e.target.checked;save();renderHunt()});
 $("teleSec").value=state.teleSec??1;
 $("teleSec").addEventListener("input",e=>{if(e.target.value==="")delete state.teleSec;else state.teleSec=Math.max(0,num(e.target.value));save();renderHunt()});
 // auto loot: one tick box per group; it changes zeny everywhere
 $("autoLoot").insertAdjacentHTML("beforeend",LOOT_GROUPS.map(([g,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-loot="${g}" style="width:auto"> ${n}</label>`).join(""));
 $("autoLoot").addEventListener("change",e=>{const i=e.target.closest("[data-loot]");if(!i)return;state.autoLoot[i.dataset.loot]=i.checked;save();renderAll()});
 // pick the monsters to hunt on a map: the first click copies the current picks (all, or the best-paying ones) and toggles that monster;
-// you always hunt at least one. "reset" goes back to all / best-paying
+// you always hunt at least one the level filter allows. "reset" goes back to all / best-paying
 const huntPick=(mp,id)=>{const r=huntMap(mp,walkSec(),num($("huntMin").value));if(!r)return;const off=new Set(r.mobs.filter(x=>!x.on).map(x=>x.m.id));
-  off.has(id)?off.delete(id):off.add(id);if(r.mobs.every(x=>off.has(x.m.id)))return;state.huntOff[mp]=[...off];save();renderAll()};
+  off.has(id)?off.delete(id):off.add(id);if(r.mobs.every(x=>x.lvOut||off.has(x.m.id)))return;state.huntOff[mp]=[...off];save();renderAll()};
 // market prices: add by name ("Name #id" from the list, or a unique name), edit, remove, or click a drop in the table
 const DROP_IDS=[...new Set(MOBS.flatMap(m=>(m.drops||[]).map(d=>String(d[0]))))].filter(id=>ITEMN[id]);
 $("priceList").innerHTML=DROP_IDS.map(id=>`<option value="${esc(ITEMN[id])} #${id}"></option>`).join("");

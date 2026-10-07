@@ -86,7 +86,7 @@ tbody tr{cursor:pointer}
 #mobInfoDrops td.name,#mobInfoMaps td.name,#itemTable td.name,#itemDroppers td.name{text-align:left}
 #mobInfoMaps td:last-child{white-space:normal}
 #huntTable a.hpick{text-decoration:none;color:var(--fg)}
-#huntTable a.hpick.off{color:var(--muted);text-decoration:line-through}
+#huntTable .hpick.off{color:var(--muted);text-decoration:line-through}
 #huntTable .drop.off a{color:var(--muted)}
 .pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-family:var(--body)}
 .pill.up{color:var(--good);border-color:var(--good)}

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=d9723c37c1">
+<link rel="stylesheet" href="style.css?v=572710bffe">
 <!-- full width is a per-device display choice: set it before the page draws so it doesn't jump -->
 <script>try{if(localStorage.getItem("rozero-farm-planner-wide")==="1")document.documentElement.classList.add("wide")}catch(e){}</script>
 </head>
@@ -400,6 +400,8 @@
       </div>
       <label id="huntMinWrap">Min monsters on map<input id="huntMin" type="number" value="20" style="width:90px"></label>
       <label>Show<select id="huntN"><option>10</option><option>20</option><option>50</option></select></label>
+      <label title="Only hunt monsters of these levels: on a map you pass the rest by. Blank: any level">Monster Lv<span class="bar"><input id="huntMinLv" type="number" min="1" max="99" placeholder="any" style="width:70px"> to <input id="huntMaxLv" type="number" min="1" max="99" placeholder="any" style="width:70px"></span></label>
+      <label title="Pass by monsters 40 or more levels below you: their drops fall 50%. Follows your base level as you level up"><span>&nbsp;</span><span class="bar"><input type="checkbox" id="huntNoPen" style="width:auto"> Skip drop-penalty monsters</span></label>
       <label id="huntAutoWrap"><span>&nbsp;</span><span class="bar"><input type="checkbox" id="huntAuto" style="width:auto"> Hunt only the best-paying monsters</span></label>
       <label title="seconds lost per teleport (casting, loading the screen). Teleports only count with a Creamy Card or the Teleport skill">Sec / teleport<input id="teleSec" type="number" min="0" step="0.5" style="width:90px"></label>
     </div>
@@ -561,10 +563,10 @@
 <script src="build.js?v=99fe625055"></script>
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
 <script src="js/game.js?v=4e3b2fd995"></script>
-<script src="js/state.js?v=5eccbc31d6"></script>
-<script src="js/model.js?v=8953557715"></script>
-<script src="js/render.js?v=e862babbde"></script>
-<script src="js/events.js?v=0caefe640f"></script>
+<script src="js/state.js?v=61cd8f55bd"></script>
+<script src="js/model.js?v=dce5185c8b"></script>
+<script src="js/render.js?v=869c1df29a"></script>
+<script src="js/events.js?v=8c73f530aa"></script>
 <script src="js/skills.js?v=4e9e35293d"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>
 <script src="js/ref.js?v=0cc8633f35"></script>

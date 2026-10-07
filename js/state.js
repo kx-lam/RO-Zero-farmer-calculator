@@ -44,6 +44,9 @@ state.npcPrices=Object.fromEntries(Object.entries(numMap(state.npcPrices)).filte
 state.autoLoot=Object.fromEntries(Object.entries(state.autoLoot&&typeof state.autoLoot==="object"?state.autoLoot:{}).filter(([k,v])=>/^[waueco]$/.test(k)&&typeof v==="boolean"));
 state.huntOff=Object.fromEntries(Object.entries(state.huntOff&&typeof state.huntOff==="object"?state.huntOff:{}).filter(([,v])=>Array.isArray(v)).map(([k,v])=>[String(k),v.map(Number).filter(Number.isFinite)]));
 state.huntAuto=state.huntAuto===true;
+// the Zeny Hunter's level filter: a monster Lv range (whole numbers, null = any) and "Skip drop-penalty monsters" (true/false)
+["huntMinLv","huntMaxLv"].forEach(k=>{state[k]=state[k]!=null&&state[k]!==""&&Number.isFinite(+state[k])?Math.round(+state[k]):null});
+state.huntNoPen=state.huntNoPen===true;
 // sort ([column, 1 or -1]) and column filters (text) of the Monster info, Item info, Market and Hunter tables, by table id
 const objOr=o=>o&&typeof o==="object"&&!Array.isArray(o)?o:{};
 state.tsort=Object.fromEntries(Object.entries(objOr(state.tsort)).filter(([,v])=>Array.isArray(v)&&typeof v[0]==="string"&&(v[1]===1||v[1]===-1)));
