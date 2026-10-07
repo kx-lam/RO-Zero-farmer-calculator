@@ -12,5 +12,6 @@ The numbers are estimates. Skill values and formulas follow the sources below an
 - Monster race and HP cross-check: [einh-guild.de](https://einh-guild.de), [midgardhub.com](https://midgardhub.com/database/monsters)
 - Formulas: [roz.prontera.info/mechanics](https://roz.prontera.info/mechanics), [iRO Wiki](https://irowiki.org/wiki/Stats)
 - Zero skill data, element table and ASPD table: [Landgris ROCalculator](https://landgris.github.io/ROCalculator/?zero)
+- Consumables: values from the in-game item tooltips (Ragnarok Zero Global), such as Blessing of Yggdrasil HIT / FLEE +5 and Premium Course Meal ATK / MATK +20, where Landgris differs. How they stack follows Landgris: stat food and Blessing of Yggdrasil take the higher per stat, course meals and event drinks add on top
 - Size table and EXP tables: [official game guide](https://roz.mygnjoy.com/en/intro/guide/12)
 - Drop rate level penalty: [official game guide](https://roz.mygnjoy.com/en/intro/guide/11)
