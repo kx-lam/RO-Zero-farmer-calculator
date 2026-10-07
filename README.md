@@ -63,7 +63,7 @@ It's a single page that runs entirely in your browser. There's no server, no log
   - Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F). You can also type the database code (`sp_d05`).
   - Monsters with no EXP data yet (Myst, Isis, Anubis…) show EXP `?` and are left out of EXP/min.
   - Skip monsters you don't want to fight, and mark regions that aren't open yet as closed.
-- **Zeny Hunter:** open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite zeny, catalysts, arrows, support casts), SP items, the ASPD potion and Sage ground buffs.
+- **Zeny Hunter:** open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite zeny, catalysts, arrows, support casts), HP items for the HP you lose and SP items (both from Recovery items), the ASPD potion and Sage ground buffs. Hover Costs / hr to see each.
   - Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
   - Converters are picked by zeny rather than EXP. Monsters with no EXP data still count, since they drop loot.
   - Monsters mode lists every drop with your chance and what it adds per kill.

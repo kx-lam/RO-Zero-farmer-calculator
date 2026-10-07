@@ -520,9 +520,13 @@ function startTrip(s,now=Date.now()){const min=tripMinutes(s);if(!(min>0))return
 
 
 // ---- Zeny Hunter: maps and monsters ranked by net zeny per hour ----
-// loot per hour (with your drop bonus, less skill costs such as Mammonite, catalysts and arrows) minus SP items, the ASPD potion and ground buffs.
+// loot per hour (with your drop bonus, less skill costs such as Mammonite, catalysts and arrows) minus HP and SP items, the ASPD potion and ground buffs.
 // Unlike the EXP rankings, monsters with no EXP in rozerodb still count here: they drop loot all the same
-const huntCostHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600*spItemPrice()+hourCostHr()}finally{SG_MOB=k}};
+// SP items per hour against a monster (spItemsHr), and the SP items, ASPD potion and ground buffs per hour (huntCostHr). The hunters add HP items
+// for the HP lost (huntCosts: hpHr, hpZ, spHr, spZ, other, cost = all of them)
+const spItemsHr=m=>{const k=SG_MOB;SG_MOB=m||null;try{return itemsPerSec()*3600}finally{SG_MOB=k}};
+const huntCostHr=m=>spItemsHr(m)*spItemPrice()+hourCostHr();
+const huntCosts=(m,hpm)=>{const spHr=spItemsHr(m),spZ=spHr*spItemPrice(),other=hourCostHr(),hh=hpHeal(hpm);return {hpm,hpHr:hh.n,hpZ:hh.z,spHr,spZ,other,cost:hh.z+spZ+other}};
 // the monsters you hunt on a map (in-game Monster tab): state.huntOff[map] lists the ones you pass by, set by hand in the Zeny Hunter.
 // "Best-paying only" (state.huntAuto) picks for the maps you haven't set: monsters ranked by zeny per second (fight + walk), keeping as many
 // as give the most net zeny/hr while still hunting at least minN spawns (the Zeny Hunter's "Min monsters on map"): a rare spawn is
@@ -546,8 +550,8 @@ function huntMap0(mp,w,minN=0){
   const all=ok.reduce((a,x)=>a+x.n,0);if(!all)return null;
   const at0=(h,n,walk,tele)=>{let time=0,z=0,exp=0,expT=0,hp=0,hpN=0;
     h.forEach(({m,n:c,r})=>{const tot=killTot(m,r.sec,walk);time+=c*tot;z+=c*r.zk;if(!m.expUnknown){exp+=c*r.epk;expT+=c*tot}if(r.hpm!=null){hp+=c*r.hpm*tot;hpN+=c*tot}});
-    const top=h.reduce((a,x)=>!a||x.n>a.n?x:a,null),kph=n/time*3600,loot=z/time*3600,cost=huntCostHr(top.m);
-    return {mp,N,n,walk,tele,kph,secT:time/n,loot,cost,net:loot-cost,zk:z/n,epm:expT?exp/expT*60:null,hpm:hpN?hp/hpN:null,skip:skip.length,skipNames:skip,
+    const top=h.reduce((a,x)=>!a||x.n>a.n?x:a,null),kph=n/time*3600,loot=z/time*3600,hc=huntCosts(top.m,hpN?hp/hpN:null);
+    return {mp,N,n,walk,tele,kph,secT:time/n,loot,...hc,net:loot-hc.cost,zk:z/n,epm:expT?exp/expT*60:null,skip:skip.length,skipNames:skip,
       earn:h.map(({m,n,r})=>({m,n,zk:r.zk})).sort((a,b)=>b.n*b.zk-a.n*a.zk)}};
   const at=h=>{const n=h.reduce((a,x)=>a+x.n,0);if(!n)return null;const walked=at0(h,n,w*Math.sqrt(all/n),0);
     if(n>=all||!canTele()||noTele(mp))return walked;const jumps=all/n-1,tp=at0(h,n,w+jumps*teleSec(),jumps);return tp.net>walked.net?tp:walked};
@@ -562,8 +566,8 @@ function huntMap0(mp,w,minN=0){
   return best;
 }
 // one monster farmed on its own: its zeny per kill over fight + walk time
-function huntMob0(m,w){const r=mobRow0(m,w);if(!isFinite(r.sec)||!(r.tot>0))return null;const loot=r.zk/r.tot*3600,cost=huntCostHr(m);
-  return {m,kph:3600/r.tot,secT:r.tot,loot,cost,net:loot-cost,zk:r.zk,epm:m.expUnknown?null:r.epm,hpm:r.hpm}}
+function huntMob0(m,w){const r=mobRow0(m,w);if(!isFinite(r.sec)||!(r.tot>0))return null;const loot=r.zk/r.tot*3600,hc=huntCosts(m,r.hpm);
+  return {m,kph:3600/r.tot,secT:r.tot,loot,...hc,net:loot-hc.cost,zk:r.zk,epm:m.expUnknown?null:r.epm}}
 // best converter (or Spell Fist bolt) by net zeny rather than EXP
 const bestBy=(fn,k)=>{let best=null;elOptions().forEach(el=>{const r=withEl(el,fn);if(r){r.el2=el;if(!best||r[k]>best[k])best=r}});return best};
 const huntMap=(mp,w,minN)=>bestBy(()=>huntMap0(mp,w,minN),"net");

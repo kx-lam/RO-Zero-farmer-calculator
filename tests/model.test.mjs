@@ -367,18 +367,19 @@ t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts 
   setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   const mob = MOB.replace("drops:[]", "drops:[],loot:500");
   const r = run(`huntMob0(${mob},2)`), sec = run(`fightSec(${mob})`) + 2;
-  near(r.zk, 500); near(r.loot, 500 * 3600 / sec); near(r.net, r.loot); assert.equal(r.cost, 0);
+  near(r.zk, 500); near(r.loot, 500 * 3600 / sec);
+  assert.ok(r.hpZ > 0); near(r.cost, r.hpZ); near(r.net, r.loot - r.hpZ);  // the only cost: HP items for the HP it takes off you
   run(`state.dropBonus=50`);                                            // drop rate bonus scales loot
   near(run(`huntMob0(${mob},2)`).loot, 750 * 3600 / sec);
   run(`state.dropBonus=0;C().a.zeny=100`);                              // Mammonite-style zeny per use comes off each kill
   near(run(`huntMob0(${mob},2)`).zk, 500 - 100 * run(`usesPerKill(${mob})`));
   run(`C().a.zeny=0;C().potOn=true;C().potMin=30;C().potPrice=1000`);   // an ASPD potion every 30 min: 2,000 z/hr
   const p = run(`huntMob0(${mob},2)`);
-  near(p.cost, 2000); near(p.net, p.loot - 2000);
+  near(p.cost, 2000 + p.hpZ); near(p.net, p.loot - 2000 - p.hpZ);
   run(`C().potOn=false`);
   // Myst has no EXP in rozerodb but still drops loot, so it counts towards zeny on its map
   const map = run(`huntMap0("mjo_d03",2)`);
-  assert.ok(map.earn.some(x => x.m.name === "Myst") && map.epm > 0 && map.net > 0);
+  assert.ok(map.earn.some(x => x.m.name === "Myst") && map.epm > 0 && map.loot > 0);  // net can go below 0: this character loses ~4k HP/min there
   // monsters you skip are left out
   const id = run(`MOBS.find(m=>m.name==="Myst").id`);
   run(`state.skipMobs=[${id}]`);
@@ -612,7 +613,7 @@ t("Zeny Hunter monster picks: passing monsters by drops them from the map and le
   assert.equal(run("canTele()"), false);                                     // no Creamy Card, no Teleport skill: Fly Wings cost too much, so it walks
   near(r.walk, walked); assert.equal(r.tele, 0);
   run(`CRD().creamy=true;state.teleSec=0`);                                 // Creamy Card: free, instant teleports beat the longer walk
-  const cr = run(`huntMap0("mjo_d03",2)`); near(cr.tele, jumps); near(cr.walk, 2); near(cr.cost, r.cost);
+  const cr = run(`huntMap0("mjo_d03",2)`); near(cr.tele, jumps); near(cr.walk, 2); near(cr.cost - cr.hpZ, r.cost - r.hpZ);  // HP lost / min is time-weighted, so the walk moves its HP items
   run(`state.noTele=["mjo_d03"]`);                                            // a map that blocks teleport only walks
   const nt = run(`huntMap0("mjo_d03",2)`); near(nt.walk, walked); assert.equal(nt.tele, 0);
   run(`state.noTele=[];CRD().creamy=false;C().skills={teleport:1}`);        // the Teleport skill works the same
@@ -716,6 +717,14 @@ t("recovery items: SP items in the SP model, Heal cost / hr and Net zeny / hr in
   near(m.spZ, m.spHr * 23);
   if (m.hpm != null) near(m.hpZ, m.hpm * 60 / 45 * 8);
   near(run(`mapSpShort("prt_f08",2,null)`) / 32, m.spHr);                 // auto-use on: the items cover the whole shortfall
+  // Zeny Hunter: Costs / hr hold HP items for the HP lost, SP items, the ASPD potion and ground buffs
+  const hm = run(`huntMob0(${mob},2)`);
+  assert.ok(hm.hpm > 0 && hm.hpZ > 0);
+  near(hm.hpZ, hm.hpm * 60 / 45 * 8); near(hm.spZ, hm.spHr * 23); near(hm.cost, hm.hpZ + hm.spZ + hm.other); near(hm.net, hm.loot - hm.cost);
+  near(hm.cost, run(`huntCostHr(${mob})`) + hm.hpZ);
+  const hmap = run(`huntMap0("prt_f08",2)`);
+  near(hmap.cost, hmap.hpZ + hmap.spZ + hmap.other); near(hmap.net, hmap.loot - hmap.cost);
+  if (hmap.hpm != null) near(hmap.hpZ, hmap.hpm * 60 / 45 * 8);
   run(`C().autoSp=false`);                                                  // auto-use off: you rest, no SP items bought
   const m2 = run(`mapStats0("prt_f08",2)`);
   assert.equal(m2.spZ, 0); near(m2.net, m2.zph - m2.hpZ);

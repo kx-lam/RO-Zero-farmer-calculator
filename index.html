@@ -303,7 +303,7 @@
       <span id="recScaleNote"></span>
     </div>
     <div class="scroll"><table id="recTable"><thead><tr><th data-sk="name">Item</th><th data-sk="kind">Type</th><th data-sk="avg" title="min – max restored (edit them); the average is what's counted">Avg amount</th><th data-sk="price" title="With Buy with Discount: the Discount price, else the NPC price; player-only items use the player price">Price used</th><th data-sk="per">Cost per HP / SP</th><th data-sk="perW" title="restored per point of weight (edit the weight)">HP or SP per weight</th><th data-sk="uph">Uses / hr</th><th data-sk="zph">Cost / hr</th><th data-sk="wph">Weight / hr</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr.</div>
+    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
   </section>
 
   <section class="card" data-tab="char" id="skillCard">
@@ -402,8 +402,8 @@
     </div>
     <div class="bar" id="autoLoot" style="align-items:center"><b>Auto loot</b></div>
     <div class="calc" id="huntTiles"></div>
-    <div class="scroll"><table id="huntTable"><thead><tr><th data-sk="rank">#</th><th data-sk="name">Map / monster</th><th data-sk="from" title="maps: the monsters you hunt there; monsters: its map and every drop">Earns from</th><th data-sk="net">Net zeny / hr</th><th data-sk="loot">Loot / hr</th><th data-sk="cost">Costs / hr</th><th data-sk="kph">Kills / hr</th><th data-sk="zk">Zeny / kill</th><th data-sk="epm">EXP / min</th><th data-sk="hpm">HP lost / min</th></tr><tr class="filters"><td><input type="search" data-tf="rank" placeholder="<=5"></td><td><input type="search" data-tf="name" placeholder="map or monster"></td><td><input type="search" data-tf="from" placeholder="card"></td><td><input type="search" data-tf="net" placeholder=">50000"></td><td><input type="search" data-tf="loot" placeholder=">50000"></td><td><input type="search" data-tf="cost" placeholder="<5000"></td><td><input type="search" data-tf="kph" placeholder=">300"></td><td><input type="search" data-tf="zk" placeholder=">100"></td><td><input type="search" data-tf="epm" placeholder=">2000"></td><td><input type="search" data-tf="hpm" placeholder="<500"></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Open maps ranked by net zeny / hr: loot after drop bonus and level penalty, minus skill, SP item and consumable costs. Bosses and skipped monsters are left out; unticked auto-loot groups count as 0 everywhere. Click a monster on a map to stop or start hunting it; skipping monsters costs extra walking, or teleports if you have a Creamy Card or the Teleport skill (never Fly Wings: they cost too much). Click "teleport ok" if a map blocks teleport.</div>
+    <div class="scroll"><table id="huntTable"><thead><tr><th data-sk="rank">#</th><th data-sk="name">Map / monster</th><th data-sk="from" title="maps: the monsters you hunt there; monsters: its map and every drop">Earns from</th><th data-sk="net" title="Loot / hr less Costs / hr">Net zeny / hr</th><th data-sk="loot">Loot / hr</th><th data-sk="cost" title="HP items for the HP lost / min and SP items (priced in Recovery items), the ASPD potion and ground buffs. Hover a row for each">Costs / hr</th><th data-sk="kph">Kills / hr</th><th data-sk="zk">Zeny / kill</th><th data-sk="epm">EXP / min</th><th data-sk="hpm">HP lost / min</th></tr><tr class="filters"><td><input type="search" data-tf="rank" placeholder="<=5"></td><td><input type="search" data-tf="name" placeholder="map or monster"></td><td><input type="search" data-tf="from" placeholder="card"></td><td><input type="search" data-tf="net" placeholder=">50000"></td><td><input type="search" data-tf="loot" placeholder=">50000"></td><td><input type="search" data-tf="cost" placeholder="<5000"></td><td><input type="search" data-tf="kph" placeholder=">300"></td><td><input type="search" data-tf="zk" placeholder=">100"></td><td><input type="search" data-tf="epm" placeholder=">2000"></td><td><input type="search" data-tf="hpm" placeholder="<500"></td></tr></thead><tbody></tbody></table></div>
+    <div class="note">Open maps ranked by net zeny / hr: loot after drop bonus and level penalty, minus skill items, HP and SP items (Recovery items on the Character tab) and consumables. Bosses and skipped monsters are left out; unticked auto-loot groups count as 0 everywhere. Click a monster on a map to stop or start hunting it; skipping monsters costs extra walking, or teleports if you have a Creamy Card or the Teleport skill (never Fly Wings: they cost too much). Click "teleport ok" if a map blocks teleport.</div>
   </section>
 
   <section class="card" id="mapCard" data-tab="maps">
@@ -559,8 +559,8 @@
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
 <script src="js/game.js?v=4e3b2fd995"></script>
 <script src="js/state.js?v=5eccbc31d6"></script>
-<script src="js/model.js?v=07aab84a0a"></script>
-<script src="js/render.js?v=e9da608ddd"></script>
+<script src="js/model.js?v=b5648919aa"></script>
+<script src="js/render.js?v=82b4ff3f8a"></script>
 <script src="js/events.js?v=632ec50a86"></script>
 <script src="js/skills.js?v=4e9e35293d"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>
