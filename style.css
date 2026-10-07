@@ -127,6 +127,11 @@ td .map{cursor:default}
 input:disabled,select:disabled{opacity:.75;background:var(--bg);cursor:not-allowed}
 details.sub{padding:12px 14px;gap:8px;background:var(--bg)}
 .eqlist{display:flex;flex-direction:column;gap:6px}
+/* card tick boxes: one card per line, its numbers only while ticked */
+.cdList{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.cdItem{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding-left:10px}
+.cdItem>label{min-width:150px}
+.cdOpts{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .eqrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .eqrow select,.eqrow input{padding:4px 8px;font-size:13px}
 .eqrow input[type=number]{width:72px}

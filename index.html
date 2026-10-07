@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=e9f6991ea1">
+<link rel="stylesheet" href="style.css?v=5605c21b35">
 <!-- full width is a per-device display choice: set it before the page draws so it doesn't jump -->
 <script>try{if(localStorage.getItem("rozero-farm-planner-wide")==="1")document.documentElement.classList.add("wide")}catch(e){}</script>
 </head>
@@ -132,7 +132,7 @@
       <label>LUK<input id="st_luk" inputmode="numeric"></label>
     </div>
     <div class="note" id="statNote"></div>
-    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add Consumables &amp; buffs and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
+    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add the Consumables card and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
     <details class="card sub" id="eqPanel" open>
       <summary><b>Equipment stats</b> <span class="note">% lines from Equipment Stats that the status window doesn't show</span></summary>
       <div id="eqList" class="eqlist"></div>
@@ -171,21 +171,22 @@
         <label class="bar" style="flex-direction:row;gap:4px"><input id="acPct" type="number" step="0.5" min="0" max="100" style="width:64px">% per basic attack</label>
         <span id="acInfo"></span>
       </div>
-      <div class="bar note" id="cardRow"><span title="Cards any job can slot">Cards (any job):</span>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="vitata" style="width:auto" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost"> Vitata (+<input data-cd="spBonus" type="number" style="width:50px">% SP cost; you cast Heal Lv1: <input data-cd="healSp" type="number" style="width:50px"> SP → <input data-cd="healHp" type="number" style="width:64px"> HP each)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Hunter Fly Card: physical attacks (basic attacks, Spell Fist, physical skills) have a chance to restore HP every second for 5 s"><input type="checkbox" data-cd="hfOn" style="width:auto"> Hunter Fly (<input data-cd="hfPct" type="number" style="width:50px">% · <input data-cd="hfHp" type="number" style="width:60px"> HP/s)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Side Winder Card: basic attacks hit twice this often (right hand only). With Double Attack learned on the Skills card the card follows the skill, so nothing is added; Thief presets already count Double Attack"><input type="checkbox" data-cd="daSF" style="width:auto"> Side Winder double attack <input data-cd="daPct" type="number" style="width:50px">% (basic attacks; with Spell Fist the 2nd hit procs it too)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Creamy Card gives Teleport Lv1, so the Zeny Hunter can teleport past monsters you skip (without it, or the Teleport skill, it walks: Fly Wings cost too much). Its 10 SP a cast isn't counted"><input type="checkbox" data-cd="creamy" style="width:auto"> Creamy (Teleport Lv1)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Phen Card: casts can't be interrupted, variable cast +25%. Without it (or Bloody Butterfly) a hit that lands while you cast interrupts it and you start again. Build mode reads it from your gear"><input type="checkbox" data-cd="phen" style="width:auto"> Phen (no interrupted casts, cast +25%)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Bloody Butterfly Card: casts can't be interrupted, variable cast +30%. Build mode reads it from your gear"><input type="checkbox" data-cd="bbfly" style="width:auto"> Bloody Butterfly (no interrupted casts, cast +30%)</label>
-        <span id="cardInfo"></span>
+      <div class="cdList note" id="cardRow">
+        <div class="cdHead"><b>Cards any job can slot</b> <span class="muted">tick the ones you wear; build mode already reads Vitata, Phen and Bloody Butterfly from your gear</span></div>
+        <div class="cdItem" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="vitata" style="width:auto"> <b>Vitata</b></label><span class="muted">you cast Heal Lv1 between kills; every skill costs more SP</span><span class="cdOpts">SP cost +<input data-cd="spBonus" type="number" style="width:50px">% · Heal: <input data-cd="healSp" type="number" style="width:50px"> SP → <input data-cd="healHp" type="number" style="width:64px"> HP</span></div>
+        <div class="cdItem" title="Hunter Fly Card: physical attacks (basic attacks, Spell Fist, physical skills) have a chance to restore HP every second for 5 s"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="hfOn" style="width:auto"> <b>Hunter Fly</b></label><span class="muted">physical attacks can restore HP for 5 s, so less HP lost</span><span class="cdOpts"><input data-cd="hfPct" type="number" style="width:50px">% chance · <input data-cd="hfHp" type="number" style="width:60px"> HP/s</span></div>
+        <div class="cdItem" title="Side Winder Card: basic attacks hit twice this often (right hand only). With Double Attack learned on the Skills card the card follows the skill, so nothing is added; Thief presets already count Double Attack"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="daSF" style="width:auto"> <b>Side Winder</b></label><span class="muted">basic attacks sometimes hit twice (right hand only; with Spell Fist the 2nd hit procs it too)</span><span class="cdOpts"><input data-cd="daPct" type="number" style="width:50px">% chance</span></div>
+        <div class="cdItem" title="Creamy Card gives Teleport Lv1, so the Zeny Hunter can teleport past monsters you skip (without it, or the Teleport skill, it walks: Fly Wings cost too much). Its 10 SP a cast isn't counted"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="creamy" style="width:auto"> <b>Creamy</b></label><span class="muted">Teleport Lv1: the Zeny Hunter teleports past monsters you skip</span></div>
+        <div class="cdItem" title="Phen Card: casts can't be interrupted, variable cast +25%. Without it (or Bloody Butterfly) a hit that lands while you cast interrupts it and you start again. Build mode reads it from your gear"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="phen" style="width:auto"> <b>Phen</b></label><span class="muted">casts can't be interrupted; variable cast +25%</span></div>
+        <div class="cdItem" title="Bloody Butterfly Card: casts can't be interrupted, variable cast +30%. Build mode reads it from your gear"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="bbfly" style="width:auto"> <b>Bloody Butterfly</b></label><span class="muted">casts can't be interrupted; variable cast +30%</span></div>
+        <div id="cardInfo"></div>
       </div>
-      <div class="bar note" id="spCardRow"><span title="Cards that give SP back. SP Recovery +% cards (Eggyra, Sohee, Merman): build mode reads them from your gear; in status window mode add an &quot;SP recovery&quot; line under Equipment stats">SP back (cards):</span>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Dracula Card: physical and magic attacks have a chance to restore SP every second for 7 s"><input type="checkbox" data-cd="dracOn" style="width:auto"> Dracula (<input data-cd="dracPct" type="number" style="width:56px">% · <input data-cd="dracSp" type="number" style="width:56px"> SP/s)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" id="dpWrap" title="Dark Priest Card, when a Sage wears it: 1 SP each time a physical attack hits (Spell Fist's physical hit too)"><input type="checkbox" data-cd="dpOn" style="width:auto"> Dark Priest (+1 SP per physical hit)</label>
-        <span title="Weapon cards: 5 SP when a melee physical attack kills a monster of that race. Not counted with Spell Fist or a bow, instrument or whip">+5 SP per melee kill:</span>
-        <span id="killSpBoxes" class="bar" style="gap:8px"></span>
-        <span id="spCardInfo"></span>
+      <div class="cdList note" id="spCardRow">
+        <div class="cdHead"><b>Cards that give SP back</b> <span class="muted">SP Recovery +% cards (Eggyra, Sohee, Merman): build mode reads them from your gear; in status window mode add an &quot;SP recovery&quot; line under Equipment stats</span></div>
+        <div class="cdItem" title="Dracula Card: physical and magic attacks have a chance to restore SP every second for 7 s"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="dracOn" style="width:auto"> <b>Dracula</b></label><span class="muted">physical and magic attacks can restore SP for 7 s</span><span class="cdOpts"><input data-cd="dracPct" type="number" style="width:56px">% chance · <input data-cd="dracSp" type="number" style="width:56px"> SP/s</span></div>
+        <div class="cdItem" id="dpWrap" title="Dark Priest Card, when a Sage wears it: 1 SP each time a physical attack hits (Spell Fist's physical hit too)"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="dpOn" style="width:auto"> <b>Dark Priest</b></label><span class="muted">a Sage gets 1 SP each time a physical attack hits (Spell Fist too)</span></div>
+        <div class="cdItem" title="Weapon cards: 5 SP when a melee physical attack kills a monster of that race. Not counted with Spell Fist or a bow, instrument or whip"><b>+5 SP per melee kill</b><span class="muted">weapon cards, per race killed:</span><span id="killSpBoxes" class="bar" style="gap:8px"></span></div>
+        <div id="spCardInfo"></div>
       </div>
       <div class="bar note" id="ecRow"><span title="The Mage quest skill: Wizards and Sages have it too">Energy Coat (Mage, Wizard, Sage):</span>
         <label class="bar" style="flex-direction:row;gap:4px" title="Cuts damage taken by 6–30% and costs 1–3% of Max SP per hit taken; the fuller your SP, the bigger both"><input type="checkbox" data-ec="on" style="width:auto"> on</label>
@@ -557,8 +558,8 @@
 <script src="js/game.js?v=3db406db55"></script>
 <script src="js/state.js?v=e38bd4c3f3"></script>
 <script src="js/model.js?v=c631eb7c06"></script>
-<script src="js/render.js?v=f3da4dfc28"></script>
-<script src="js/events.js?v=07a2c4143b"></script>
+<script src="js/render.js?v=77fa30da76"></script>
+<script src="js/events.js?v=ad6fcc6d0d"></script>
 <script src="js/skills.js?v=4e9e35293d"></script>
 <script src="js/build-ui.js?v=aa78806cd0"></script>
 <script src="js/ref.js?v=9933bc86b4"></script>
