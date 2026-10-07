@@ -92,7 +92,7 @@ The game's auto return only takes you to town at a weight %; it doesn't sell or 
 
 ## EXP & formulas
 
-- Base and job EXP tables for Base Lv 1–70 and Novice, 1st and 2nd job levels. Your level is highlighted, with kills per level for your monster.
+- Base and job EXP tables for Base Lv 1–70 and Novice, 1st and 2nd job levels. Your level is highlighted, with kills per level for your monster and how much more EXP each level takes than the one before (e.g. +20.0%).
 - **Party EXP (Even Share):** the bonus is +10% per extra member (2 members 110%, 3: 120% … 12: 210%), split evenly.
 - **EXP bonuses** add together. Gear EXP counts for both base and job; an item's "EXP +X%" goes in EXP bonus % (base only) and "Job EXP +X%" in Job EXP bonus % (job only).
 - Every formula the calculator uses, with your own numbers next to it.
