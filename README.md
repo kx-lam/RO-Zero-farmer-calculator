@@ -15,6 +15,8 @@ It's a single page that runs entirely in your browser. There's no server, no log
 
 ## Features by tab
 
+**Full width:** the button next to the title lets the page use the whole window on wide screens instead of stopping at 1180px. It's remembered in this browser, apart from your account data, so backups and share links don't carry it.
+
 ### Account
 
 - Keep separate characters, sessions and settings for each of your accounts, and switch between them.

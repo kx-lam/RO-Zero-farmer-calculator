@@ -21,6 +21,13 @@ showTab(state.tab||"char");
     const flip=()=>{const v=!card.classList.contains("collapsed");state.collapsed[key]=v;if(!v)delete state.collapsed[key];save();set(v)};
     h.addEventListener("click",flip);h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();flip()}})});
 })();
+// ---- full width: a per-device display choice kept outside the account saves (index.html applies it before the page draws) ----
+(function setupWide(){
+  const KEY_WIDE="rozero-farm-planner-wide",btn=$("wideBtn");
+  const set=v=>{document.documentElement.classList.toggle("wide",v);btn.setAttribute("aria-pressed",String(v))};
+  set(document.documentElement.classList.contains("wide"));
+  btn.addEventListener("click",()=>{const v=btn.getAttribute("aria-pressed")!=="true";set(v);try{v?localStorage.setItem(KEY_WIDE,"1"):localStorage.removeItem(KEY_WIDE)}catch(e){}});
+})();
 // ---- start ----
 syncClosed();syncChar();renderAll();resetForm();
 (function tripLoop(){tickTrip();setTimeout(tripLoop,1000)})();

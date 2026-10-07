@@ -13,6 +13,13 @@
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.5}
 .wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:flex;flex-direction:column;gap:20px}
+/* Full width (header button): drop the 1180px cap on wide screens */
+:root.wide .wrap{max-width:none}
+.titleRow{display:flex;align-items:flex-start;gap:12px}
+.titleRow h1{flex:1;min-width:0}
+.titleRow button{flex:none;margin-top:2px}
+#wideBtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+@media (max-width:1180px){#wideBtn{display:none}}
 h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
 h1{font-size:1.45rem;font-weight:700}
 h2{font-size:1.05rem;font-weight:600}
