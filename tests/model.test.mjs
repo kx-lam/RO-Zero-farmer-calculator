@@ -200,6 +200,22 @@ t("tracker: job EXP % wraps at a job level-up", () => {
   assert.equal(j.last, 10);
 });
 
+t("tracker: a small job EXP % drop is a loss, not a level-up", () => {
+  const t0 = 1e12;
+  // 65 → 69.4 → 78.2 (mistyped) → 71.7: the typo cancels out, the session gained 6.7%, not 6.7% + a whole level
+  run(`cur().entries=[{t:${t0},lv:67,pct:0.5,jpct:65},{t:${t0 + 36e5},lv:67,pct:5,jpct:69.4},{t:${t0 + 72e5},lv:67,pct:6.8,jpct:78.2},{t:${t0 + 108e5},lv:67,pct:7.3,jpct:71.7}];cur().pauses=[]`);
+  const j = run("jobRate(cur())");
+  near(j.rate, 6.7 / 3);
+  assert.equal(j.last, 71.7);
+});
+
+t("tracker: a job level-up counts the job EXP it took when job levels are known", () => {
+  const t0 = 1e12, tb = run("JOB_EXP.second");
+  // Sage Job Lv 66 at 90% → Job Lv 67 at 10% in one hour: 10% of Job Lv 66 + 10% of Job Lv 67, in % of Job Lv 67
+  run(`state.job='Sage';state.chars={};C().jobLv=67;cur().job='Sage';cur().entries=[{t:${t0},lv:66,pct:1,jpct:90,jlv:66},{t:${t0 + 36e5},lv:66,pct:2,jpct:10,jlv:67}];cur().pauses=[]`);
+  near(run("jobRate(cur())").rate, (0.1 * tb[65] + 0.1 * tb[66]) / tb[66] * 100);
+});
+
 t("tracker: entry job levels run across sessions of the same job", () => {
   const t0 = 1e12, h = 36e5;
   // an older session (a) and the current one (b); Job % drops 95 → 5 in b, a job level-up

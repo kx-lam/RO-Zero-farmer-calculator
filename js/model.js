@@ -416,13 +416,20 @@ const walkSec=()=>{
   return 2};
 // job EXP needed for your current job level (Novice / 1st / 2nd job table)
 const FIRST_JOBS=["Swordsman","Mage","Archer","Acolyte","Merchant","Thief"];
-const jobTier=()=>state.job==="Novice"?"novice":FIRST_JOBS.includes(state.job)?"first":"second";
+const jobTier=(job=state.job)=>job==="Novice"?"novice":FIRST_JOBS.includes(job)?"first":"second";
 // each table has one entry per job level and the last level is the max (Novice Job Lv 10, per the official guide), so the max level needs nothing
 const jobMax=(tier=jobTier())=>JOB_EXP[tier].length;
 const jobNeed=()=>{const l=num(C().jobLv);const t=JOB_EXP[jobTier()];return l>=1&&l<t.length?t[l-1]:null};
+// job EXP gained per active hour, in % of the newest entry's job level. With each entry's job level known (entryJobLvs) a level-up counts
+// the job EXP it really took; without, a Job EXP % drop of 50+ is a level-up and a smaller one is EXP lost (a death) or a typo, so it counts
+// as a loss and a mistyped entry cancels out with the next one instead of adding a whole level
 function jobRate(s){
   const es=[...s.entries].filter(e=>e.jpct!=null).sort((a,b)=>a.t-b.t);if(es.length<2)return null;
-  let gain=0;for(let i=1;i<es.length;i++){let d=es[i].jpct-es[i-1].jpct;if(d<0)d+=100;gain+=d}
+  const t=JOB_EXP[jobTier(s.job||state.job)],jl=entryJobLvs(s),need=l=>l>=1&&l<t.length?t[l-1]:null;
+  const cum=e=>{const l=jl.get(e);if(!need(l))return null;let x=0;for(let i=1;i<l;i++)x+=t[i-1];return x+need(l)*e.jpct/100};
+  const L=need(jl.get(es[es.length-1]));
+  let gain=0;for(let i=1;i<es.length;i++){const a=es[i-1],b=es[i],ca=cum(a),cb=cum(b);let d;
+    if(L&&ca!=null&&cb!=null&&jl.get(b)>=jl.get(a))d=(cb-ca)/L*100;else{d=b.jpct-a.jpct;if(d<=-50)d+=100}gain+=d}
   const h=activeH(s,es[0].t,es[es.length-1].t);return h>0?{rate:gain/h,last:es[es.length-1].jpct,h}:null;
 }
 // each entry's job level (Map entry -> level), read across every session of the same job in time order, as they're one character:
