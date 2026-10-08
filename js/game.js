@@ -124,8 +124,8 @@ const AC=()=>{const c=C();if(!c.ac||typeof c.ac!=="object")c.ac={};for(const k i
 // attacks), Side Winder (Double Attack on basic attacks), Creamy (Teleport Lv1, so the Zeny Hunter may teleport), and SP back: Dracula (SP on attacks),
 // Dark Priest (Sage: 1 SP per physical hit) and the +5 SP per kill cards (killSp: the races, see KILL_SP); Phen and Bloody Butterfly
 // (casts can't be interrupted, variable cast +25% / +30%)
-const CARD_D={vitata:false,spBonus:25,healSp:13,healHp:357,hfOn:false,hfPct:5,hfHp:100,daSF:false,daPct:7,creamy:false,
-  dracOn:false,dracPct:10,dracSp:20,dpOn:false,killSp:[],phen:false,bbfly:false};
+const CARD_D={vitata:false,spBonus:25,healSp:13,healHp:357,hfOn:false,hfPct:5,hfHp:100,hfN:1,daSF:false,daPct:7,creamy:false,
+  dracOn:false,dracPct:10,dracSp:20,dracN:1,dpOn:false,killSp:[],phen:false,bbfly:false};
 const CRD=()=>{const c=C();if(!c.cards||typeof c.cards!=="object")c.cards={};for(const k in CARD_D)if(c.cards[k]==null)c.cards[k]=JSON.parse(JSON.stringify(CARD_D[k]));
   if(!Array.isArray(c.cards.killSp))c.cards.killSp=[];return c.cards};
 // weapon cards: "Recovers 5 SP when defeating <race> monsters with melee physical attacks"

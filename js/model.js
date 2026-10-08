@@ -40,6 +40,8 @@ const atkPerSec=()=>{const a=aspdEff();return 1000/((200-a)*20)};
 const vctFactor=()=>{const c=C();const dex=statVal(c,"dex");if(dex==null)return 1;return Math.max(0,1-Math.sqrt((2*dex+statVal(c,"int"))/530))};
 // a card ticked in the Cards rows that build mode already has in your gear (its own lines count from there)
 const cardInGear=(c,ids)=>c.mode==="build"&&Object.values((c.build&&c.build.gear)||{}).some(g=>g&&(g.cards||[]).some(id=>ids.includes(+id)));
+// how many copies of these cards build mode's gear holds (every slot, both hands); 0 outside build mode
+const cardsInGear=(c,ids)=>c.mode!=="build"?0:Object.values((c.build&&c.build.gear)||{}).reduce((n,g)=>n+(g?(g.cards||[]).filter(id=>ids.includes(+id)).length:0),0);
 // Phen (4077) and Bloody Butterfly (4327) Cards: casts can't be interrupted, variable cast +25% / +30%
 const PHEN=4077,BBFLY=4327;
 const noBreak=()=>{const cd=CRD();return !!(cd.phen||cd.bbfly)||cardInGear(C(),[PHEN,BBFLY])||consSum("no_break")>0};
@@ -207,10 +209,17 @@ const daFactor=()=>CRD().daSF?1+num(CRD().daPct)/100:1;
 // Hunter Fly Card: each physical attack has a 5% chance to restore 100 HP/s for 5 s (refreshes, doesn't stack). Basic attacks
 // and Spell Fist swing at your ASPD, physical skills once per use; spells don't trigger it
 const physAtkPerSec=()=>{const t=C().a.type;return t==="auto"||t==="spellfist"?atkPerSec():t==="phys"?1/useSec():0};
-const hfHpPerSec=()=>{if(!CRD().hfOn)return 0;const p=num(CRD().hfPct)/100,n=physAtkPerSec()*5;return (1-Math.pow(1-p,n))*num(CRD().hfHp)};
+// copies worn: build mode counts them in the gear (and then they count as ticked), else the box (1–4) when ticked
+const HUNTER_FLY=27266,DRACULA=27268;
+const cardCopies=(id,on,n)=>{const g=cardsInGear(C(),[id]);return g>0?g:on?Math.min(4,Math.max(1,Math.round(num(n,1)))):0};
+const hfCards=()=>cardCopies(HUNTER_FLY,CRD().hfOn,CRD().hfN),dracCards=()=>cardCopies(DRACULA,CRD().dracOn,CRD().dracN);
+// k copies: each rolls on every attack until one procs, and the restore doesn't add up (not checked in game),
+// so the effect runs 1 − (1 − p)^(k × attacks in its window) of the time
+const procUptime=(p,k,n)=>1-Math.pow(1-p,k*n);
+const hfHpPerSec=()=>{const k=hfCards();if(!k)return 0;return procUptime(num(CRD().hfPct)/100,k,physAtkPerSec()*5)*num(CRD().hfHp)};
 // SP from cards, against the monster in play:
-// Dracula Card: each physical or magic attack has a 10% chance to restore 20 SP/s for 7 s (refreshes, doesn't stack)
-const dracSPPerSec=()=>{const cd=CRD();if(!cd.dracOn)return 0;const p=num(cd.dracPct)/100,n=(isSF()||C().a.type==="auto"?atkPerSec():1/useSec())*7;return (1-Math.pow(1-p,n))*num(cd.dracSp)};
+// Dracula Card: each physical or magic attack has a 10% chance to restore 20 SP/s for 7 s (refreshes, doesn't stack); copies as Hunter Fly
+const dracSPPerSec=()=>{const cd=CRD(),k=dracCards();if(!k)return 0;const n=(isSF()||C().a.type==="auto"?atkPerSec():1/useSec())*7;return procUptime(num(cd.dracPct)/100,k,n)*num(cd.dracSp)};
 // Dark Priest Card (Sage only): 1 SP each time a physical attack hits, so crits and hits that land
 const dpSPPerSec=()=>{if(!CRD().dpOn||state.job!=="Sage")return 0;const r=physAtkPerSec();if(!r)return 0;const m=SG_MOB||calcMob();if(!m)return r;
   return r*withAtk(isSF()?BASIC:C().a,()=>{const cr=critChance(m),hc=hitChance(m)/100;return cr+(1-cr)*hc})};
