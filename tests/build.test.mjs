@@ -262,4 +262,32 @@ t("a card that grows every 10 base levels, up to Lv 50", () => {
   assert.equal(at(99).mdef, 5);
 });
 
+t("gear named the way the equipment window shows it: card names, Double / Triple, cut-off names", () => {
+  const items = [{ id: 1, name: "Shining Clip", slots: 1 }, { id: 2, name: "Muffler", slots: 0 }, { id: 3, name: "Muffler", slots: 1 },
+    { id: 4, name: "Nordfeld Soldier's Armor", slots: 1 }, { id: 5, name: "Hill Patrol Boots", slots: 2 }, { id: 6, name: "Sage's Diary", slots: 4 }];
+  const cards = [{ id: 10, name: "Vitata Card" }, { id: 11, name: "Shark Family Card" }, { id: 12, name: "Pecopeco Card" },
+    { id: 13, name: "Verit Card" }, { id: 14, name: "Matyr Card" }, { id: 15, name: "Hydra Card" }];
+  const names = { 10: "Healing", 11: "Shark Family", 12: "Hard", 13: "of Health", 14: "of Hermes", 15: "Bloody" };
+  const read = s => BUILD.readGearName(s, items, () => cards, c => names[c.id]);
+  assert.deepEqual(read("+9 Healing Shining Clip"), { id: 1, refine: 9, cards: [10] });
+  assert.deepEqual(read("+4 Shark Family Muffler"), { id: 3, refine: 4, cards: [11] }, "the slotted Muffler");
+  assert.deepEqual(read("Muffler"), { id: 2, refine: null, cards: [] });
+  assert.deepEqual(read("+7 Hard Nordfeld Soldier..."), { id: 4, refine: 7, cards: [12] }, "cut-off item name");
+  assert.deepEqual(read("+7 hard nordfeld soldier’s armor"), { id: 4, refine: 7, cards: [12] }, "any case, curly apostrophe");
+  assert.deepEqual(read("Hard Hill Patrol Boots of Health"), { id: 5, refine: null, cards: [12, 13] }, "prefix and suffix");
+  assert.deepEqual(read("+7 Hill Patrol Boots of Hea"), { id: 5, refine: 7, cards: [13] }, "cut-off suffix only one card fits");
+  assert.deepEqual(read("Double Bloody Triple Healing Sage's Diary"), { id: 6, refine: null, cards: [15, 15, 10, 10] }, "copies, up to the slots");
+  assert.deepEqual(read("Hill Patrol Boots of H"), { id: 5, refine: null, cards: [] }, "cut-off suffix two cards fit: the item alone");
+  assert.equal(read("Hill Patrol Boots of X"), null);
+  assert.equal(read("Hybrid Malicious Sage"), null, "unknown item");
+  assert.equal(read("Healing Boots"), null);
+  assert.deepEqual(BUILD.readCardNames("double healing", cards, c => names[c.id]), [10, 10]);
+  assert.deepEqual(BUILD.readCardNames("of hermes", cards, c => names[c.id]), [14]);
+  assert.equal(BUILD.readCardNames("healing x", cards, c => names[c.id]), null);
+  assert.deepEqual(BUILD.readCardNames("vitata card", cards, c => names[c.id]), [10], "the card's own name");
+  assert.deepEqual(BUILD.readCardNames("Double Vitata Hard", cards, c => names[c.id]), [10, 10, 12], "own names and window names mixed");
+  assert.deepEqual(read("+9 Shining Clip Vitata Card"), { id: 1, refine: 9, cards: [10] }, "item then its card");
+  assert.deepEqual(read("+4 Shark Family Card Muffler"), { id: 3, refine: 4, cards: [11] });
+});
+
 console.log(`${n} tests passed`);

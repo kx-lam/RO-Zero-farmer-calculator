@@ -175,7 +175,7 @@ const BUILD=(()=>{
     ((typeof AFFIXES!=="undefined"&&AFFIXES.rows)||[]).forEach(([,type,,name,min,max,pct])=>{const [k,g,line,neg]=affixOpt(name);
       let x=by[k];if(!x){x=by[k]={k,g,label:name.replace(/\s*\(%\)$/,"")+(pct?" %":""),line,pct:!!pct,neg:!!neg,gear:{}};o.push(x)}
       (AFFIX_GEAR[type]||[]).forEach(gk=>{const r=x.gear[gk];x.gear[gk]=r?[Math.min(r[0],min),Math.max(r[1],max)]:[min,max]})});
-    LEGACY.forEach(x=>{if(!by[x.k]&&!OPT_ALIAS[x.k]){by[x.k]={...x,g:"Other (not a rozerodb affix)",gear:{}};o.push(by[x.k])}});return o})();
+    LEGACY.forEach(x=>{if(!by[x.k]&&!OPT_ALIAS[x.k]){by[x.k]={...x,g:"Other",gear:{}};o.push(by[x.k])}});return o})();
   const OPT_BY=Object.fromEntries(OPTIONS.map(x=>[x.k,x]));
   // the gear kind a row's item rolls options as: weapons by type (staves magic, bows / instruments / whips ranged, the rest
   // melee; a weapon in the Shield row too), else armor / garment / shoes; null for parts rozerodb lists no pool for
@@ -254,5 +254,36 @@ const BUILD=(()=>{
       lw:dual?lw:"",lwAtk:dual?f(((wpnL.atk||0)+refineAt(wpnL,(gear.shield||{}).refine)[0])*(1+A.atkPct/100)):0,lwElem:dual&&wpnL.el?cap(wpnL.el):"Neutral"};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines,optGear,optChoices,STONE_SLOTS,stone,stonesWorn,tamingEgg}})();
+  // the equipment window names gear by its cards: "+7 Double Healing Shining Clip" is a +7 Shining Clip with two Vitata Cards.
+  // Each card adds its name (data/cardnames.js) before the item's, or after it when the name starts with "of " ("Boots of
+  // Health"); 2-4 copies of one card show as Double / Triple / Quadruple. Long names are cut off ("Hard Nordfeld Soldier..."),
+  // so the item name may be only its start. Card names typed the usual way work too ("+9 Shining Clip Vitata Card").
+  const TIMES={double:2,triple:3,quadruple:4};
+  const normName=s=>String(s||"").toLowerCase().replace(/[’‘`]/g,"'").replace(/(\.\.\.|…)\s*$/,"").replace(/\s+/g," ").trim();
+  // cards named one after another: "double healing hard" -> [Vitata, Vitata, <Hard card>]; null unless the whole text is card names.
+  // A card goes by its name in the equipment window or its own name, with or without "Card" ("Healing", "Vitata", "vitata card")
+  function readCardNames(text,cards,nameOf){const named=cards.flatMap(c=>[nameOf(c),c.name,(c.name||"").replace(/ card$/i,"")].map(n=>[normName(n),c.id]))
+      .filter(x=>x[0]).sort((a,b)=>b[0].length-a[0].length);
+    let s=normName(text);const out=[];
+    while(s){const m=/^(double|triple|quadruple) /.exec(s),n=m?TIMES[m[1]]:1,r=m?s.slice(m[0].length):s,
+        hit=named.find(([nm])=>r===nm||r.startsWith(nm+" "));
+      // a cut-off "of ..." is the last thing shown: its card when only one fits, else left for the player to pick
+      if(!hit){const cut=!m&&r.startsWith("of ")&&named.filter(([nm])=>nm.startsWith(r));if(cut&&cut.length){const ids=[...new Set(cut.map(x=>x[1]))];if(ids.length===1)out.push(ids[0]);break}return null}
+      for(let i=0;i<n;i++)out.push(hit[1]);s=r.slice(hit[0].length).trim()}
+    return out}
+  // "+9 Shark Family Muffler" -> {id, refine, cards}; the best item of the list whose name (or, cut off, its start) is in the text
+  // with only card names around it. null when nothing fits
+  function readGearName(text,items,cardsOf,nameOf){let s=normName(text),refine=null;const rm=/^\+(\d+) ?/.exec(s);if(rm){refine=Math.min(20,+rm[1]);s=s.slice(rm[0].length)}
+    if(!s)return null;let best=null;
+    for(const it of items){const n=normName(it.name);if(!n)continue;let pre,post,len,full=true;const at=(" "+s+" ").indexOf(" "+n+" ");
+      if(at>=0){pre=s.slice(0,at);post=s.slice(at+n.length);len=n.length}
+      else{full=false;const w=s.split(" ");let k=0;for(;k<w.length;k++){const rest=w.slice(k).join(" ");if(rest.length>=3&&n.startsWith(rest))break}
+        if(k===w.length)continue;pre=w.slice(0,k).join(" ");post="";len=s.length-pre.length}
+      const cs=cardsOf(it),a=pre.trim()?readCardNames(pre,cs,nameOf):[],b=post.trim()?readCardNames(post,cs,nameOf):[];if(!a||!b)continue;
+      if(a.length+b.length&&!it.slots)continue; // cards named: not the slotless copy of an item
+      const score=(full?1e4:0)+len;
+      if(!best||score>best.score)best={score,id:it.id,refine,cards:[...a,...b].slice(0,it.slots||0)}}
+    return best&&{id:best.id,refine:best.refine,cards:best.cards}}
+
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines,optGear,optChoices,STONE_SLOTS,stone,stonesWorn,tamingEgg,readCardNames,readGearName}})();
 if(typeof module!=="undefined")module.exports=BUILD;
