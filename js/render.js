@@ -24,6 +24,9 @@ function renderChar(){renderAspdBuffs();potInfo();
   $("atkSummary").textContent=a.type==="spellfist"?`· Spell Fist Lv ${G().sfLv}: ${Math.round(sfChance()*100)}% per attack, ${sfPct()}% MATK with ${sfBolts().map(b=>({Fire:"Fire",Water:"Cold",Wind:"Lightning"})[b]).join(" / ")||"no"} bolts`:`· ${a.type==="magic"?"Magic":a.type==="auto"?"Basic attacks":"Physical"} ${a.pct}% × ${a.hits} ${atkEl()}${a.targets>1?` · ${a.targets} targets`:""}${p&&p.note?` · ${p.note}`:""}`;
   {const ac=AC(),s=acSpell(),basic=a.type==="auto"||a.type==="spellfist";$("acInfo").innerHTML=ac.on?(basic?`${s.pct}% × ${s.hits} ${s.el} MATK (Lv ${s.lv}), no SP`:'<span class="bad">only procs on basic attacks: pick a basic attack or Spell Fist</span>'):""}
   if(a.type==="spellfist")$("atkSummary").textContent+=` · each attack also lands its physical hit (ATK, weapon element)`;
+  // base-level skills: what the BaseLv/100 factor does at your level (Soul Destroyer, Axe Tornado and Triangle Shot miss the Lv100 check)
+  if(a.blv){const lv=num(c.baseLv,99);$("atkSummary").textContent+=a.blvBug?` · Zero bug: this skill takes × base level / 100 below Lv100 too (× ${lv}/100 at Lv ${lv}): ${Math.round(pctEff())}% per hit`
+    :` · base level only raises it above Lv100${lv>100?` (× ${lv}/100)`:", so no change at Lv "+lv}: ${Math.round(pctEff())}% per hit`}
   if(dualOn()){const h=handPct();$("atkSummary").textContent+=a.type==="auto"?` · dual wield: right hand ${h.right}% + left ${c.lw} ${h.left}% (${leftEl()})`:" · dual wield: skills use the right hand only"}
   const us=useSec(),need=spNeedPerSec()*60,reg=regenPerSec()*60,ips=itemsPerSec(),rf=restFactor();
   {const oc=skRate("overcharge"),dc=skRate("discount");$("npcBuy").checked=c.npcBuy!==false;
