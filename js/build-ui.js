@@ -222,12 +222,17 @@ function optBoxes(slot,g,it){const ch=BUILD.optChoices(slot,it),gk=BUILD.optGear
   return `<div class="opts">${rows.map(one).join("")}${rows.length<BUILD.OPT_MAX?one(null,rows.length):""}</div>`}
 // costume enchant stones: a list per costume slot, each stone with what it gives
 const STONE_FX={str:"STR",agi:"AGI",vit:"VIT",int:"INT",dex:"DEX",luk:"LUK",crit:"CRIT",hit:"HIT",flee:"FLEE",def:"DEF",mdef:"MDEF",hp:"MaxHP",sp:"MaxSP",aspd:"ASPD",
-  atk_percent:"ATK %",matk_percent:"MATK %",hp_percent:"MaxHP %",sp_percent:"MaxSP %",crit_damage_percent:"Critical damage %",cast_time_variable_percent:"Variable cast %"};
-const stoneFx=x=>x.off||x.b.map(([t,k,g,v])=>{const l=k==="size"?`Damage vs ${g} %`:STONE_FX[t]||t,pc=/ %$/.test(l);return `${l.replace(/ %$/,"")} ${v>0?"+":""}${v}${pc?"%":""}`}).join(", ");
-function renderStones(){const sel=buildOf(C()).stones||{},all=typeof STONES!=="undefined"?STONES:[];
-  $("stoneRow").innerHTML=BUILD.STONE_SLOTS.map(z=>`<label>${z.label}<select data-stone="${z.k}"><option value="">none</option>${all.filter(x=>x.slot===z.k)
-    .map(x=>`<option value="${x.id}"${+sel[z.k]===x.id?" selected":""}>${esc(x.name.replace(/ \((Upper|Middle|Lower|Garment)\)$/,""))}: ${esc(stoneFx(x))}</option>`).join("")}</select></label>`).join("")}
-$("stoneRow").addEventListener("change",e=>{const k=e.target.dataset.stone;if(!k)return;const b=buildOf(C());b.stones=b.stones||{};
+  atk:"ATK",matk:"MATK",damage_percent:"Physical damage %",hp_recovery_percent:"HP recovery %",attack_delay_percent:"After-attack delay %",atk_percent:"ATK %",matk_percent:"MATK %",hp_percent:"MaxHP %",sp_percent:"MaxSP %",crit_damage_percent:"Critical damage %",cast_time_variable_percent:"Variable cast %"};
+const stoneFx=x=>x.off&&!x.b.length?x.off:x.b.map(([t,k,g,v])=>{const l=k==="size"?`Damage vs ${g} %`:t==="damage_taken_percent"?`${g[0].toUpperCase()+g.slice(1)} resist %`:STONE_FX[t]||t,pc=/ %$/.test(l);
+  if(t==="damage_taken_percent")v=-v;return `${l.replace(/ %$/,"")} ${v>0?"+":""}${v}${pc?"%":""}`}).join(", ");
+// the Taming Ring (Special Equipment, Accessory Right) holds one pet egg enchant; "none" = no ring or an empty one
+function renderStones(){const b=buildOf(C()),sel=b.stones||{},ring=(b.special||{}).ring,all=typeof STONES!=="undefined"?STONES:[],eggs=typeof TAMING_EGGS!=="undefined"?TAMING_EGGS:[];
+  $("stoneRow").innerHTML=BUILD.STONE_SLOTS.map(z=>`<label>Costume ${z.label.toLowerCase()} stone<select data-stone="${z.k}"><option value="">none</option>${all.filter(x=>x.slot===z.k)
+    .map(x=>`<option value="${x.id}"${+sel[z.k]===x.id?" selected":""}>${esc(x.name.replace(/ \((Upper|Middle|Lower|Garment)\)$/,""))}: ${esc(stoneFx(x))}</option>`).join("")}</select></label>`).join("")+
+    `<label>Taming Ring pet egg<select data-ring="1"><option value="">none</option>${eggs.map(x=>`<option value="${x.id}"${+ring===x.id?" selected":""}>${esc(x.name)}: ${esc([x.b.length?stoneFx({b:x.b}):"",x.off||""].filter(Boolean).join(", "))}</option>`).join("")}</select></label>`}
+$("stoneRow").addEventListener("change",e=>{const b=buildOf(C());
+  if(e.target.dataset.ring){b.special=b.special||{};if(e.target.value)b.special.ring=+e.target.value;else delete b.special.ring;save();renderAll();return}
+  const k=e.target.dataset.stone;if(!k)return;b.stones=b.stones||{};
   if(e.target.value)b.stones[k]=+e.target.value;else delete b.stones[k];save();renderAll()});
 function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
   const rows=BUILD.SLOTS.map(s=>{const g0=b.gear[s.k]||{},items=gearChoices(s.k),cards=cardChoices(s.k,g0.id&&BUILD.item(g0.id));GEAR_LISTS["g_"+s.k]=pickList(items);GEAR_LISTS["c_"+s.k]=pickList(cards);

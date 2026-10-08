@@ -29,7 +29,7 @@ Object.assign(globalThis, {
   JOBDATA: { Knight: { bonus: { str: [1, 6], vit: [5] }, hp: [40, 48, 58], sp: [10, 12, 14] } },
 });
 // the real affix list (rozerodb) and costume enchant stones, as the page loads them before build.js
-for (const f of ["affixes", "stones"]) (0, eval)(readFileSync(new URL(`../data/${f}.js`, import.meta.url), "utf8").replace(/^const (\w+)=/gm, "globalThis.$1="));
+for (const f of ["affixes", "stones", "special"]) (0, eval)(readFileSync(new URL(`../data/${f}.js`, import.meta.url), "utf8").replace(/^const (\w+)=/gm, "globalThis.$1="));
 const BUILD = require("../build.js");
 const aspdBase = () => 150;
 const base = { str: 50, agi: 30, vit: 20, int: 1, dex: 30, luk: 10 };
@@ -231,6 +231,18 @@ t("costume enchant stones: one per slot, plus the sets they complete", () => {
   assert.ok(run({ garment: 25302 }).unmodelled.includes("Double Attack Stone (Garment): Double Attack Lv 3 with any weapon"));
   assert.ok(BUILD.STONE_SLOTS.every(z => STONES.some(x => x.slot === z.k)));
   assert.ok(STONE_SETS.every(z => z.need.every(i => BUILD.stone(i))));
+});
+
+t("Taming Ring: the pet egg sealed in it adds its bonus", () => {
+  const run = special => BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {}, special }, "Knight", aspdBase);
+  const none = run({}), petite = run({ ring: 313625 });                          // Ground Petite Egg Lv.2: after-attack delay −1%, AGI +1
+  assert.equal(petite.acc.st.agi, 1);
+  assert.equal(petite.acc.aspdPct - none.acc.aspdPct, 1);
+  assert.equal(run({ ring: 313586 }).acc.taken.ele.Poison, -10);                // Poporing Lv.1: Poison resistance +10%
+  assert.deepEqual([run({ ring: 313627 }).acc.phys.all, run({ ring: 313627 }).acc.matkPct, run({ ring: 313627 }).acc.hpPct], [1, 1, 1]);
+  assert.ok(run({ ring: 313596 }).unmodelled.includes("Taming Ring (Hunter Fly Egg Lv.1): Perfect Dodge +2"));
+  assert.equal(TAMING_EGGS.length, 52);
+  assert.ok(TAMING_EGGS.every(x => x.b.length || x.off));
 });
 
 t("a refined accessory counts its own refine lines, with no armor DEF schedule", () => {

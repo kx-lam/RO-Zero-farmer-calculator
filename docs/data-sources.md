@@ -8,6 +8,7 @@ The numbers are estimates. Skill values and formulas follow the sources below an
 - Gear, cards, refine and job data: [roz.prontera.info](https://roz.prontera.info)
 - Random options (affixes) per gear type, pool and slot, with their min–max: [rozerodb.com Affixes Simulator](https://rozerodb.com/tools/affixes)
 - Costume enchant stones and their sets: item descriptions on [rozerodb.com](https://rozerodb.com/guides/enchant), cross-checked with [midgardhub.com](https://midgardhub.com/guides/enchant-stones)
+- Taming Ring pet egg enchants: item descriptions on [rozerodb.com](https://rozerodb.com), cross-checked with [midgardhub.com pet bonuses](https://midgardhub.com/guides/pet-bonuses)
 - Spawn counts: the official Ragnarok Zero Global client (navigation table)
 - Map names: the official client (`System/mapInfo_enUS.lub`)
 - Spawn, drop and item name cross-check, in-game map codes: [ragnarokzero.net](https://ragnarokzero.net/database/maps)

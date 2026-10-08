@@ -196,6 +196,7 @@ const BUILD=(()=>{
   // costume enchant stones: one per costume slot, each only in its own slot
   const STONE_SLOTS=[{k:"upper",label:"Upper"},{k:"middle",label:"Middle"},{k:"lower",label:"Lower"},{k:"garment",label:"Garment"}];
   const stone=id=>(typeof STONES!=="undefined"?STONES:[]).find(x=>x.id===+id)||null;
+  const tamingEgg=id=>(typeof TAMING_EGGS!=="undefined"?TAMING_EGGS:[]).find(x=>x.id===+id)||null;
   const stonesWorn=sel=>STONE_SLOTS.map(z=>stone((sel||{})[z.k])).filter((x,i)=>x&&x.slot===STONE_SLOTS[i].k);
   // does a bonus group apply? r: item refine, rs: combined refine of a set, lv: base level, cls: job slugs
   // ("Acolyte Class" in game covers Priest and Monk, so a 2nd job also matches its 1st job)
@@ -221,6 +222,8 @@ const BUILD=(()=>{
     // costume enchant stones (data/stones.js): b.stones = {upper, middle, lower, garment} -> stone id, plus the sets they complete
     const st=stonesWorn(b.stones);st.forEach(x=>{(x.b||[]).forEach(l=>apply(A,l,x.name));if(x.off)A.unmodelled.push(`${x.name}: ${x.off}`)});
     const ids=st.map(x=>x.id);(typeof STONE_SETS!=="undefined"?STONE_SETS:[]).forEach(z=>{if(z.need.every(i=>ids.includes(i)))z.b.forEach(l=>apply(A,l,z.name))});
+    // Taming Ring (Special Equipment, Accessory Right): b.special.ring = the pet egg enchant sealed in it (data/special.js)
+    const egg=tamingEgg((b.special||{}).ring);if(egg){egg.b.forEach(l=>apply(A,l,`Taming Ring (${egg.name})`));if(egg.off)A.unmodelled.push(`Taming Ring (${egg.name}): ${egg.off}`)}
     // consumables and buffs picked on the Character tab: plain bonus lines on top of the gear
     (b.extra||[]).forEach(x=>apply(A,x,"consumable"));
     // sets: every piece worn; "combined refine" sums the pieces' refines
@@ -249,5 +252,5 @@ const BUILD=(()=>{
       lw:dual?lw:"",lwAtk:dual?f(((wpnL.atk||0)+refineAt(wpnL,(gear.shield||{}).refine)[0])*(1+A.atkPct/100)):0,lwElem:dual&&wpnL.el?cap(wpnL.el):"Neutral"};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines,optGear,optChoices,STONE_SLOTS,stone,stonesWorn}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines,optGear,optChoices,STONE_SLOTS,stone,stonesWorn,tamingEgg}})();
 if(typeof module!=="undefined")module.exports=BUILD;
