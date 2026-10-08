@@ -21,6 +21,7 @@ Object.assign(globalThis, {
     { id: 12, slug: "cruiser", name: "Cruiser Card", slot: ["weapon"], g: [{ b: [["crit_damage_percent", null, null, 10]] }, { b: [["crit", "race", "brute", 7]] }] },
     { id: 13, slug: "seal", name: "Seal Card", slot: ["weapon"], g: [{ cls: ["acolyte"], b: [["hit", null, null, 10]] }] },
     { id: 14, slug: "captain", name: "Captain Card", slot: ["weapon"], g: [{ b: [["physical_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
+    { id: 16, slug: "shark", name: "Shark Card", slot: ["garment"], g: [{ lvPer: 10, lvMax: 50, b: [["atk", null, null, 7], ["def", null, null, 3], ["mdef", null, null, 1]] }] },
     { id: 15, slug: "leader", name: "Leader Card", slot: ["weapon"], g: [{ b: [["magic_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
   ],
   SETS: [{ slug: "s", name: "Coat Set", pieces: ["coat", "boots"], g: [{ rs: 10, b: [["hp", null, null, 500]] }, { b: [["vit", null, null, 3]] }] }],
@@ -240,6 +241,13 @@ t("a refined accessory counts its own refine lines, with no armor DEF schedule",
   assert.equal(r.acc.st.int, 3);
   assert.deepEqual(BUILD.refineAt(BUILD.item(7), 7), [0, 0, 0]);
   assert.equal(r.fields.defTxt, z.fields.defTxt);
+});
+
+t("a card that grows every 10 base levels, up to Lv 50", () => {
+  const at = lv => BUILD.compute({ baseLv: lv, jobLv: 1, base, gear: { garment: { id: 2, cards: [16] } } }, "Knight", aspdBase).acc;
+  assert.deepEqual([9, 10, 37, 50, 99].map(lv => at(lv).atk), [0, 7, 21, 35, 35]);
+  assert.equal(at(45).def, 12);
+  assert.equal(at(99).mdef, 5);
 });
 
 console.log(`${n} tests passed`);
