@@ -666,6 +666,19 @@ t("Zeny Hunter monster picks: passing monsters by drops them from the map and le
   run(`state.huntOff={};state.huntAuto=false`);
 });
 
+t("Zeny Hunter weight: per kill from the drops you loot, per hour from the kill pace", () => {
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  run(`state.huntOff={};state.huntAuto=false;state.autoLoot={};state.dropBonus=0;C().baseLv=1;C().maxW=0`);
+  const mob = "({id:-5,name:'Heavy',lv:1,hp:100,exp:10,el:'Water',elv:1,size:'S',race:'Brute',def:0,mdef:0,vit:0,int:0,atkMin:1,atkMax:2,loot:50,drops:[[909,50],[4001,1]]})";
+  near(run(`weightKill(${mob})`), run(`ITEMW[909]`) * 0.5 + run(`ITEMW[4001]||0`) * 0.01);
+  const h = run(`huntMob0(${mob},2)`); near(h.wk, run(`weightKill(${mob})`)); near(h.wph, h.wk * h.kph);
+  run(`state.autoLoot={e:false}`);                                          // Jellopy left on the ground weighs nothing
+  near(run(`weightKill(${mob})`), (run(`ITEMW[4001]||0`)) * 0.01);
+  run(`state.autoLoot={}`);
+  const m = run(`huntMap0("mjo_d03",2)`), wsum = m.earn.reduce((a, x) => a + x.n * run(`weightKill(MOBS.find(m=>m.id===${x.m.id}))`), 0);
+  near(m.wk, wsum / m.n); near(m.wph, m.wk * m.kph);                        // spawn-weighted over the monsters you hunt
+});
+
 t("Zeny Hunter level filter: monsters outside the Lv range, or with a drop penalty, are passed by", () => {
   setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   run(`state.huntOff={};state.huntAuto=false;state.huntMinLv=null;state.huntMaxLv=null;state.huntNoPen=false;C().baseLv=1`);
