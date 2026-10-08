@@ -196,11 +196,15 @@ function saveLogEdit(s,tr){const v=f=>{const i=tr.querySelector(`[data-f="${f}"]
   if(s===cur()&&(s.job||state.job)===state.job&&s.entries.every(x=>x.t<=t)){const c0=C();if(c0.baseLv!==lv){const b0=derived(c0);c0.baseLv=lv;shiftByStats(c0,b0)}if(e.jlv)c0.jobLv=e.jlv}
   return ""}
 const openSession=id=>{state.current=id;state.calcMobId=null;LOG_EDIT=null;save();renderAll();resetForm()};
-// accounts: switching saves this one and reloads the page with the other one's data
+// accounts: switching saves this one and reloads the page with the other one's data.
+// The pick is written even when this tab is STALE (another tab saved): into the account list as it is in storage now, so accounts
+// another tab added stay, and into this tab's VIEW, so the reload opens it even if the list can't be written (storage full)
 function renderAccts(){$("acctSel").innerHTML=accts.list.map(a=>`<option value="${esc(a.id)}" ${a.id===accts.active?"selected":""}>${esc(a.name)}</option>`).join("");$("delAcct").disabled=accts.list.length<2}
-const switchAcct=id=>{save();accts.active=id;saveAccts();location.reload()};
+const switchAcct=(id,add)=>{save();let a=null;try{a=JSON.parse(localStorage.getItem(ACCT_KEY))}catch(e){}
+  if(!a||!Array.isArray(a.list)||!a.list.length)a={list:accts.list.slice()};if(add&&!a.list.some(x=>x.id===add.id))a.list.push(add);a.active=id;
+  try{localStorage.setItem(ACCT_KEY,JSON.stringify(a))}catch(e){}try{sessionStorage.setItem(VIEW_KEY,JSON.stringify({acct:id}))}catch(e){}location.reload()};
 $("acctSel").addEventListener("change",e=>switchAcct(e.target.value));
-$("newAcct").addEventListener("click",()=>{const id="a"+Date.now();let n=accts.list.length+1;while(accts.list.some(a=>a.name==="Account "+n))n++;accts.list.push({id,name:"Account "+n});switchAcct(id)});
+$("newAcct").addEventListener("click",()=>{const id="a"+Date.now();let n=accts.list.length+1;while(accts.list.some(a=>a.name==="Account "+n))n++;const add={id,name:"Account "+n};accts.list.push(add);switchAcct(id,add)});
 const endAcctRename=keep=>{const i=$("acctName");if(i.hidden)return;if(keep){const v=i.value.trim(),a=accts.list.find(x=>x.id===accts.active);if(v&&a){a.name=v;saveAccts()}}i.hidden=true;$("acctSel").hidden=false;$("renameAcct").textContent="Rename";renderAccts()};
 $("renameAcct").addEventListener("click",()=>{const i=$("acctName");if(!i.hidden){endAcctRename(true);return}i.value=accts.list.find(x=>x.id===accts.active).name;i.hidden=false;$("acctSel").hidden=true;$("renameAcct").textContent="Save";i.focus();i.select()});
 $("acctName").addEventListener("keydown",e=>{if(e.key==="Enter")endAcctRename(true);else if(e.key==="Escape")endAcctRename(false)});
