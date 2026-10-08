@@ -257,16 +257,18 @@ const BUILD=(()=>{
   // the equipment window names gear by its cards: "+7 Double Healing Shining Clip" is a +7 Shining Clip with two Vitata Cards.
   // Each card adds its name (data/cardnames.js) before the item's, or after it when the name starts with "of " ("Boots of
   // Health"); 2-4 copies of one card show as Double / Triple / Quadruple. Long names are cut off ("Hard Nordfeld Soldier..."),
-  // so the item name may be only its start.
+  // so the item name may be only its start. Card names typed the usual way work too ("+9 Shining Clip Vitata Card").
   const TIMES={double:2,triple:3,quadruple:4};
   const normName=s=>String(s||"").toLowerCase().replace(/[’‘`]/g,"'").replace(/(\.\.\.|…)\s*$/,"").replace(/\s+/g," ").trim();
-  // cards named one after another: "double healing hard" -> [Vitata, Vitata, <Hard card>]; null unless the whole text is card names
-  function readCardNames(text,cards,nameOf){const named=cards.map(c=>[normName(nameOf(c)),c.id]).filter(x=>x[0]).sort((a,b)=>b[0].length-a[0].length);
+  // cards named one after another: "double healing hard" -> [Vitata, Vitata, <Hard card>]; null unless the whole text is card names.
+  // A card goes by its name in the equipment window or its own name, with or without "Card" ("Healing", "Vitata", "vitata card")
+  function readCardNames(text,cards,nameOf){const named=cards.flatMap(c=>[nameOf(c),c.name,(c.name||"").replace(/ card$/i,"")].map(n=>[normName(n),c.id]))
+      .filter(x=>x[0]).sort((a,b)=>b[0].length-a[0].length);
     let s=normName(text);const out=[];
     while(s){const m=/^(double|triple|quadruple) /.exec(s),n=m?TIMES[m[1]]:1,r=m?s.slice(m[0].length):s,
         hit=named.find(([nm])=>r===nm||r.startsWith(nm+" "));
       // a cut-off "of ..." is the last thing shown: its card when only one fits, else left for the player to pick
-      if(!hit){const cut=!m&&r.startsWith("of ")&&named.filter(([nm])=>nm.startsWith(r));if(cut&&cut.length){if(cut.length===1)out.push(cut[0][1]);break}return null}
+      if(!hit){const cut=!m&&r.startsWith("of ")&&named.filter(([nm])=>nm.startsWith(r));if(cut&&cut.length){const ids=[...new Set(cut.map(x=>x[1]))];if(ids.length===1)out.push(ids[0]);break}return null}
       for(let i=0;i<n;i++)out.push(hit[1]);s=r.slice(hit[0].length).trim()}
     return out}
   // "+9 Shark Family Muffler" -> {id, refine, cards}; the best item of the list whose name (or, cut off, its start) is in the text

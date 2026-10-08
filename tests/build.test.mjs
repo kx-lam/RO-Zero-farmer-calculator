@@ -284,6 +284,10 @@ t("gear named the way the equipment window shows it: card names, Double / Triple
   assert.deepEqual(BUILD.readCardNames("double healing", cards, c => names[c.id]), [10, 10]);
   assert.deepEqual(BUILD.readCardNames("of hermes", cards, c => names[c.id]), [14]);
   assert.equal(BUILD.readCardNames("healing x", cards, c => names[c.id]), null);
+  assert.deepEqual(BUILD.readCardNames("vitata card", cards, c => names[c.id]), [10], "the card's own name");
+  assert.deepEqual(BUILD.readCardNames("Double Vitata Hard", cards, c => names[c.id]), [10, 10, 12], "own names and window names mixed");
+  assert.deepEqual(read("+9 Shining Clip Vitata Card"), { id: 1, refine: 9, cards: [10] }, "item then its card");
+  assert.deepEqual(read("+4 Shark Family Card Muffler"), { id: 3, refine: 4, cards: [11] });
 });
 
 console.log(`${n} tests passed`);
