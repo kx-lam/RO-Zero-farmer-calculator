@@ -1128,6 +1128,13 @@ t("base-level skills scale only above Lv100, except the three Zero skills missin
   near(run(`pctEff()`), 1400);                                            // Lv60: no × 60/100
   run(`C().a=${pre("Assassin", "Soul Destroyer")};C().a.sadd=[]`);
   near(run(`pctEff()`), 1500 * 60 / 100);                                 // the bug: × 60/100
+  // Attack details says so: a real element for the summary line, so the text renderChar writes can be read back
+  run(`globalThis.getEl=document.getElementById;const sum={textContent:""};document.getElementById=id=>id==="atkSummary"?sum:getEl(id);
+    C().preset=JOBS.Assassin.p.findIndex(p=>p.name.startsWith("Soul Destroyer"));renderChar()`);
+  assert.match(run(`$("atkSummary").textContent`), /Zero bug: .*× 60\/100 at Lv 60\): 900% per hit/);
+  run(`C().preset=JOBS.Assassin.p.findIndex(p=>p.name.startsWith("Meteor Assault"));C().a=${pre("Assassin", "Meteor Assault")};C().a.sadd=[];renderChar()`);
+  assert.match(run(`$("atkSummary").textContent`), /base level only raises it above Lv100, so no change at Lv 60: 1400% per hit/);
+  run(`document.getElementById=getEl`);
   setup("Blacksmith", { baseLv: 72, st: {} });
   run(`C().a=${pre("Blacksmith", "Axe Tornado")};C().a.sadd=[]`);
   near(run(`pctEff()`), 4300 * 72 / 100);
