@@ -210,6 +210,11 @@ const leftHandOk=it=>state.job==="Assassin"&&(it.slot||[]).includes("weapon")&&B
 function gearChoices(slot){const s=BUILD.SLOTS.find(x=>x.k===slot);return (typeof EQUIP!=="undefined"?EQUIP:[]).filter(it=>((it.slot||[]).some(x=>s.takes.includes(x))||slot==="shield"&&leftHandOk(it))&&canWear(it))}
 // cards follow the item: a weapon in the Shield row takes weapon cards
 function cardChoices(slot,it){const cs=it&&(it.slot||[]).includes("weapon")?"weapon":BUILD.CARD_FOR[slot];return (typeof CARDS!=="undefined"?CARDS:[]).filter(c=>(c.slot||[]).some(x=>x===cs||x.startsWith(cs)))}
+// random options: a list per option the item rolled, plus an empty one to add the next (any item takes up to OPT_MAX)
+const OPT_LIST=(()=>{const gs=[...new Set(BUILD.OPTIONS.map(o=>o.g))];
+  return gs.map(g=>`<optgroup label="${esc(g)}">${BUILD.OPTIONS.filter(o=>o.g===g).map(o=>`<option value="${o.k}">${esc(o.label)}</option>`).join("")}</optgroup>`).join("")})();
+function optBoxes(g){const rows=BUILD.optRows(g.opts),one=(x,i)=>`<div class="opt"><select data-opt="${i}"><option value="">${x?"remove":"+ option"}</option>${OPT_LIST}</select>${x?`<input data-optv="${i}" type="number" step="any" value="${esc(x.v??"")}">`:""}</div>`;
+  return `<div class="opts">${rows.map(one).join("")}${rows.length<BUILD.OPT_MAX?one(null,rows.length):""}</div>`}
 function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
   const rows=BUILD.SLOTS.map(s=>{const g0=b.gear[s.k]||{},items=gearChoices(s.k),cards=cardChoices(s.k,g0.id&&BUILD.item(g0.id));GEAR_LISTS["g_"+s.k]=pickList(items);GEAR_LISTS["c_"+s.k]=pickList(cards);
     lists+=`<datalist id="gl_${s.k}">${[...GEAR_LISTS["g_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist><datalist id="cl_${s.k}">${[...GEAR_LISTS["c_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`;
@@ -218,8 +223,9 @@ function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
     const refinable=it&&it.refine;
     return `<tr data-slot="${s.k}"><td>${s.k==="shield"&&state.job==="Assassin"?"Shield / left hand":s.label}</td><td><input class="item" list="gl_${s.k}" placeholder="${items.length?"none":"no items for this job"}" value="${esc(it?labelOf(it,items):"")}"></td>
       <td>${refinable?`<input class="ref" type="number" min="0" max="20" value="${num(g.refine)}">`:""}</td><td><div class="cards">${cardBoxes}</div></td>
-      <td>${it?`<input class="opts" placeholder="e.g. ATK +25, FLEE +20" value="${esc(g.opts||"")}">`:""}</td></tr>`}).join("");
-  $("gearTable").tBodies[0].innerHTML=rows;$("gearLists").innerHTML=lists}
+      <td>${it?optBoxes(g):""}</td></tr>`}).join("");
+  $("gearTable").tBodies[0].innerHTML=rows;$("gearLists").innerHTML=lists;
+  BUILD.SLOTS.forEach(s=>{const g=b.gear[s.k];if(g)BUILD.optRows(g.opts).forEach((x,i)=>{const el=$("gearTable").querySelector(`tr[data-slot="${s.k}"] [data-opt="${i}"]`);if(el)el.value=x.k})})}
 function renderBuild(){const c=C(),on=c.mode==="build";
   if(on&&renderBuild.job!==state.job){renderBuild.job=state.job;renderGearTable()}if(!on)renderBuild.job=null;
   ROOTQ("[data-cmode]").forEach(x=>x.setAttribute("aria-checked",String(x.dataset.cmode===(on?"build":"status"))));
@@ -248,6 +254,10 @@ $("gearTable").addEventListener("change",e=>{const tr=e.target.closest("tr[data-
   if(e.target.classList.contains("item")){const v=e.target.value.trim();const id=GEAR_LISTS["g_"+k].get(v);
     if(!v){delete b.gear[k]}else if(id!=null){if(g.id!==id){g.id=id;g.cards=[];g.refine=0}}else{e.target.value=g.id?e.target.defaultValue:"";return}
     save();renderGearTable();renderAll();return}
+  // picking an option keeps its value; "remove" drops it. The rows replace any text typed before the lists
+  if(e.target.dataset.opt!=null){const rows=BUILD.optRows(g.opts),i=+e.target.dataset.opt,v=e.target.value;
+    if(!v)rows.splice(i,1);else rows[i]={k:v,v:rows[i]?rows[i].v:""};g.opts=rows;save();renderGearTable();renderAll();
+    if(v)$("gearTable").querySelector(`tr[data-slot="${k}"] [data-optv="${i}"]`)?.focus();return}
   if(e.target.dataset.card!=null){const v=e.target.value.trim(),id=GEAR_LISTS["c_"+k].get(v);g.cards=g.cards||[];
     if(!v)g.cards[+e.target.dataset.card]=null;else if(id!=null)g.cards[+e.target.dataset.card]=id;else{e.target.value="";return}save();renderAll()}});
 $("checkGrid").addEventListener("input",e=>{const k=e.target.dataset.ck;if(!k)return;const b=buildOf(C());b.check=b.check||{};
@@ -255,6 +265,7 @@ $("checkGrid").addEventListener("input",e=>{const k=e.target.dataset.ck;if(!k)re
   // refresh just the difference marks while typing, so the box keeps focus
   CHECKS.forEach(([kk,,get])=>{const inp=$("checkGrid").querySelector(`[data-ck="${kk}"]`),mark=inp.nextElementSibling,g=b.check[kk],mine=BUILD_LAST?get(BUILD_LAST.fields):null;
     const d=g!=null&&mine!=null?g-mine:null;if(mark)mark.remove();if(d!=null)inp.insertAdjacentHTML("afterend",`<span class="${Math.abs(d)<0.5?"good":"bad"}">${d===0?"✓":(d>0?"+":"")+fmtP(+d.toFixed(1))}</span>`)})});
-$("gearTable").addEventListener("input",e=>{if(e.target.classList.contains("opts")){const g=buildOf(C()).gear[e.target.closest("tr").dataset.slot];if(g){g.opts=e.target.value;save();renderAll()}return}
+$("gearTable").addEventListener("input",e=>{if(e.target.dataset.optv!=null){const g=buildOf(C()).gear[e.target.closest("tr").dataset.slot];if(!g)return;
+    const rows=BUILD.optRows(g.opts),x=rows[+e.target.dataset.optv];if(x){x.v=e.target.value===""?"":num(e.target.value);g.opts=rows;save();renderAll()}return}
   if(!e.target.classList.contains("ref"))return;const k=e.target.closest("tr").dataset.slot;const g=buildOf(C()).gear[k];if(!g)return;
   g.refine=Math.max(0,Math.min(20,num(e.target.value)));save();renderAll()});

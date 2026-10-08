@@ -149,4 +149,22 @@ t("Assassin left-hand weapon in the Shield row: dual wield ATK, element and ASPD
   assert.ok(k.unmodelled.some(x => x.includes("left-hand weapon")));
 });
 
+t("random options picked from lists: any item takes up to 4, resists and cast time store negated", () => {
+  assert.equal(BUILD.OPT_MAX, 4);
+  assert.equal(new Set(BUILD.OPTIONS.map(o => o.k)).size, BUILD.OPTIONS.length);
+  const opts = [{ k: "atk", v: 25 }, { k: "dmg_race_demi_human", v: 5 }, { k: "res_ele_fire", v: 10 }, { k: "cast_time_variable_percent", v: 5 }, { k: "gone", v: 3 }, { k: "flee", v: "" }];
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2, opts } } }, "Knight", aspdBase);
+  const z = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2 } } }, "Knight", aspdBase);
+  assert.equal(r.acc.atk, 25);
+  assert.equal(r.acc.phys.race["Demi-Human"], 5);
+  assert.equal(r.acc.taken.ele.Fire, -10);
+  assert.equal(r.acc.vct, 5);
+  assert.equal(r.acc.flee, z.acc.flee);                                    // an option with no value yet adds nothing
+  assert.deepEqual(BUILD.optRows(opts).map(x => x.k), ["atk", "dmg_race_demi_human", "res_ele_fire", "cast_time_variable_percent", "flee"]);
+  // a build saved with typed text still counts, and shows as rows
+  const old = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2, opts: "ATK +25, FLEE +20" } } }, "Knight", aspdBase);
+  assert.equal(old.acc.atk, 25);
+  assert.deepEqual(BUILD.optRows("ATK +25, MATK +3%"), [{ k: "atk", v: 25 }, { k: "matk_percent", v: 3 }]);
+});
+
 console.log(`${n} tests passed`);

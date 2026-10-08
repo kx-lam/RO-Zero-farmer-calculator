@@ -106,6 +106,34 @@ const BUILD=(()=>{
     const m=p.match(/^([a-z ]+?)\s*([+-]\s*\d+(?:\.\d+)?)\s*(%?)$/i);const k=m&&OPT[m[1].toLowerCase().replace(/\s+/g,"")];
     if(!k){bad.push(p);return}const v=parseFloat(m[2].replace(/\s/g,""));
     if(m[3]){if(PCT[k])out.push([PCT[k],null,null,v]);else bad.push(p)}else out.push([k,null,null,v])});return {lines:out,bad}}
+  // random options picked from lists in build mode: gear.opts = [{k, v}], up to OPT_MAX per item whatever the item
+  // (one item can roll 2 on one drop and 4 on the next). k picks a line below; neg lines store the value negated
+  // ("Resist Fire 10%" is damage taken −10%, "Variable cast time −5%" is the data's −5)
+  const OPT_MAX=4;
+  const OPTIONS=(()=>{const o=[],add=(g,k,label,type,kind,target,pct,neg)=>o.push({k,g,label,line:[type,kind||null,target||null],pct:!!pct,neg:!!neg});
+    STAT6.forEach(k=>add("Stats",k,k.toUpperCase(),k));
+    [["atk","ATK"],["matk","MATK"],["hit","HIT"],["crit","CRIT"],["aspd","ASPD"]].forEach(([k,l])=>add("Offense",k,l,k));
+    [["atk_percent","ATK"],["matk_percent","MATK"],["aspd_percent","ASPD"],["crit_damage_percent","Critical damage"],["ranged_damage_percent","Ranged physical damage"],
+      ["melee_damage_percent","Melee physical damage"],["damage_percent","Physical damage"],["magic_damage_percent","Magic damage"],["ignore_def_percent","Ignore DEF"],["ignore_mdef_percent","Ignore MDEF"]]
+      .forEach(([k,l])=>add("Offense",k,l+" %",k,null,null,true));
+    add("Offense","cast_time_variable_percent","Variable cast time −%","cast_time_variable_percent",null,null,true,true);
+    add("Offense","after_cast_delay_percent","After-cast delay −%","after_cast_delay_percent",null,null,true,true);
+    [["hp","Max HP"],["sp","Max SP"],["def","DEF"],["mdef","MDEF"],["flee","FLEE"]].forEach(([k,l])=>add("Defense",k,l,k));
+    [["hp_percent","Max HP"],["sp_percent","Max SP"],["hp_recovery_percent","HP recovery"],["sp_recovery_percent","SP recovery"]].forEach(([k,l])=>add("Defense",k,l+" %",k,null,null,true));
+    for(const r in RACE){add("Race","dmg_race_"+r,`Damage vs ${RACE[r]} %`,"damage_percent","race",r,true);add("Race","mdmg_race_"+r,`Magic damage vs ${RACE[r]} %`,"magic_damage_percent","race",r,true);
+      add("Race","res_race_"+r,`Resist ${RACE[r]} %`,"damage_taken_percent","race",r,true,true)}
+    for(const z in SIZE){add("Size","dmg_size_"+z,`Damage vs ${cap(z)} %`,"damage_percent","size",z,true);add("Size","mdmg_size_"+z,`Magic damage vs ${cap(z)} %`,"magic_damage_percent","size",z,true)}
+    ["neutral","water","earth","fire","wind","poison","holy","shadow","ghost","undead"].forEach(e=>{add("Element","dmg_ele_"+e,`Damage vs ${cap(e)} monsters %`,"damage_percent","element",e,true);
+      add("Element","mele_"+e,`${cap(e)} magic damage %`,"magic_damage_percent","element",e,true);add("Element","res_ele_"+e,`Resist ${cap(e)} %`,"damage_taken_percent","element",e,true,true)});
+    [["normal","Normal"],["boss","Boss"]].forEach(([t,l])=>{add("Monster type","dmg_kind_"+t,`Damage vs ${l} monsters %`,"damage_percent","monster_kind",t,true);
+      add("Monster type","mdmg_kind_"+t,`Magic damage vs ${l} monsters %`,"magic_damage_percent","monster_kind",t,true)});
+    return o})();
+  const OPT_BY=Object.fromEntries(OPTIONS.map(x=>[x.k,x]));
+  // the picked rows; a build saved before the lists keeps its typed text and is read as rows where it matches one
+  function optRows(opts){if(Array.isArray(opts))return opts.filter(x=>x&&OPT_BY[x.k]);
+    return parseOptions(opts).lines.map(([t,,,v])=>{const o=OPTIONS.find(x=>x.line[0]===t&&!x.line[1]);return o&&{k:o.k,v:o.neg?-v:v}}).filter(Boolean)}
+  function optLines(opts){if(!Array.isArray(opts))return parseOptions(opts);
+    return {lines:optRows(opts).filter(x=>+x.v).map(x=>{const o=OPT_BY[x.k];return [...o.line,o.neg?-x.v:+x.v]}),bad:[]}}
   // does a bonus group apply? r: item refine, rs: combined refine of a set, lv: base level, cls: job slugs
   // ("Acolyte Class" in game covers Priest and Monk, so a 2nd job also matches its 1st job)
   const groupOn=(g,ctx)=>(g.r==null||ctx.refine>=g.r)&&(g.rs==null||ctx.refineSum>=g.rs)&&(g.lv==null||ctx.baseLv>=g.lv)&&(!g.cls||!g.cls.length||g.cls.includes(ctx.jobSlug)||g.cls.includes(ctx.firstSlug));
@@ -126,7 +154,7 @@ const BUILD=(()=>{
       // a weapon in the Shield row is the left hand (Assassin); its ATK shows on the gear side of the status window like the right one's
       if(s.k==="shield"){if((it.slot||[]).includes("weapon"))wpnL=it;else shield=true}gearMatk+=it.matk||0;gearDef+=it.def||0;gearMdef+=it.mdef||0;refDef+=rd});
     worn.forEach(w=>{const ctx={...ctxBase,refine:w.r};applyGroups(A,w.it.g,ctx,w.it.name);w.cards.forEach(c=>applyGroups(A,c.g,ctx,c.name));
-      const o=parseOptions((gear[w.slot]||{}).opts);o.lines.forEach(b=>apply(A,b,w.it.name+" option"));o.bad.forEach(x=>A.unmodelled.push(`${w.it.name} option not understood: ${x}`))});
+      const o=optLines((gear[w.slot]||{}).opts);o.lines.forEach(b=>apply(A,b,w.it.name+" option"));o.bad.forEach(x=>A.unmodelled.push(`${w.it.name} option not understood: ${x}`))});
     // consumables and buffs picked on the Character tab: plain bonus lines on top of the gear
     (b.extra||[]).forEach(x=>apply(A,x,"consumable"));
     // sets: every piece worn; "combined refine" sums the pieces' refines
@@ -155,5 +183,5 @@ const BUILD=(()=>{
       lw:dual?lw:"",lwAtk:dual?f(((wpnL.atk||0)+refineAt(wpnL,(gear.shield||{}).refine)[0])*(1+A.atkPct/100)):0,lwElem:dual&&wpnL.el?cap(wpnL.el):"Neutral"};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines}})();
 if(typeof module!=="undefined")module.exports=BUILD;

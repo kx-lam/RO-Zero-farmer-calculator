@@ -121,7 +121,10 @@ td .map{cursor:default}
 #gearTable input{padding:4px 8px;font-size:13px;width:100%}
 #gearTable .item{min-width:220px}
 #gearTable .ref{width:64px}
-#gearTable .opts{min-width:170px}
+#gearTable .opts{display:flex;flex-direction:column;gap:4px;min-width:250px}
+#gearTable .opt{display:flex;gap:6px}
+#gearTable .opt select{flex:1;min-width:0;padding:4px 6px;font-size:13px}
+#gearTable .opt input{width:72px;flex:none}
 #gearTable .cards{display:flex;gap:6px;min-width:180px}
 #gearTable .cards input{min-width:140px}
 input:disabled,select:disabled{opacity:.75;background:var(--bg);cursor:not-allowed}

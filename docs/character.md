@@ -3,7 +3,7 @@
 [← Back to README](../README.md) · [Other tabs](features.md)
 
 - **Every 2nd job:** pick a job and an attack. The presets use max-level Ragnarok Zero skill data, including cast time, delay, base-level scaling and stat bonuses.
-- **Build mode:** works out ATK, MATK, HIT, FLEE, ASPD, DEF, HP and SP from base stats, job level, gear, refine and cards, matching the in-game status window.
+- **Build mode:** works out ATK, MATK, HIT, FLEE, ASPD, DEF, HP and SP from base stats, job level, gear, refine, cards and random options, matching the in-game status window. Pick each random option from the list and type its value. Any item takes up to 4 options, because the same item can roll 2 on one drop and 4 on the next. Resist options lower the damage you take from that race or element. Builds saved with typed options still count them, and they turn into list rows when you next edit them.
 - **Damage model:** status ATK/MATK, weapon size penalty, the element table, monster DEF/MDEF, hit and dodge chance, crits, mastery ATK, gear % bonuses, cast and delay reduction, ASPD potions and elemental converters.
 
 ## Assassin dual wield
