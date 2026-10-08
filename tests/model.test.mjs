@@ -997,26 +997,23 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   run(`C().pbuffOwn[0].on=false`); assert.equal(run(`consLines().lines.length`), 0);
 });
 
-t("clan: a buff that stays on, two stats +1, Max HP +30, Max SP +10", () => {
-  setup("Knight", { atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", maxHp: 1000, maxSp: 100, st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
-    potOn: false, cons: [], consStat: {}, pbuffs: {}, buffs: {}, skills: {}, clan: "sword" });
-  run(`applyConsumables()`);
-  assert.equal(run(`statVal(C(),"str")`), 51);
-  assert.equal(run(`statVal(C(),"vit")`), 2);
-  assert.equal(run(`cf("maxHp")`), Math.floor(1000 * 102 / 101 + 30));         // VIT 1 → 2 scales the typed Max HP, then +30
-  assert.equal(run(`cf("maxSp")`), 110);
-  // it stacks with Blessing of Yggdrasil (all stats +7), unlike food
-  run(`C().yggOn=true;applyConsumables()`);
-  assert.equal(run(`statVal(C(),"str")`), 58);
-  run(`C().yggOn=false;C().addOnTop=false;applyConsumables()`);                // the typed status window already has it
-  assert.equal(run(`statVal(C(),"str")`), 50);
-  run(`C().addOnTop=true;C().clan="crossbow";applyConsumables()`);
-  assert.deepEqual([run(`statVal(C(),"dex")`), run(`statVal(C(),"agi")`), run(`statVal(C(),"str")`)], [41, 81, 50]);
-  assert.equal(run(`clanEff(CLANS.goldenmace)`), "LUK +1, INT +1, Max HP +30, Max SP +10");
+t("clan: a buff that stays on, two stats +1, Max HP +30, Max SP +10, counted in build mode", () => {
   // build mode counts it like the other buffs
   setup("Knight", { mode: "build", baseLv: 3, jobLv: 1, build: { base: { str: 10, agi: 1, vit: 1, int: 1, dex: 1, luk: 1 }, gear: {} }, cons: [], consStat: {}, pbuffs: {}, buffs: {}, skills: {}, clan: "archwand" });
   run(`applyBuild()`);
   assert.deepEqual([run(`BUILD_LAST.acc.st.int`), run(`BUILD_LAST.acc.st.dex`), run(`BUILD_LAST.acc.hp`), run(`BUILD_LAST.acc.sp`)], [1, 1, 30, 10]);
+  // it stacks with Blessing of Yggdrasil (all stats +7), unlike food
+  run(`C().yggOn=true;applyBuild()`);
+  assert.equal(run(`BUILD_LAST.acc.st.int`), 8);
+  run(`C().yggOn=false;C().clan="crossbow";applyBuild()`);
+  assert.deepEqual([run(`BUILD_LAST.acc.st.dex`), run(`BUILD_LAST.acc.st.agi`), run(`BUILD_LAST.acc.st.int`)], [1, 1, 0]);
+  assert.equal(run(`clanEff(CLANS.goldenmace)`), "LUK +1, INT +1, Max HP +30, Max SP +10");
+  // it can't be switched off, so a typed status window already has it: nothing is added on top
+  setup("Knight", { atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", maxHp: 1000, maxSp: 100, st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
+    potOn: false, cons: [], consStat: {}, pbuffs: {}, buffs: {}, skills: {}, clan: "sword" });
+  run(`applyConsumables()`);
+  assert.equal(run(`statVal(C(),"str")`), 50);
+  assert.equal(run(`cf("maxHp")`), 1000);
 });
 
 t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
