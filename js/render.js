@@ -14,7 +14,7 @@ const syncChar=()=>{
   {const cd=CRD();ROOTQ("[data-cd]").forEach(i=>{const k=i.dataset.cd;if(i.type==="checkbox")i.checked=!!cd[k];else i.value=cd[k]??""})}
   syncCardOpts();
   $("dpWrap").hidden=state.job!=="Sage";
-  {const ks=CRD().killSp;$("killSpBoxes").innerHTML=Object.entries(KILL_SP).map(([r,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cdkill="${esc(r)}" style="width:auto"${ks.includes(r)?" checked":""}> ${esc(n)} (${esc(r)})</label>`).join("")}
+  {const ks=CRD().killSp;$("killSpBoxes").innerHTML=Object.entries(KILL_SP).map(([r,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cdkill="${esc(r)}" style="width:auto"${ks.includes(r)?" checked":""}> <b>${esc(n)}</b> (${esc(r)})</label>`).join("")}
   $("ecRow").hidden=!EC_JOBS.includes(state.job);{const e=ECO();ROOTQ("[data-ec]").forEach(i=>{const k=i.dataset.ec;if(i.type==="checkbox")i.checked=!!e[k];else i.value=e[k]??""})}
   $("sagePanel").hidden=state.job!=="Sage";if(state.job==="Sage"){const g=G();ROOTQ("[data-sg]").forEach(i=>{const k=i.dataset.sg;if(i.type==="checkbox")i.checked=!!g[k];else i.value=g[k]??""});ROOTQ("[data-sgbolt]").forEach(i=>i.checked=!!g.bolts[i.dataset.sgbolt]);$("sg_hsOn").disabled=!!g.hsAuto}STATS.forEach(k=>$("st_"+k).value=(c.st&&c.st[k])||"");renderStatNote();
 };

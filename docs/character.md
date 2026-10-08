@@ -30,7 +30,7 @@ Any job, Mages included, can add a spell from a card, weapon or scroll that proc
 
 ## Cards any job can slot
 
-- **Vitata:** SP cost +25%, and the Heal Lv1 you cast costs SP and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost.
+- **Vitata:** SP cost +25%, and the Heal Lv1 you cast costs SP and time you aren't attacking. Heal covers the HP you lose (after Hunter Fly, "HP back per minute" and consumables), so no HP items are counted on top. In build mode a Vitata Card in your gear already counts its SP cost.
 - **Side Winder:** basic attacks hit twice some of the time, right hand only. With Double Attack learned the card adds nothing.
 - **Creamy:** Teleport Lv1, so the Zeny Hunter can teleport past monsters you skip. Its 10 SP a cast isn't counted.
 - **Phen / Bloody Butterfly:** casts can't be interrupted, variable cast +25% / +30%. Build mode reads them from your gear.
@@ -47,7 +47,7 @@ Left blank, SP regen per 8 s is worked out: 1 + Max SP/100 + INT/6, plus more fr
 
 - **Hunter Fly:** physical attacks have a chance to restore HP every second for 5 s, so less HP lost per minute. Set how many copies you wear (1–4); build mode counts them in your gear and counts the card as on. Each copy rolls on every attack until one procs, but the restore doesn't add up, so the HP restore runs 1 − (1 − 5%)^(copies × attacks in 5 s) of the time (not checked in game).
 
-HP Recovery +x% cards (Muka, Zombie, Wooden Golem, Merman) raise natural HP regen; they aren't modelled, so count them in "HP back per minute".
+HP Recovery +x% cards (Muka, Zombie, Wooden Golem, Merman) raise natural HP regen; they aren't modelled, so count them in "HP back per minute". Don't add Hunter Fly, Vitata or HP-over-time consumables there: they're counted already.
 
 ## SP back from cards
 

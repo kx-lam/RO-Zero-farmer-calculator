@@ -180,7 +180,9 @@ const defParts=()=>{const p=String(cf("defTxt")||"0").split("+").map(x=>parseFlo
 // dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
 const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(cf("fleeTxt"))-m.flee95));
 const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,((m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)*takenMul(m))};
-const hpLossPerMin=m=>{const d=defense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)-consHPPerSec()*60):null};
+// HP lost per minute that HP items must cover: defense() already takes off Hunter Fly, the "HP back per minute" box and consumables;
+// with Vitata your Heal casts cover the rest (paid in SP and time, see healsPerSec), so no HP items
+const hpLossPerMin=m=>{const d=defense(m);return d?CRD().vitata&&healHpEff()>0?0:d.hp*60:null};
 // ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, SP items; Energy Coat from ECO(), Vitata, Hunter Fly and Side Winder from CRD()) ----
 const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5};
 const G=()=>{const c=C();if(!c.sage)c.sage={};for(const k in SAGE_D)if(c.sage[k]==null)c.sage[k]=JSON.parse(JSON.stringify(SAGE_D[k]));return c.sage};
@@ -232,15 +234,15 @@ const cardSPPerSec=()=>dracSPPerSec()+dpSPPerSec()+killSPPerSec();
 const EC_BANDS=[[30,3,"100–81%"],[24,2.5,"80–61%"],[18,2,"60–41%"],[12,1.5,"40–21%"],[6,1,"20–1%"]];
 const hsFullSP=()=>atkPerSec()*hsChance()*hsProcSP();
 const sgItemsOn=()=>hsOnNow()&&spItemAmt()>0; // SP items go with Hindsight
-// damage taken, any attack: Energy Coat (Mage, Wizard, Sage), Hunter Fly and Vitata's heals. Energy Coat's cut and SP per hit depend on
+// damage taken, any attack: Energy Coat (Mage, Wizard, Sage), HP back (Hunter Fly, the "HP back per minute" box, consumables) and Vitata's heals. Energy Coat's cut and SP per hit depend on
 // how full your SP is: the fullest band your regen can hold after the attack's own SP, else where SP items keep it, else nearly empty
 const itemsOnNow=()=>isSF()?sgItemsOn():!!C().autoSp&&spItemAmt()>0;
 // its hits that land on you per second: a swing every interval, times "swings reach you", less what you dodge
 const hitsOnYou=m=>{if(!m||m.atkMin==null)return 0;const dg=dodge(m);return Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5))};
 function defense(m){
   const raw=mobHitDmg(m);if(raw==null)return null;const hits=hitsOnYou(m);
-  const sf=isSF(),max=num(cf("maxSp")),ec=ecOn(),regen=regenPerSec(),up=sf?sgUpkeep():skillSPPerSec(),hs=sf?hsFullSP():0,spMul=sf?sgSpMult():spCostMul();
-  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),cd=CRD(),healSP=cd.vitata&&healHpEff()>0?hp/healHpEff()*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
+  const sf=isSF(),max=num(cf("maxSp")),ec=ecOn(),hpBack=hfHpPerSec()+num(C().hpRegen)/60+consHPPerSec(),regen=regenPerSec(),up=sf?sgUpkeep():skillSPPerSec(),hs=sf?hsFullSP():0,spMul=sf?sgSpMult():spCostMul();
+  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hpBack),cd=CRD(),healSP=cd.vitata&&healHpEff()>0?hp/healHpEff()*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
   const cost=b=>up+b.ecSP+b.healSP;
   let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
   if(!b){const p=num(ECO().spPct,50);b=itemsOnNow()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}

@@ -1012,6 +1012,9 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
   const hf = run("hfHpPerSec()"), n = run("atkPerSec()") * 5;
   near(hf, (1 - Math.pow(0.95, n)) * 100);
   near(run(`hpLossPerMin(${MOB})`), Math.max(0, hp - hf * 60));
+  run("C().hpRegen=30");                                                    // the box comes off on top of Hunter Fly, once
+  near(run(`hpLossPerMin(${MOB})`), Math.max(0, hp - hf * 60 - 30));
+  run("C().hpRegen=0");
   run("C().a={...C().a,type:'magic'}");                                     // spells don't trigger it
   assert.equal(run("hfHpPerSec()"), 0);
   run(`C().a=${JSON.stringify(AUTO)};CRD().hfOn=false;CRD().vitata=true`);  // Vitata: you cast Heal Lv1 as on a Sage
@@ -1019,6 +1022,10 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
   near(run(`healsPerSec(${MOB})`), heals);
   near(run(`fightSec(${MOB})`), fight / (1 - f));
   near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`), sp + heals * 13 * 1.25);   // Heal's SP, +25%
+  assert.equal(run(`hpLossPerMin(${MOB})`), 0);                             // Heal covers the HP, so no HP items on top
+  run("C().hpRegen=60");                                                    // HP back per minute: fewer Heals, typed once
+  near(run(`healsPerSec(${MOB})`), Math.max(0, hp / 60 - 1) / 357);
+  run("C().hpRegen=0");
   run("C().a={...C().a,sp:20}");
   near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()-defSP()}finally{SG_MOB=null}})()`), 20 * 1.25 / run("useSec()"));   // skills cost +25% SP
   run("C().mode='build';C().build={gear:{acc1:{id:2601,cards:[4053]}}}");    // build mode: the card in your gear already counts its +25%
