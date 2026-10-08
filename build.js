@@ -42,8 +42,11 @@ const BUILD=(()=>{
   function jobBonus(job,jobLv){const d=(typeof JOBDATA!=="undefined"?JOBDATA:{})[job],o={};STAT6.forEach(k=>o[k]=0);if(!d)return o;
     for(const k in d.bonus)o[k]=d.bonus[k].filter(l=>l<=jobLv).length;return o}
   const curve=(job,kind,lv)=>{const d=(typeof JOBDATA!=="undefined"?JOBDATA:{})[job];const a=d&&d[kind];return a&&a.length?a[Math.min(a.length,Math.max(1,lv))-1]:null};
-  // refine totals at +r: [ATK, MATK, DEF]; weapons use "weapon_lvN", armor "armor"
+  // refine totals at +r: [ATK, MATK, DEF]; weapons use "weapon_lvN", armor "armor". An item with no schedule in a slot that
+  // normally has none (accessories, middle/lower headgear) gets nothing here: its refine only counts in its own bonus lines
+  const NO_SCHEDULE=["accessory","accessory_1","accessory_2","head_middle","head_lower","ammo"];
   function refineAt(it,r){if(!it||!r||typeof REFINE==="undefined")return [0,0,0];
+    if(!REFINE[it.refine]&&(it.slot||[]).length&&(it.slot||[]).every(x=>NO_SCHEDULE.includes(x)))return [0,0,0];
     const key=REFINE[it.refine]?it.refine:(it.slot||[]).includes("weapon")?`weapon_lv${it.wlv||1}`:"armor";
     const t=REFINE[key]||REFINE.armor;return t&&t[r-1]?t[r-1]:[0,0,0]}
 

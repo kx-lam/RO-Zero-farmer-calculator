@@ -11,6 +11,7 @@ Object.assign(globalThis, {
     { id: 3, slug: "boots", name: "Boots", slot: ["footgear"], refine: "armor", def: 2, g: [] },
     { id: 5, slug: "guard", name: "Guard", slot: ["shield"], refine: "armor", def: 3, g: [] },
     { id: 6, slug: "knife", name: "Knife", slot: ["weapon"], type: "dagger", wlv: 2, refine: "weapon", atk: 40, el: "fire", slots: 1, g: [] },
+    { id: 7, slug: "ring", name: "Ring", slot: ["accessory_1", "accessory_2"], g: [{ b: [["matk", null, null, 10, 1]] }, { r: 7, b: [["int", null, null, 3]] }] },
     { id: 4, slug: "hat", name: "Hat", slot: ["head_upper", "head_middle"], refine: "armor", def: 1, g: [{ b: [["aspd_percent", null, null, 10]] }] },
   ],
   CARDS: [
@@ -165,6 +166,15 @@ t("random options picked from lists: any item takes up to 4, resists and cast ti
   const old = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2, opts: "ATK +25, FLEE +20" } } }, "Knight", aspdBase);
   assert.equal(old.acc.atk, 25);
   assert.deepEqual(BUILD.optRows("ATK +25, MATK +3%"), [{ k: "atk", v: 25 }, { k: "matk_percent", v: 3 }]);
+});
+
+t("a refined accessory counts its own refine lines, with no armor DEF schedule", () => {
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { acc1: { id: 7, refine: 7 } } }, "Knight", aspdBase);
+  const z = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { acc1: { id: 7, refine: 0 } } }, "Knight", aspdBase);
+  assert.equal(r.acc.matk, 70);
+  assert.equal(r.acc.st.int, 3);
+  assert.deepEqual(BUILD.refineAt(BUILD.item(7), 7), [0, 0, 0]);
+  assert.equal(r.fields.defTxt, z.fields.defTxt);
 });
 
 console.log(`${n} tests passed`);

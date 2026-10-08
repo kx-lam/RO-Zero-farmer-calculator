@@ -220,7 +220,7 @@ function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
     lists+=`<datalist id="gl_${s.k}">${[...GEAR_LISTS["g_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist><datalist id="cl_${s.k}">${[...GEAR_LISTS["c_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`;
     const g=b.gear[s.k]||{},it=g.id&&BUILD.item(g.id),label=n=>{const x=BUILD.item(n);return x?labelOf(x,cards):""};
     const cardBoxes=it&&it.slots?Array.from({length:it.slots},(_,i)=>`<input data-card="${i}" list="cl_${s.k}" placeholder="card" value="${esc(g.cards&&g.cards[i]?label(g.cards[i]):"")}">`).join(""):"";
-    const refinable=it&&it.refine;
+    const refinable=it&&s.k!=="ammo"; // every part: some accessories and headgear refine though the data has no schedule for them
     return `<tr data-slot="${s.k}"><td>${s.k==="shield"&&state.job==="Assassin"?"Shield / left hand":s.label}</td><td><input class="item" list="gl_${s.k}" placeholder="${items.length?"none":"no items for this job"}" value="${esc(it?labelOf(it,items):"")}"></td>
       <td>${refinable?`<input class="ref" type="number" min="0" max="20" value="${num(g.refine)}">`:""}</td><td><div class="cards">${cardBoxes}</div></td>
       <td>${it?optBoxes(g):""}</td></tr>`}).join("");
