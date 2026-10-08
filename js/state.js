@@ -4,12 +4,18 @@ const ROOTQ=sel=>[...document.querySelectorAll(sel)];
 const KEY="rozero-farm-planner-v1";
 // accounts: each one keeps its own full save; the first uses the original key so older saves carry over
 const ACCT_KEY="rozero-farm-planner-accounts";
+// a reload because another browser tab saved (see start.js) keeps this tab's account, page tab, scroll and unsent log entry
+const VIEW_KEY="rozero-farm-planner-view";
+const VIEW=(()=>{let v=null;try{v=JSON.parse(sessionStorage.getItem(VIEW_KEY));sessionStorage.removeItem(VIEW_KEY)}catch(e){}return v&&typeof v==="object"?v:null})();
 const accts=(()=>{let a=null;try{a=JSON.parse(localStorage.getItem(ACCT_KEY))}catch(e){}
   if(!a||!Array.isArray(a.list)||!a.list.length)a={list:[{id:"a0",name:"Account 1"}],active:"a0"};
+  if(VIEW&&a.list.some(x=>x.id===VIEW.acct))a.active=VIEW.acct;
   if(!a.list.some(x=>x.id===a.active))a.active=a.list[0].id;return a})();
-const saveAccts=()=>{try{localStorage.setItem(ACCT_KEY,JSON.stringify(accts))}catch(e){}};
+// STALE: another tab saved since this one loaded. Each tab writes its whole save, so a stale one would wipe what the other logged; it writes nothing and reloads
+let STALE=false;
+const saveAccts=()=>{if(STALE)return;try{localStorage.setItem(ACCT_KEY,JSON.stringify(accts))}catch(e){}};
 const acctKey=id=>id==="a0"?KEY:KEY+":"+id;
-const store={get(){try{return JSON.parse(localStorage.getItem(acctKey(accts.active)))}catch(e){return null}},set(v){try{localStorage.setItem(acctKey(accts.active),JSON.stringify(v))}catch(e){}}};
+const store={get(){try{return JSON.parse(localStorage.getItem(acctKey(accts.active)))}catch(e){return null}},set(v){if(STALE)return;try{localStorage.setItem(acctKey(accts.active),JSON.stringify(v))}catch(e){}}};
 let state=store.get()||{};
 if(!Array.isArray(state.sessions)||!state.sessions.length)state.sessions=[{id:"s"+Date.now(),name:"New session",mobIds:[],entries:[]}];
 // sessions hold a list of monsters (one map, plus the aggressive ones you end up killing); older saves had a single mobId

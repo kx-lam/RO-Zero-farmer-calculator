@@ -123,7 +123,7 @@ function renderTracker(){$("dieItem").checked=!!state.dieItem;$("dieBtn").textCo
   $("subtitle").innerHTML=ms.length>1?`Farming ${ms.map(m=>esc(m.name)).join(", ")}${sessMap(s)?` on ${esc(mapLabel(sessMap(s)))}`:""} · weighted by spawn counts`:mob?`Farming ${esc(mob.name)} · Lv ${mob.lv} · ${mob.el?`<span class="el ${mob.el}">${mob.el} ${mob.elv}</span> · `:""}${mob.size||""} ${mob.race||""} · ${fmtExp(mob)} base EXP · <a href="${dbUrl(mob)}" target="_blank" rel="noopener">rozerodb ↗</a>`:"Pick a monster in the Monsters &amp; maps tab and press \"Farming this now\"";
   const lastE=[...s.entries].sort((a,b)=>a.t-b.t).pop();
   if(lastE){$("tCurLv").textContent=`Lv ${lastE.lv}`;$("tCurLvS").textContent=lvExp(lastE.lv)?`${fmtN(lvExp(lastE.lv))} EXP to level`:"Lv outside EXP table";
-    $("tCurPct").textContent=pct(lastE.pct);$("tCurPctS").textContent=`logged ${fmtT(lastE.t)}`}
+    $("tCurPct").textContent=pct(lastE.pct,1);$("tCurPctS").textContent=`logged ${fmtT(lastE.t)}`}
   else{$("tCurLv").textContent="–";$("tCurPct").textContent="–";$("tCurLvS").textContent="Log an entry below";$("tCurPctS").textContent=""}
   if(!st){["tAvg","tRecent","tLevel","tNext"].forEach(id=>$(id).textContent="–");["tAvgS","tRecentS","tLevelS","tNextS"].forEach(id=>$(id).textContent="Log at least two entries");$("tNextK").textContent="To next level";$("tRecentK").textContent="Last interval"}
   else{
@@ -131,7 +131,7 @@ function renderTracker(){$("dieItem").checked=!!state.dieItem;$("dieBtn").textCo
     $("tRecentK").textContent=`Last ${st.recentMin} min`;$("tRecent").textContent=pct(st.recPct);const diff=st.recPct-st.avgPct;
     $("tRecentS").innerHTML=`${fmtN(st.recRaw/60)} EXP/min · <span class="pill ${diff>=0?"up":"down"}">${diff>=0?"+":""}${diff.toFixed(2)}% vs avg</span>`;
     $("tLevel").textContent=fmtDur(st.fullH);$("tLevelS").textContent=lvExp(st.last.lv)?`${fmtN(st.L)} EXP at Lv ${st.last.lv}`:"Lv outside EXP table, using %";
-    $("tNextK").textContent=`To Lv ${st.last.lv+1}`;$("tNext").textContent=fmtDur(st.nextH);$("tNextS").textContent=`${(100-st.last.pct).toFixed(2)}% left`}
+    $("tNextK").textContent=`To Lv ${st.last.lv+1}`;$("tNext").textContent=fmtDur(st.nextH);$("tNextS").textContent=`${(100-st.last.pct).toFixed(1)}% left`}
   const p=sessionPace(s);
   if(p){$("tPace").textContent=`${fmtN(p.kph)}/hr`;$("tPaceS").textContent=`${p.obs.toFixed(1)}s per kill`+(isFinite(p.fight)?(p.obs<p.fight?` · faster than the model's ${p.fight.toFixed(1)}s fight, so check your ATK/MATK`:` · ~${p.fight.toFixed(1)}s fighting + ~${p.walk.toFixed(1)}s walking`):"")}
   else{$("tPace").textContent="–";$("tPaceS").textContent="Needs a monster and 2+ entries"}
@@ -237,7 +237,7 @@ function renderLog(s){
       <td class="nowrap">B ${inN("lv",e.lv,'min="1" max="99" step="1" aria-label="Base level"')} J ${inN("jlv",jl.get(e),'min="1" max="70" step="1" placeholder="?" aria-label="Job level"')}</td>
       <td>${inN("pct",e.pct,'min="0" max="100" step="0.01" aria-label="EXP %"')}</td><td>${inN("jpct",e.jpct,'min="0" max="100" step="0.01" placeholder="–" aria-label="Job EXP %"')}</td>${saveBtns}</tr>`};
     let rate="";if(e.died)rate=`<span class="pill down">died −${esc(e.died)}%</span>`;else if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>=1/60?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):`<span title="under a minute of unpaused time since the last entry">–</span>`}
-    return {t:e.t,k:0,h:`<tr data-t="${esc(e.t)}" style="cursor:default"><td>${when(e.t)}</td><td>B${esc(e.lv)}${jl.get(e)?`/J${esc(jl.get(e))}`:""}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td>${btns(`data-edit="${esc(e.t)}"`,`data-del="${esc(e.t)}"`,"entry")}</tr>`}});
+    return {t:e.t,k:0,h:`<tr data-t="${esc(e.t)}" style="cursor:default"><td>${when(e.t)}</td><td>B${esc(e.lv)}${jl.get(e)?`/J${esc(jl.get(e))}`:""}</td><td>${e.pct.toFixed(1)}%</td><td>${e.jpct!=null?e.jpct.toFixed(1)+"%":"–"}</td><td>${rate}</td>${btns(`data-edit="${esc(e.t)}"`,`data-del="${esc(e.t)}"`,"entry")}</tr>`}});
   ps.forEach((p,i)=>rows.push({t:p.from,k:1,h:ed&&ed.p===i?`<tr class="pauseRow editRow"><td colspan="4">Paused from <input type="datetime-local" data-f="from" value="${dtLocal(p.from)}" aria-label="Paused from">
       to <input type="datetime-local" data-f="to" value="${p.to!=null?dtLocal(p.to):""}" aria-label="Paused until"> <span class="note">empty: still paused</span></td>${saveBtns}</tr>`
     :`<tr class="pauseRow"><td colspan="5">Paused ${when(p.from)} → ${p.to!=null?when(p.to):"now"} · ${fmtAway(p)}${p.to!=null?"":" so far"}</td>${btns(`data-pedit="${i}"`,`data-pdel="${i}"`,"pause")}</tr>`}));
@@ -260,11 +260,11 @@ function renderGoal(s,st){
   if(need==null){tiles.innerHTML='<div class="note">The EXP table covers Lv 1 to 70, so pick a goal up to Lv 71.</div>';$("goalNote").textContent="";return}
   const hrs=need/st.avgRaw;
   $("goalNote").textContent=`at your ${pct(st.avgPct)}/hr average`;
-  tiles.innerHTML=`<div class="tile"><div class="k">EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Lv ${curLv} ${st.last.pct.toFixed(2)}% to Lv ${goal}</div></div>
+  tiles.innerHTML=`<div class="tile"><div class="k">EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Lv ${curLv} ${st.last.pct.toFixed(1)}% to Lv ${goal}</div></div>
    <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(st.avgRaw)} EXP/hr</div></div>
    <div class="tile now"><div class="k">Reach Lv ${goal}</div><div class="v mono">${new Date(Date.now()+hrs*36e5).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div><div class="s">farming non-stop from now</div></div>`;
   // one straight run per level at the average rate, flatter as levels need more EXP
-  const p=st.last.pct,pts=[{h:0,v:curLv+p/100,now:`Lv ${curLv} ${p.toFixed(2)}%`}];let h=lvExp(curLv)*(1-p/100)/st.avgRaw,each=h;
+  const p=st.last.pct,pts=[{h:0,v:curLv+p/100,now:`Lv ${curLv} ${p.toFixed(1)}%`}];let h=lvExp(curLv)*(1-p/100)/st.avgRaw,each=h;
   for(let l=curLv+1;l<=goal;l++){pts.push({h,v:l,lv:l,each});if(l<goal){each=lvExp(l)/st.avgRaw;h+=each}}
   return {pts,lo:curLv,hi:goal,name:"Lv",color:"var(--accent)"};
 }
@@ -283,13 +283,13 @@ function renderJobGoal(s){
   let need=need0*(1-j.last/100),rows=[];rows.push({lv:jl+1,each:need/rate,h:need/rate});
   for(let l=jl+1;l<goal;l++){need+=t[l-1];const each=t[l-1]/rate;rows.push({lv:l+1,each,h:rows[rows.length-1].h+each})}
   const hrs=need/rate;
-  tiles.innerHTML=`<div class="tile"><div class="k">Job EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Job Lv ${jl} ${j.last.toFixed(2)}% to Job Lv ${goal}</div></div>
+  tiles.innerHTML=`<div class="tile"><div class="k">Job EXP still needed</div><div class="v mono">${fmtN(need)}</div><div class="s">from Job Lv ${jl} ${j.last.toFixed(1)}% to Job Lv ${goal}</div></div>
    <div class="tile"><div class="k">Farming time</div><div class="v mono">${fmtDur(hrs)}</div><div class="s">at ${fmtN(rate)} job EXP/hr</div></div>
    <div class="tile now"><div class="k">Reach Job Lv ${goal}</div><div class="v mono">${at(hrs)}</div><div class="s">farming non-stop from now</div></div>`;
   const tb=$("goalJobTable");wrap.hidden=false;
   tb.tHead.innerHTML=`<tr><th>Job level</th><th>Time for this level</th><th>Total farming</th><th>Reached, farming non-stop</th></tr>`;
   tb.tBodies[0].innerHTML=rows.map(q=>`<tr><td class="name">Job Lv ${q.lv}</td><td>${dur(q.each)}</td><td>${dur(q.h)}</td><td>${at(q.h)}</td></tr>`).join("");
-  return {pts:[{h:0,v:jl+j.last/100,now:`Job Lv ${jl} ${j.last.toFixed(2)}%`},...rows.map(q=>({h:q.h,v:q.lv,lv:q.lv,each:q.each}))],lo:jl,hi:goal,name:"Job Lv",color:"var(--good)"};
+  return {pts:[{h:0,v:jl+j.last/100,now:`Job Lv ${jl} ${j.last.toFixed(1)}%`},...rows.map(q=>({h:q.h,v:q.lv,lv:q.lv,each:q.each}))],lo:jl,hi:goal,name:"Job Lv",color:"var(--good)"};
 }
 // projected base level (left axis) and job level (right axis) over farming hours at the average rates.
 // Each level-up gets the date you would reach it farming non-stop from now.

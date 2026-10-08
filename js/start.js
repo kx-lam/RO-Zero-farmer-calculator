@@ -1,16 +1,17 @@
 // ---- tabs: show one group of sections at a time; the last one opened is remembered in state.tab (Character first for new players) ----
-function showTab(t){
+// local: show it in this browser tab only, without saving it (a reload that keeps this tab's view)
+function showTab(t,local){
   if(t==="data")t="acct";// Backup now lives on the Account tab
   if(![...document.querySelectorAll("[data-tabbtn]")].some(b=>b.dataset.tabbtn===t))t="char";
   document.querySelectorAll("[data-tab]").forEach(el=>el.hidden=el.dataset.tab!==t);
   document.querySelectorAll("[data-tabbtn]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tabbtn===t)));
-  if(state.tab!==t){state.tab=t;save()}
+  if(!local&&state.tab!==t){state.tab=t;save()}
   if(t==="ref")refScroll();
   // renderAll only draws these while their tab is showing
   if(t==="maps")renderHunt();if(t==="market")renderPrices();if(t==="mobinfo")renderMobInfo();if(t==="items")renderItems();
 }
 document.querySelectorAll("[data-tabbtn]").forEach(b=>b.addEventListener("click",()=>{showTab(b.dataset.tabbtn);scrollTo({top:0})}));
-showTab(state.tab||"char");
+showTab(VIEW&&VIEW.tab||state.tab||"char",!!VIEW);
 // ---- collapsible cards: click a heading (or Enter/Space on it) to fold the card; saved by heading text ----
 (function setupCollapse(){
   if(!state.collapsed)state.collapsed={};
@@ -30,5 +31,18 @@ showTab(state.tab||"char");
 })();
 // ---- start ----
 syncClosed();syncChar();renderAll();resetForm();
+if(VIEW){if(VIEW.drafts)for(const id in VIEW.drafts)if(["fPct","fJob","pasteBox"].includes(id)&&typeof VIEW.drafts[id]==="string")$(id).value=VIEW.drafts[id];
+  if(VIEW.y>0)scrollTo({top:VIEW.y})}
+// ---- other browser tabs: when another tab saves this account (or changes the account list), this one stops saving and reloads,
+// at once if it's showing, else when you come back to it. Without this, a tab left open on an old copy wipes the EXP you logged in another ----
+(function syncTabs(){
+  const reload=()=>{try{const drafts={};["fPct","fJob","pasteBox"].forEach(id=>{if($(id).value)drafts[id]=$(id).value});
+      sessionStorage.setItem(VIEW_KEY,JSON.stringify({acct:accts.active,tab:document.querySelector('[data-tabbtn][aria-selected="true"]')?.dataset.tabbtn,y:scrollY,drafts}))}catch(e){}
+    location.reload()};
+  addEventListener("storage",e=>{if(e.storageArea!==localStorage||(e.key!==null&&e.key!==ACCT_KEY&&e.key!==acctKey(accts.active)))return;
+    if(!STALE){if(e.key===acctKey(accts.active)&&e.newValue===JSON.stringify(state))return;STALE=true}
+    if(!document.hidden)reload()});
+  document.addEventListener("visibilitychange",()=>{if(STALE&&!document.hidden)reload()});
+})();
 (function tripLoop(){tickTrip();setTimeout(tripLoop,1000)})();
 loadShareLink();addEventListener("hashchange",loadShareLink);
