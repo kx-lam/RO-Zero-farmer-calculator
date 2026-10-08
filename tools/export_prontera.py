@@ -20,6 +20,8 @@ CLIENT_FIX = {"falcon-assault": {"cooldown_ms": 500}}
 # Zero Global skill ratios that differ from roz.prontera.info (kRO Zero): slug -> (prontera's max-level damage %, % to add at every level);
 # applied only while prontera still shows its own value. Sonic Blow is 100% lower on Global (1100% at Lv10, not 1200%)
 GLOBAL_PCT = {"sonic-blow": (1200, -100)}
+# skill points per tree that roz.prontera.info gets wrong: a Novice gets one point per job level after the first, so Job Lv 10 = 9 (Basic Skill's 9 levels)
+POINTS_FIX = {"Novice": 9}
 
 
 def global_pct(slug, lv, f):
@@ -241,7 +243,7 @@ def main():
                        "el": sk.get("element"), "pre": [[slug_of.get(p["skill_id"], p["skill_id"]), p["level"]] for p in sk.get("prerequisites") or []],
                        "f": f, "lv": lv, "g": groups(sk.get("bonus_groups")), "free": True if sk.get("free") else None}
                 rows.append({k: x for k, x in row.items() if x not in (None, [], "")})
-            trees.append({"job": t["job_class"]["name"], "points": t.get("skill_points"), "skills": rows})
+            trees.append({"job": t["job_class"]["name"], "points": POINTS_FIX.get(t["job_class"]["name"], t.get("skill_points")), "skills": rows})
         skills[j] = trees
     write("skills.js", f"// Skill trees per job: Novice, 1st and 2nd job trees with points, and per skill slug, name, max level, slot (grid position),\n"
           f"// passive, free (quest skill, no points), el, pre: [[skill slug, level]], f: damage formula, lv: per level [SP, damage %, hits, variable cast ms, fixed cast ms,\n"
