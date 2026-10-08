@@ -59,7 +59,8 @@ Open maps, or single monsters, ranked by net zeny/hr. That's the loot value per 
 - Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
 - **Level filter:** set a Monster Lv range, or tick "Skip drop-penalty monsters" to leave out monsters 40 or more levels below you (it follows your base level). Monsters mode lists only those; on a map the rest are passed by, which costs extra walking or teleports like unticking them.
 - Converters are picked by zeny rather than EXP. Monsters with no EXP data still count, since they drop loot.
-- Monsters mode lists every drop with your chance and what it adds per kill.
+- Monsters mode lists every drop with your chance, what it adds per kill and its weight.
+- **Weight / kill** and **Weight / hr:** the weight of the drops you loot. Hover Weight / hr for the loot zeny per weight point and how soon you reach your sell point (with your Max Weight set). Each monster on a map shows its weight per kill too.
 - **Auto loot:** tick the item groups you loot, like the game's Looting tab (weapons, armor, consumables, cards, miscellaneous, costumes). Unticked groups count as 0 zeny everywhere. The random option grade on equipment isn't modelled.
 - **Monster picks:** like the game's Monster tab, click a monster on a map to stop or start hunting it. **Hunt only the best-paying monsters** picks for you, keeping at least "Min monsters on map" spawns.
 - Skipping monsters costs time. You either walk further (walking × √(all / hunted)) or teleport past them ((all / hunted − 1) teleports per kill, at your seconds per teleport). Each map uses whichever nets more. Teleporting only counts with a Creamy Card (ticked or in build gear) or the Teleport skill learned; Fly Wings cost too much to burn on every landing, so without either it walks. The data doesn't say which maps block teleport, so click "teleport ok" on a map to mark it "no teleport".

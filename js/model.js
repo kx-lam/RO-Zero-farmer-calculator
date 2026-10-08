@@ -490,8 +490,9 @@ function entryJobLvs(s){
 const W_NOREGEN=0.7,W_STOP=0.9;
 let REGEN_OFF=false;
 const withRegenOff=fn=>{const k=REGEN_OFF;REGEN_OFF=true;try{return fn()}finally{REGEN_OFF=k}};
-// weight picked up per kill: each drop's weight (data/weights.js) × its chance, with your drop bonus and the level-gap penalty
-const weightKill=m=>(m.drops||[]).reduce((a,[id,ch])=>a+(ITEMW[id]||0)*Math.min(100,ch*dropMul()*penMul(m))/100,0);
+// weight picked up per kill: each drop you loot (auto loot) × its weight (data/weights.js) × its chance, with your drop bonus and the level-gap penalty
+const dropW=(m,id,ch)=>looted(id)?(ITEMW[id]||0)*Math.min(100,ch*dropMul()*penMul(m))/100:0;
+const weightKill=m=>(m.drops||[]).reduce((a,[id,ch])=>a+dropW(m,id,ch),0);
 // Max Weight (roz.prontera.info stat planner): 2000 + job bonus + 30 per STR point you put in (job, gear and buff STR don't count)
 // + 200 per level of Enlarge Weight Limit (Merchant) and of Increase Capacity (taught by the KP shop's Gym Membership, kept forever)
 const JOB_WEIGHT={Novice:0,Swordsman:800,Mage:200,Archer:600,Acolyte:400,Merchant:800,Thief:400,Knight:800,Crusader:800,Wizard:400,Sage:400,
@@ -601,10 +602,10 @@ function huntMap0(mp,w,minN=0){
   const list=(MAPMOBS[mp]||[]).filter(x=>!x.m.boss&&!isSkipped(x.m));const N=list.reduce((a,x)=>a+x.n,0);
   const rows=list.map(({m,n})=>({m,n,r:mobRow0(m,0)})),ok=rows.filter(x=>isFinite(x.r.sec)),skip=rows.filter(x=>!isFinite(x.r.sec)).map(x=>x.m.name);
   const all=ok.reduce((a,x)=>a+x.n,0);if(!all)return null;
-  const at0=(h,n,walk,tele)=>{let time=0,z=0,exp=0,expT=0,hp=0,hpN=0;
-    h.forEach(({m,n:c,r})=>{const tot=killTot(m,r.sec,walk);time+=c*tot;z+=c*r.zk;if(!m.expUnknown){exp+=c*r.epk;expT+=c*tot}if(r.hpm!=null){hp+=c*r.hpm*tot;hpN+=c*tot}});
+  const at0=(h,n,walk,tele)=>{let time=0,z=0,exp=0,expT=0,hp=0,hpN=0,wt=0;
+    h.forEach(({m,n:c,r})=>{const tot=killTot(m,r.sec,walk);time+=c*tot;z+=c*r.zk;wt+=c*weightKill(m);if(!m.expUnknown){exp+=c*r.epk;expT+=c*tot}if(r.hpm!=null){hp+=c*r.hpm*tot;hpN+=c*tot}});
     const top=h.reduce((a,x)=>!a||x.n>a.n?x:a,null),kph=n/time*3600,loot=z/time*3600,hc=huntCosts(top.m,hpN?hp/hpN:null);
-    return {mp,N,n,walk,tele,kph,secT:time/n,loot,...hc,net:loot-hc.cost,zk:z/n,epm:expT?exp/expT*60:null,skip:skip.length,skipNames:skip,
+    return {mp,N,n,walk,tele,kph,secT:time/n,loot,...hc,net:loot-hc.cost,zk:z/n,wk:wt/n,wph:wt/time*3600,epm:expT?exp/expT*60:null,skip:skip.length,skipNames:skip,
       earn:h.map(({m,n,r})=>({m,n,zk:r.zk})).sort((a,b)=>b.n*b.zk-a.n*a.zk)}};
   const at=h=>{const n=h.reduce((a,x)=>a+x.n,0);if(!n)return null;const walked=at0(h,n,w*Math.sqrt(all/n),0);
     if(n>=all||!canTele()||noTele(mp))return walked;const jumps=all/n-1,tp=at0(h,n,w+jumps*teleSec(),jumps);return tp.net>walked.net?tp:walked};
@@ -616,12 +617,12 @@ function huntMap0(mp,w,minN=0){
   if(!best)best=at(lvOk);
   if(!best)return null;
   // every monster you can hurt here, hunted or not, for the picker; lvOut: the level filter passes it by
-  const on=new Set(best.earn.map(x=>x.m.id));best.mobs=ok.map(({m,n,r})=>({m,n,zk:r.zk,on:on.has(m.id),lvOut:!huntLvOk(m)})).sort((a,b)=>b.on-a.on||a.lvOut-b.lvOut||b.n*b.zk-a.n*a.zk);
+  const on=new Set(best.earn.map(x=>x.m.id));best.mobs=ok.map(({m,n,r})=>({m,n,zk:r.zk,wk:weightKill(m),on:on.has(m.id),lvOut:!huntLvOk(m)})).sort((a,b)=>b.on-a.on||a.lvOut-b.lvOut||b.n*b.zk-a.n*a.zk);
   return best;
 }
-// one monster farmed on its own: its zeny per kill over fight + walk time
-function huntMob0(m,w){const r=mobRow0(m,w);if(!isFinite(r.sec)||!(r.tot>0))return null;const loot=r.zk/r.tot*3600,hc=huntCosts(m,r.hpm);
-  return {m,kph:3600/r.tot,secT:r.tot,loot,...hc,net:loot-hc.cost,zk:r.zk,epm:m.expUnknown?null:r.epm}}
+// one monster farmed on its own: its zeny per kill over fight + walk time. Both hunters also give the weight you pick up a kill (wk) and an hour (wph)
+function huntMob0(m,w){const r=mobRow0(m,w);if(!isFinite(r.sec)||!(r.tot>0))return null;const loot=r.zk/r.tot*3600,hc=huntCosts(m,r.hpm),wk=weightKill(m);
+  return {m,kph:3600/r.tot,secT:r.tot,loot,...hc,net:loot-hc.cost,zk:r.zk,wk,wph:wk*3600/r.tot,epm:m.expUnknown?null:r.epm}}
 // best converter (or Spell Fist bolt) by net zeny rather than EXP
 const bestBy=(fn,k)=>{let best=null;elOptions().forEach(el=>{const r=withEl(el,fn);if(r){r.el2=el;if(!best||r[k]>best[k])best=r}});return best};
 const huntMap=(mp,w,minN)=>bestBy(()=>huntMap0(mp,w,minN),"net");
