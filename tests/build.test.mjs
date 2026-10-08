@@ -1,5 +1,6 @@
 // Engine tests for build.js with a small made-up dataset. Run: node tests/build.test.mjs
 import { createRequire } from "module";
+import { readFileSync } from "fs";
 import assert from "assert/strict";
 const require = createRequire(import.meta.url);
 
@@ -11,6 +12,7 @@ Object.assign(globalThis, {
     { id: 3, slug: "boots", name: "Boots", slot: ["footgear"], refine: "armor", def: 2, g: [] },
     { id: 5, slug: "guard", name: "Guard", slot: ["shield"], refine: "armor", def: 3, g: [] },
     { id: 6, slug: "knife", name: "Knife", slot: ["weapon"], type: "dagger", wlv: 2, refine: "weapon", atk: 40, el: "fire", slots: 1, g: [] },
+    { id: 7, slug: "ring", name: "Ring", slot: ["accessory_1", "accessory_2"], g: [{ b: [["matk", null, null, 10, 1]] }, { r: 7, b: [["int", null, null, 3]] }] },
     { id: 4, slug: "hat", name: "Hat", slot: ["head_upper", "head_middle"], refine: "armor", def: 1, g: [{ b: [["aspd_percent", null, null, 10]] }] },
   ],
   CARDS: [
@@ -19,6 +21,7 @@ Object.assign(globalThis, {
     { id: 12, slug: "cruiser", name: "Cruiser Card", slot: ["weapon"], g: [{ b: [["crit_damage_percent", null, null, 10]] }, { b: [["crit", "race", "brute", 7]] }] },
     { id: 13, slug: "seal", name: "Seal Card", slot: ["weapon"], g: [{ cls: ["acolyte"], b: [["hit", null, null, 10]] }] },
     { id: 14, slug: "captain", name: "Captain Card", slot: ["weapon"], g: [{ b: [["physical_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
+    { id: 16, slug: "shark", name: "Shark Card", slot: ["garment"], g: [{ lvPer: 10, lvMax: 50, b: [["atk", null, null, 7], ["def", null, null, 3], ["mdef", null, null, 1]] }] },
     { id: 15, slug: "leader", name: "Leader Card", slot: ["weapon"], g: [{ b: [["magic_damage_percent", "monster_group", "boulder_dwarf", 30]] }] },
   ],
   SETS: [{ slug: "s", name: "Coat Set", pieces: ["coat", "boots"], g: [{ rs: 10, b: [["hp", null, null, 500]] }, { b: [["vit", null, null, 3]] }] }],
@@ -26,6 +29,8 @@ Object.assign(globalThis, {
             armor: Array.from({ length: 20 }, (_, i) => [0, 0, (i + 1) ** 2]) },
   JOBDATA: { Knight: { bonus: { str: [1, 6], vit: [5] }, hp: [40, 48, 58], sp: [10, 12, 14] } },
 });
+// the real affix list (rozerodb) and costume enchant stones, as the page loads them before build.js
+for (const f of ["affixes", "stones", "special"]) (0, eval)(readFileSync(new URL(`../data/${f}.js`, import.meta.url), "utf8").replace(/^const (\w+)=/gm, "globalThis.$1="));
 const BUILD = require("../build.js");
 const aspdBase = () => 150;
 const base = { str: 50, agi: 30, vit: 20, int: 1, dex: 30, luk: 10 };
@@ -147,6 +152,114 @@ t("Assassin left-hand weapon in the Shield row: dual wield ATK, element and ASPD
   const k = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear }, "Knight", ab);
   assert.equal(k.fields.lw, "");
   assert.ok(k.unmodelled.some(x => x.includes("left-hand weapon")));
+});
+
+t("random options picked from lists: any item takes up to 4, resists and cast time store negated", () => {
+  assert.equal(BUILD.OPT_MAX, 4);
+  assert.equal(new Set(BUILD.OPTIONS.map(o => o.k)).size, BUILD.OPTIONS.length);
+  const opts = [{ k: "atk", v: 25 }, { k: "dmg_race_demi_human", v: 5 }, { k: "res_ele_fire", v: 10 }, { k: "cast_time_variable_percent", v: 5 }, { k: "gone", v: 3 }, { k: "flee", v: "" }];
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2, opts } } }, "Knight", aspdBase);
+  const z = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2 } } }, "Knight", aspdBase);
+  assert.equal(r.acc.atk, 25);
+  assert.equal(r.acc.phys.race["Demi-Human"], 5);
+  assert.equal(r.acc.taken.ele.Fire, -10);
+  assert.equal(r.acc.vct, 5);
+  assert.equal(r.acc.flee, z.acc.flee);                                    // an option with no value yet adds nothing
+  assert.deepEqual(BUILD.optRows(opts).map(x => x.k), ["atk", "dmg_race_demi_human", "res_ele_fire", "cast_time_variable_percent", "flee"]);
+  // a build saved with typed text still counts, and shows as rows
+  const old = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2, opts: "ATK +25, FLEE +20" } } }, "Knight", aspdBase);
+  assert.equal(old.acc.atk, 25);
+  assert.deepEqual(BUILD.optRows("ATK +25, MATK +3%"), [{ k: "atk", v: 25 }, { k: "matk_percent", v: 3 }]);
+});
+
+t("random options come from rozerodb's affixes, filtered to what the row's gear rolls", () => {
+  const keys = (slot, it) => BUILD.optChoices(slot, it).map(o => o.k);
+  const by = (slot, it, k) => BUILD.optChoices(slot, it).find(o => o.k === k);
+  // a sword rolls melee weapon affixes (monster / MVP drop, forging, activation), with the min–max over all of them
+  const sword = keys("weapon", BUILD.item(1));
+  assert.ok(sword.includes("atk") && sword.includes("dmg_race_demon") && sword.includes("dmg_size_small") && sword.includes("ign_def_race_demon"));
+  assert.ok(!sword.includes("matk") && !sword.includes("res_race_demon") && !sword.includes("mdmg_race_demon") && !sword.includes("str"));
+  assert.deepEqual(by("weapon", BUILD.item(1), "atk").range, [1, 60]);           // drops 5–30, activation 1–39, forging 1–60
+  // staves roll the magic series; bows the ranged one (no forging); a weapon in the Shield row rolls weapon affixes
+  const staff = { slot: ["weapon"], type: "staff_1h" }, bow = { slot: ["weapon"], type: "bow" };
+  assert.ok(keys("weapon", staff).includes("mdmg_race_demon") && !keys("weapon", staff).includes("atk"));
+  assert.equal(BUILD.optGear("weapon", bow), "ranged");
+  assert.ok(!keys("weapon", bow).includes("dmg_size_small"));
+  assert.deepEqual(keys("shield", BUILD.item(6)), keys("weapon", BUILD.item(6)));
+  // armor, garment and shoes have their own pools
+  assert.deepEqual(by("armor", BUILD.item(2), "res_race_demon").range, [3, 7]);
+  assert.ok(keys("garment", null).includes("res_ele_fire") && !keys("armor", BUILD.item(2)).includes("res_ele_fire"));
+  assert.deepEqual(by("shoes", BUILD.item(3), "hp").range, [150, 300]);
+  // rozerodb has no pool for accessories, headgear or shields: those list every option, old hand-made ones too
+  assert.equal(BUILD.optGear("acc1", BUILD.item(7)), null);
+  assert.equal(keys("acc1", BUILD.item(7)).length, BUILD.OPTIONS.length);
+  assert.ok(keys("acc1", BUILD.item(7)).includes("str") && keys("headTop", BUILD.item(4)).includes("mele_fire"));
+  assert.equal(by("acc1", BUILD.item(7), "atk").range, null);
+  // options the model can't use are listed, then reported; ones apply() can't place report through it
+  const opts = [{ k: "heal_percent", v: 8 }, { k: "mdmg_ele_fire", v: 5 }, { k: "ign_def_race_demon", v: 10 }, { k: "ign_def_kind_normal", v: 5 },
+    { k: "res_race_demon", v: 5 }, { k: "pres_ele_water", v: 6 }, { k: "sp_cost_percent", v: 4 }, { k: "mele_fire", v: 3 }];
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, opts } } }, "Knight", aspdBase);
+  assert.ok(r.unmodelled.includes("Blade option not counted: Heal increase 8%"));
+  assert.ok(r.unmodelled.includes("Blade option not counted: Magic Damage to Fire enemies 5%"));
+  assert.ok(r.unmodelled.some(x => x.includes("ignore_def_percent demon")));
+  assert.equal(r.acc.ignDef, 5);
+  assert.equal(r.acc.taken.race.Demon, -5);
+  assert.equal(r.acc.taken.ele.Water, -6);
+  assert.equal(r.acc.spCost, -4);
+  assert.equal(r.acc.myEle.Fire, 3);                                          // a key from the hand-made list still counts
+});
+
+t("costume enchant stones: one per slot, plus the sets they complete", () => {
+  const run = stones => BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {}, stones }, "Knight", aspdBase);
+  const none = run({});
+  // three Critical Stones: 3 + 3 + 3 and the 3-piece +6%; the Garment one adds 20% and the 4-piece CRIT +10
+  const c3 = run({ upper: 25304, middle: 25060, lower: 25305 }), c4 = run({ upper: 25304, middle: 25060, lower: 25305, garment: 25303 });
+  assert.equal(c3.acc.critDmg - none.acc.critDmg, 15);
+  assert.equal(c4.acc.critDmg - none.acc.critDmg, 35);
+  assert.equal(c4.acc.crit - none.acc.crit, 10);
+  assert.equal(c3.acc.crit, none.acc.crit);
+  // Variable Casting: −3 × 3 and the set's −6
+  assert.equal(run({ upper: 25172, middle: 25173, lower: 25174 }).acc.vct, 15);
+  // an Exchange pair gives back what each one takes: STR +6, INT and DEX unchanged
+  const ex = run({ middle: 25003, lower: 25012 }).acc.st;
+  assert.deepEqual([ex.str, ex.int, ex.dex], [6, 0, 0]);
+  assert.deepEqual([run({ lower: 25012 }).acc.st.str, run({ lower: 25012 }).acc.st.dex], [3, -3]);
+  // DEF (Middle) + MDEF (Lower): HIT and FLEE +5
+  const dm = run({ middle: 25001, lower: 25014 });
+  assert.deepEqual([dm.acc.def, dm.acc.mdef, dm.acc.hit, dm.acc.flee], [20, 4, 5, 5]);
+  // a stone only counts in its own slot; effects the model can't use are listed
+  assert.equal(run({ middle: 6636 }).acc.st.str, 0);
+  assert.ok(run({ garment: 25302 }).unmodelled.includes("Double Attack Stone (Garment): Double Attack Lv 3 with any weapon"));
+  assert.ok(BUILD.STONE_SLOTS.every(z => STONES.some(x => x.slot === z.k)));
+  assert.ok(STONE_SETS.every(z => z.need.every(i => BUILD.stone(i))));
+});
+
+t("Taming Ring: the pet egg sealed in it adds its bonus", () => {
+  const run = special => BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {}, special }, "Knight", aspdBase);
+  const none = run({}), petite = run({ ring: 313625 });                          // Ground Petite Egg Lv.2: after-attack delay −1%, AGI +1
+  assert.equal(petite.acc.st.agi, 1);
+  assert.equal(petite.acc.aspdPct - none.acc.aspdPct, 1);
+  assert.equal(run({ ring: 313586 }).acc.taken.ele.Poison, -10);                // Poporing Lv.1: Poison resistance +10%
+  assert.deepEqual([run({ ring: 313627 }).acc.phys.all, run({ ring: 313627 }).acc.matkPct, run({ ring: 313627 }).acc.hpPct], [1, 1, 1]);
+  assert.ok(run({ ring: 313596 }).unmodelled.includes("Taming Ring (Hunter Fly Egg Lv.1): Perfect Dodge +2"));
+  assert.equal(TAMING_EGGS.length, 52);
+  assert.ok(TAMING_EGGS.every(x => x.b.length || x.off));
+});
+
+t("a refined accessory counts its own refine lines, with no armor DEF schedule", () => {
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { acc1: { id: 7, refine: 7 } } }, "Knight", aspdBase);
+  const z = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { acc1: { id: 7, refine: 0 } } }, "Knight", aspdBase);
+  assert.equal(r.acc.matk, 70);
+  assert.equal(r.acc.st.int, 3);
+  assert.deepEqual(BUILD.refineAt(BUILD.item(7), 7), [0, 0, 0]);
+  assert.equal(r.fields.defTxt, z.fields.defTxt);
+});
+
+t("a card that grows every 10 base levels, up to Lv 50", () => {
+  const at = lv => BUILD.compute({ baseLv: lv, jobLv: 1, base, gear: { garment: { id: 2, cards: [16] } } }, "Knight", aspdBase).acc;
+  assert.deepEqual([9, 10, 37, 50, 99].map(lv => at(lv).atk), [0, 7, 21, 35, 35]);
+  assert.equal(at(45).def, 12);
+  assert.equal(at(99).mdef, 5);
 });
 
 console.log(`${n} tests passed`);
