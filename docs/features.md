@@ -45,14 +45,14 @@ Mini boss is how they spawn, not the game's Boss class, which is what boss / nor
 
 Open maps ranked by EXP/min, weighted by spawn counts.
 
-- Zeny / hr is loot less skill items, the ASPD potion and ground buffs. Heal cost / hr is the HP items for the map's HP lost / min plus the SP items, from Recovery items (hover it to see which items and how many an hour), and Net zeny / hr is what's left. Sort by any of them.
+- Zeny / hr is loot less skill items, the ASPD potion and ground buffs. Heal cost / hr is the HP items for the map's HP lost / min plus the SP items, from Consumables (hover it to see which items and how many an hour), and Net zeny / hr is what's left. Sort by any of them.
 - Maps show their in-game code and name (`in_sphinx5` · Sphinx B5F). You can also type the database code (`sp_d05`).
 - Monsters with no EXP data yet (Myst, Isis, Anubis…) show EXP `?` and are left out of EXP/min.
 - Skip monsters you don't want to fight, and mark regions that aren't open yet as closed.
 
 ### Zeny Hunter
 
-Open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite zeny, catalysts, arrows, support casts), HP items for the HP you lose and SP items (both from Recovery items), the ASPD potion and Sage ground buffs. Hover Costs / hr to see each.
+Open maps, or single monsters, ranked by net zeny/hr. That's the loot value per kill with your drop rate bonus and the level penalty, less skill costs (Mammonite zeny, catalysts, arrows, support casts), HP items for the HP you lose and SP items (both from Consumables), the ASPD potion and Sage ground buffs. Hover Costs / hr to see each.
 
 - Drops fall 50% from monsters 40 or more levels below you. There's no published penalty for −20 to −39, so that range counts as none.
 - **Level filter:** set a Monster Lv range, or tick "Skip drop-penalty monsters" to leave out monsters 40 or more levels below you (it follows your base level). Monsters mode lists only those; on a map the rest are passed by, which costs extra walking or teleports like unticking them.

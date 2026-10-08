@@ -33,7 +33,8 @@ const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ""} ${a}
 // a made-up monster, so the expected numbers don't depend on the exported tables
 const MOB = "({id:-1,name:'Dummy',lv:50,hp:10000,exp:2000,el:'Water',elv:1,size:'L',race:'Brute',def:20,mdef:10,vit:30,int:20,hit100:200,flee95:250,atkMin:100,atkMax:200,drops:[]})";
 // pick a job and character fields, then redo what renderAll does before the maths reads them
-const setup = (job, fields) => run(`state.job=${JSON.stringify(job)};state.chars={};Object.assign(C(),${JSON.stringify(fields)});
+// Buy with Discount off unless a test turns it on, so prices are the NPC prices
+const setup = (job, fields) => run(`state.job=${JSON.stringify(job)};state.chars={};state.recovery={discount:false};Object.assign(C(),${JSON.stringify(fields)});
   if(C().a&&${JSON.stringify(!!fields.a)})C().a={...C().a};SKFX=skillEffects(C());applyBuild();applyConsumables();`);
 
 t("element table and weapon size modifiers", () => {
@@ -419,7 +420,7 @@ t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts 
 
 t("skill items: catalysts and arrows per use, your prices, support casts and ground buffs come off zeny", () => {
   const pre = (job, name) => `({...JOBS.${job}.p.find(p=>p.name.startsWith(${JSON.stringify(name)}))})`;
-  setup("Alchemist", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed axe", st: {}, autoSp: false, potOn: false, cons: [], npcBuy: true });
+  setup("Alchemist", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed axe", st: {}, autoSp: false, potOn: false, cons: [], });
   run(`C().a=${pre("Alchemist", "Acid Bomb")}`);
   assert.equal(run(`useItems().map(x=>consName(x.id)+" "+x.qty).join()`), "Acid Bottle 1,Bottle Grenade 1");
   near(run(`useZeny()`), 200 + 200);                                     // NPC prices from data/consumables.js
@@ -430,6 +431,12 @@ t("skill items: catalysts and arrows per use, your prices, support casts and gro
   const r = run(`mobRow0(${mob},2)`);                                    // zeny per kill and per hour are after the bottles
   near(r.zk, 5000 - r.zc); near(r.zph, r.zk / r.tot * 3600 - r.hc);
   run(`C().supCasts={bomb:0.5}`);                                         // half a Bomb a kill: a Bottle Grenade every other kill
+  assert.equal(run(`supShown().map(s=>s.key).join()`), "bomb");             // no skill tree: offered
+  run(`C().skills={"acid-terror":5}`);                                     // a skill tree without Bomb: still shown, as casts are typed
+  assert.equal(run(`supShown().map(s=>s.key).join()`), "bomb");
+  run(`C().supCasts={}`); assert.equal(run(`supShown().length`), 0);     // ... and hidden once they're cleared
+  run(`C().skills.bomb=1`); assert.equal(run(`supShown().map(s=>s.key).join()`), "bomb");
+  run(`C().skills={};C().supCasts={bomb:0.5}`);
   near(run(`skillZeny(${mob})`), 550 * run(`usesPerKill(${mob})`) + 100);
   // arrows: bows fire one per basic attack and a.arrows per skill, of the attack's element; melee weapons fire none
   setup("Archer", { atkTxt: "100+300", wAtk: 0, weapon: "Bow", wElem: "Neutral", st: {}, autoSp: false, potOn: false, cons: [] });
@@ -680,7 +687,7 @@ t("Zeny Hunter level filter: monsters outside the Lv range, or with a drop penal
   run(`state.huntNoPen=false;C().baseLv=1`);
 });
 
-t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", () => {
+t("Overcharge raises NPC sales; Buy with Discount (Lv 10 on the account) cuts NPC purchases", () => {
   const atk = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
   setup("Blacksmith", { atkTxt: "100+300", st: {}, a: atk, skills: {}, itemPrice: 1000, potOn: true, potMin: 30, potPrice: 1000, cons: [] });
   const mob = "({id:-3,name:'Seller',lv:50,loot:100,drops:[[909,10]]})";
@@ -694,10 +701,14 @@ t("Overcharge raises NPC sales, Discount cuts NPC purchases (Merchant line)", ()
   near(run(`zenyKill(${mob})`), 124);                                     // NPC loot value +24%
   run(`state.prices={909:200};state.npcPrices={909:10}`);                 // a market price replaces the NPC price you'd get with Overcharge
   near(run(`zenyKill(${mob})`), 124 + (200 - Math.floor(10 * 1.24)) * 0.10);
-  near(run(`potCostHr()`), 2000 * 0.76);                                  // Discount −24% on what you buy from NPCs
-  run(`REC().spItem="custom"`);                                          // a Custom SP item (typed 1,000 z) takes Discount from NPCs
+  near(run(`potCostHr()`), 2000);                                         // this character's own Discount doesn't count
+  run(`state.recovery.discount=true`);                                    // Buy with Discount: −24% (Lv 10) on what you buy from NPCs
+  near(run(`potCostHr()`), 2000 * 0.76);
+  run(`REC().spItem="custom"`);                                          // a Custom SP item (typed 1,000 z) takes it too
   near(run(`spItemPrice()`), 760);
-  run(`C().npcBuy=false`);                                                // bought from players: no Discount
+  run(`C().skills={}`);                                                   // on any job, not only the Merchant line
+  near(run(`potCostHr()`), 2000 * 0.76);
+  run(`state.recovery.discount=false`);                                   // off: NPC prices
   near(run(`potCostHr()`), 2000);
   run(`state.prices={};state.npcPrices={};C().skills={};C().potOn=false`);
 });
@@ -740,16 +751,14 @@ t("recovery items: cost per HP / SP, the cheapest pick and healing per hour", ()
   near(run(`hpHeal(100).z`), 100 * 60 / 325 * 996);
   // Custom: the restores / costs boxes, as before
   run(`REC().spItem="custom";C().itemSp=50;C().itemPrice=300;C().skills={}`);
-  near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300);
-  // Scale by stats (off by default): × (100 + VIT × 2) / 100 for HP, against the reference stats
-  run(`REC().spItem="auto";REC().hpItem="auto";C().st={vit:"50",dex:"1",str:"1",agi:"1",luk:"1"};C().intTxt="25"`);
-  near(run(`recItem("501").avg`), 45);
-  run(`REC().scaleByStats=true`);
-  near(run(`recItem("501").avg`), 45 * 200 / 100);
-  near(run(`recItem("548").avg`), 32 * 150 / 100);
-  run(`REC().refStats={vit:50,int:25}`);
-  near(run(`recItem("501").avg`), 45); near(run(`recItem("548").avg`), 32);
-  run(`REC().refStats={};REC().scaleByStats=false`);
+  near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300 * 0.76);     // with Buy with Discount
+  run(`state.recovery.discount=false`); near(run(`spItemPrice()`), 300); run(`state.recovery.discount=true`);
+  // None: no HP item (HP loss costs nothing) and no SP item (auto-use has nothing to use, so you rest)
+  run(`REC().hpItem="none";REC().spItem="none"`);
+  assert.equal(run(`recPick("hp")`), null); assert.equal(run(`recPick("sp")`), null);
+  assert.equal(run(`hpHeal(202).z`), 0); assert.equal(run(`hpHeal(202).n`), 0);
+  assert.equal(run(`spItemAmt()`), 0); assert.equal(run(`spItemPrice()`), 0);
+  run(`REC().spItem="auto";REC().hpItem="auto"`);
 });
 
 t("recovery items: SP items in the SP model, Heal cost / hr and Net zeny / hr in the EXP Hunter", () => {
@@ -776,6 +785,10 @@ t("recovery items: SP items in the SP model, Heal cost / hr and Net zeny / hr in
   const hmap = run(`huntMap0("prt_f08",2)`);
   near(hmap.cost, hmap.hpZ + hmap.spZ + hmap.other); near(hmap.net, hmap.loot - hmap.cost);
   if (hmap.hpm != null) near(hmap.hpZ, hmap.hpm * 60 / 45 * 8);
+  run(`REC().spItem="none";REC().hpItem="none"`);                           // None: no SP items bought, no HP items either
+  const m3 = run(`mapStats0("prt_f08",2)`);
+  assert.equal(m3.spZ, 0); assert.equal(m3.hpZ, 0); near(m3.net, m3.zph);
+  run(`REC().spItem="auto";REC().hpItem="auto"`);
   run(`C().autoSp=false`);                                                  // auto-use off: you rest, no SP items bought
   const m2 = run(`mapStats0("prt_f08",2)`);
   assert.equal(m2.spZ, 0); near(m2.net, m2.zph - m2.hpZ);
@@ -786,8 +799,8 @@ t("recovery items: saves load with defaults, older SP items carry over, bad valu
   const app = load({ job: "Merchant", current: "s1", sessions: S, chars: { Merchant: { itemSp: 37, itemPrice: 200 }, Sage: { itemSp: 60, itemPrice: 450 },
     Wizard: { recovery: { hpItem: 501, spItem: "548", scaleByStats: "yes", refStats: { vit: "40", int: "x", job: 3 }, overrides: { 548: { disc: "30", w: -1, bogus: 5 }, 999: { disc: 1 }, 501: "x" } } } } });
   assert.equal(app("state.chars.Merchant.recovery.spItem"), "auto");       // the 37 SP for 200 z default: Auto (cheapest)
-  assert.equal(app("JSON.stringify(state.chars.Sage.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "custom", scaleByStats: false, refStats: {}, overrides: {} }));
-  assert.equal(app("JSON.stringify(state.chars.Wizard.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "548", scaleByStats: false, refStats: { vit: 40 }, overrides: { 548: { disc: 30 } } }));
+  assert.equal(app("JSON.stringify(state.chars.Sage.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "custom", overrides: {} }));
+  assert.equal(app("JSON.stringify(state.chars.Wizard.recovery)"), JSON.stringify({ hpItem: "auto", spItem: "548", overrides: { 548: { disc: 30 } } }));
   assert.equal(app("state.recovery.discount"), true);                      // Buy with Discount: on by default
   assert.equal(app("JSON.stringify(state.sessions[0].entries)"), JSON.stringify(S[0].entries));
   assert.equal(app("JSON.stringify(state.sessions[0].pauses)"), JSON.stringify(S[0].pauses));
@@ -815,7 +828,7 @@ t("recovery items: three accounts load, switch and keep their own settings", () 
   assert.equal(app(`recItem("501").price`), 10);                             // Discount off for this account: NPC price
   run(`state.job="Merchant";state.chars={};REC().overrides={"548":{disc:20}};REC().spItem="custom"`);  // and a share link keeps them
   const after = JSON.parse(run(`JSON.stringify(unpackState(JSON.parse(JSON.stringify(packState(state)))))`));
-  assert.deepEqual(after.chars.Merchant.recovery, { hpItem: "auto", spItem: "custom", scaleByStats: false, refStats: {}, overrides: { 548: { disc: 20 } } });
+  assert.deepEqual(after.chars.Merchant.recovery, { hpItem: "auto", spItem: "custom", overrides: { 548: { disc: 20 } } });
 });
 
 t("spawn counts come from the client's navigation table (normal channels)", () => {
@@ -935,6 +948,12 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`JSON.stringify(C().pbuffs)`), "{}");
   assert.equal(run(`potCostHr()`), 0);                                       // consumables carry no zeny cost
   assert.equal(run(`PBUFF.some(b=>b.k==="bandage")`), false);               // Yggdrasil's Blessing (Battle Bandage) is gone
+  // the effect text follows the level you typed
+  const eff = (k, lv) => run(`pbEff(PBUFF.find(b=>b.k==="${k}"),${lv})`);
+  assert.equal(eff("blessing", 5), "STR +5, INT +5, DEX +5, HIT +10");
+  assert.equal(eff("incAgi", 3), "AGI +5, ASPD +3%");
+  assert.equal(eff("riff", 3), "ASPD +5%");
+  assert.equal(eff("clementia", 70), "STR +17, INT +17, DEX +17 (Blessing Lv 10 + Priest Job Lv/10)");
   run(`C().pbuffs={bandage:{on:true}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
   assert.equal(run(`statVal(C(),"luk")`), 1);                               // an old save's tick adds nothing
   run(`C().pbuffs={};C().consStat={...C().consStat,dex:{n:7},luk:{n:7}};C().cons=[{on:true,name:"x",eff:"HIT +5"}];applyConsumables()`);
@@ -948,6 +967,12 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   run(`C().consStat={};C().cons=[];C().yggOn=true;applyConsumables()`);
   assert.equal(run(`statVal(C(),"luk")`), 8);
   assert.equal(run(`statVal(C(),"str")`), 57);
+  // stacking (Landgris ROCalculator): stat food and Yggdrasil don't add, the higher counts; a course meal stacks on top
+  run(`C().consStat={str:{n:10},agi:{n:5}};applyConsumables()`);
+  assert.equal(run(`statVal(C(),"str")`), 60); assert.equal(run(`statVal(C(),"agi")`), 80 + 7);  // STR 50 + 10 (not 17); AGI food 5 < 7
+  run(`C().cons=[{on:true,name:"Premium Course Meal",eff:"All stats +5, ATK/MATK +20"}];applyConsumables()`);
+  assert.equal(run(`statVal(C(),"str")`), 65);
+  run(`C().consStat={};C().cons=[];applyConsumables()`);
   assert.equal(run(`sumStat(cf("hitTxt"))-sumStat(C().hitTxt)`), 5 + 7 + 2); // HIT +5, DEX +7, LUK +7
   assert.equal(run(`sumStat(cf("fleeTxt"))-sumStat(C().fleeTxt)`), 5 + 7 + 1); // FLEE +5, AGI +7, LUK +7
   assert.equal(run(`potCostHr()`), 0);
@@ -955,6 +980,11 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
   assert.equal(run(`statVal(C(),"luk")`), 1);
   const r = run(`JSON.stringify(BUILD.parseOptions("DEX +5%, LUK +3"))`);
   assert.equal(r, JSON.stringify({ lines: [["dex_percent", null, null, 5], ["luk", null, null, 3]], bad: [] }));
+  // your own buffs (+ Add under Buffs from others) count like other consumables, only while ticked
+  setup("Merchant", { atkTxt: "100+0", st: { str: "50" }, cons: [], pbuffs: {}, buffs: {}, skills: {}, pbuffOwn: [{ on: true, name: "Guild buff", eff: "STR +5, ATK +20" }] });
+  assert.equal(run(`JSON.stringify(consLines().lines)`), JSON.stringify([["str", null, null, 5], ["atk", null, null, 20]]));
+  run(`C().pbuffOwn[0].eff="STR +5, nonsense"`); assert.equal(run(`consLines().bad.join()`), "Guild buff: nonsense");
+  run(`C().pbuffOwn[0].on=false`); assert.equal(run(`consLines().lines.length`), 0);
 });
 
 t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
@@ -1032,6 +1062,70 @@ t("Energy Coat: a Sage's old setting moves out of Sage options", () => {
   const old = load({ job: "Sage", current: "s1", sessions: S, chars: { Sage: { sage: { hsLv: 10 } } } });
   assert.equal(old("JSON.stringify(state.chars.Sage.ec)"), JSON.stringify({ on: true, spPct: 50 }));   // it was on by default
   assert.equal(run("state.job='Sage';state.chars={};ecOn()"), true);       // and still is for a new Sage
+});
+
+t("SP regen: Increase SP Recovery adds to auto regen; consumables restore SP / HP over time and cut SP cost", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Wizard", { atkTxt: "100+300", maxSp: 500, maxHp: 4000, spRegen: 0, st: { int: "30" }, intTxt: "30", skills: {}, cons: [], a: AUTO });
+  const base = run("regenPerSec()");
+  near(base, (1 + 5 + 5) / 8);
+  run(`C().skills={"increase-sp-recovery":10}`);                           // Lv 10: 10 × (3 + 0.2% of 500) = 40 SP every 10 s
+  assert.equal(run("isrPer10()"), 40); near(run("regenPerSec()"), base + 4);
+  near(run("withRegenOff(()=>regenPerSec())"), 0);                         // none at 70% weight, like natural regen
+  run(`C().skills={};C().cons=[{on:true,name:"Small Mana Potion",eff:"SP +5% every 5s"}]`);
+  near(run("consSPPerSec()"), 500 * 0.05 / 5); near(run("regenPerSec()"), base + 5);
+  near(run("withRegenOff(()=>regenPerSec())"), 5);                         // keeps going when overweight
+  run(`C().cons=[{on:true,name:"",eff:"HP +5% every 5s, SP +2/s"}]`);
+  near(run("consHPPerSec()"), 4000 * 0.05 / 5); near(run("consSPPerSec()"), 2);
+  run(`C().cons=[{on:true,name:"Mimir's Well",eff:"Max SP +10%, SP consumption -10%"}]`);
+  near(run("spCostMul()"), 0.9);
+  run(`C().cons[0].on=false`); near(run("spCostMul()"), 1); near(run("consSPPerSec()"), 0);
+});
+
+t("event consumables: presets and the effect lines they use", () => {
+  setup("Wizard", { atkTxt: "100+300", st: {}, skills: {}, cons: [], fctPct: 10 });
+  const lines = eff => run(`JSON.stringify(parseCons(${JSON.stringify(eff)}))`);
+  assert.equal(lines("ATK/MATK +30, HIT/FLEE +30"), JSON.stringify({ lines: [["atk", null, null, 30], ["matk", null, null, 30], ["hit", null, null, 30], ["flee", null, null, 30]], bad: [] }));
+  assert.equal(JSON.parse(lines("All stats +5")).lines.length, 6);
+  assert.equal(lines("Base/Job EXP +50%"), JSON.stringify({ lines: [["exp_base", null, null, 50], ["exp_job", null, null, 50]], bad: [] }));
+  assert.equal(lines("Casting cannot be interrupted, Crit damage +5%"), JSON.stringify({ lines: [["no_break", null, null, 1], ["crit_dmg", null, null, 5]], bad: [] }));
+  // written the way the item tooltips are
+  const kinds = eff => JSON.parse(lines(eff)).lines.map(l => l[0] + " " + l[3]).join(", ");
+  assert.equal(kinds("+7 All Stats"), "str 7, agi 7, vit 7, int 7, dex 7, luk 7");
+  assert.equal(kinds("HIT/FLEE 30"), "hit 30, flee 30");
+  assert.equal(kinds("MHP/MSP +5%"), "hp_percent 5, sp_percent 5");
+  assert.equal(kinds("Cri damage / ranged damage / magic damage +5%"), "crit_dmg 5, range_dmg 5, magic_dmg 5");
+  assert.equal(kinds("Incoming Heal and Recovery Item effect +20%"), "heal_pct 20, rec_item_pct 20");
+  assert.equal(kinds("SP Consumption -5%, Fixed Cast Time -30%"), "sp_cost_percent -5, fct_percent -30");
+  // every preset reads without leftovers
+  assert.equal(run(`CONS_PRESETS.flatMap(p=>parseCons(p.eff).bad).join()`), "");
+  // fixed cast: only the highest % cut counts
+  assert.equal(run("fctPctEff()"), 10);
+  run(`C().cons=[{on:true,name:"Challenge Drink",eff:CONS_PRESETS[0].eff}]`);
+  assert.equal(run("fctPctEff()"), 30); near(run("spCostMul()"), 0.95);
+  assert.equal(run("noBreak()"), false);
+  run(`C().cons.push({on:true,name:"Unlimited Drink",eff:CONS_PRESETS[4].eff})`); assert.equal(run("noBreak()"), true);
+  // Growth Elixir: +50% base and job EXP per kill
+  const mob = "({id:-4,name:'E',lv:10,exp:100,job:60,drops:[]})";
+  run(`state.bonus=0;state.jobBonus=0`);
+  assert.equal(run(`killExp(${mob})`), 100); assert.equal(run(`killJobExp(${mob})`), 60);
+  run(`C().cons=[{on:true,name:"Growth Elixir",eff:"Base/Job EXP +50%"}]`);
+  assert.equal(run(`killExp(${mob})`), 150); assert.equal(run(`killJobExp(${mob})`), 90);
+  // Unlimited Drink: ranged damage only with a ranged weapon, magic damage only on spells
+  const tgt = "({id:-5,name:'T',lv:10,hp:1e9,def:0,mdef:0,race:'Brute',size:'M',el:'Neutral',elv:1})";
+  setup("Hunter", { atkTxt: "300+200", weapon: "Bow", st: {}, skills: {}, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  const bow0 = run(`bonusMul(${tgt})`);
+  run(`C().cons=[{on:true,name:"",eff:"Ranged damage +5%, Magic damage +5%"}]`);
+  near(run(`bonusMul(${tgt})`), bow0 * 1.05); near(run(`bonusMul(${tgt},true)`) / bow0, 1.05);
+  run(`C().weapon="Dagger"`); near(run(`bonusMul(${tgt})`), bow0);
+  // Ale's Blessing: HP / SP items and Heal received +20%
+  setup("Merchant", { st: {}, cons: [], autoSp: false, potOn: false });
+  run(`state.recovery={discount:true}`);
+  near(run(`recItem("501").avg`), 45);
+  run(`C().cons=[{on:true,name:"Ale's Blessing",eff:CONS_PRESETS.find(p=>p.name==="Ale's Blessing").eff}]`);
+  near(run(`recItem("501").avg`), 54); near(run(`recItem("548").avg`), 32 * 1.2);
+  run(`CRD().healHp=100`); near(run(`healHpEff()`), 120);
+  run(`C().cons=[]`);
 });
 
 t("SP back from cards: Dracula, Dark Priest, +5 SP per kill, SP recovery %", () => {

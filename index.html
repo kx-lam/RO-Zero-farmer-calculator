@@ -111,7 +111,7 @@
     <div class="form" style="grid-template-columns:repeat(6,minmax(0,1fr))">
       <label>Max HP<input id="maxHp" type="number"></label>
       <label>Max SP<input id="maxSp" type="number"></label>
-            <label>SP regen per 8s<input id="spRegen" type="number" placeholder="auto"></label>
+            <label title="Blank (auto): 1 + Max SP/100 + INT/6 (+ more from INT 120), with SP Recovery +% gear. Increase SP Recovery (Skills card) and consumables that restore SP over time are added on their own, so type only the natural regen tick">SP regen per 8s<input id="spRegen" type="number" placeholder="auto"></label>
       <label>Weapon ATK<input id="wAtk" type="number" min="0" placeholder="all gear"></label>
       <label>Weapon<select id="weapon"></select></label>
       <label>Weapon / arrow element<select id="wElem"></select></label>
@@ -132,7 +132,7 @@
       <label>LUK<input id="st_luk" inputmode="numeric"></label>
     </div>
     <div class="note" id="statNote"></div>
-    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add Consumables &amp; buffs and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
+    <div class="bar note" id="onTopWrap"><label style="display:flex;flex-direction:row;gap:6px;align-items:flex-start"><input type="checkbox" id="addOnTop" style="width:auto;margin-top:2px"> <span>Status window typed <b>without</b> active skill buffs and items: add the Consumables card and Skills card buffs on top (untick if your numbers already include them)</span></label></div>
     <details class="card sub" id="eqPanel" open>
       <summary><b>Equipment stats</b> <span class="note">% lines from Equipment Stats that the status window doesn't show</span></summary>
       <div id="eqList" class="eqlist"></div>
@@ -152,7 +152,6 @@
         <label>Zeny per use<input id="aZeny" type="number" step="100" min="0" placeholder="0"></label>
         <label id="cartWrap" hidden>Cart weight<input id="cartW" type="number" step="100" min="0" max="8000" placeholder="0 – 8000"></label>
       </div>
-      <div class="bar note" id="useItems"></div>
       <div class="note" id="useInfo"></div>
       <div class="form" id="bonusRow" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
         <label>Extra damage %<input id="dmgBonus" type="number" step="1"></label>
@@ -172,21 +171,22 @@
         <label class="bar" style="flex-direction:row;gap:4px"><input id="acPct" type="number" step="0.5" min="0" max="100" style="width:64px">% per basic attack</label>
         <span id="acInfo"></span>
       </div>
-      <div class="bar note" id="cardRow"><span title="Cards any job can slot">Cards (any job):</span>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="vitata" style="width:auto" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost"> Vitata (+<input data-cd="spBonus" type="number" style="width:50px">% SP cost; you cast Heal Lv1: <input data-cd="healSp" type="number" style="width:50px"> SP → <input data-cd="healHp" type="number" style="width:64px"> HP each)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Hunter Fly Card: physical attacks (basic attacks, Spell Fist, physical skills) have a chance to restore HP every second for 5 s"><input type="checkbox" data-cd="hfOn" style="width:auto"> Hunter Fly (<input data-cd="hfPct" type="number" style="width:50px">% · <input data-cd="hfHp" type="number" style="width:60px"> HP/s)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Side Winder Card: basic attacks hit twice this often (right hand only). With Double Attack learned on the Skills card the card follows the skill, so nothing is added; Thief presets already count Double Attack"><input type="checkbox" data-cd="daSF" style="width:auto"> Side Winder double attack <input data-cd="daPct" type="number" style="width:50px">% (basic attacks; with Spell Fist the 2nd hit procs it too)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Creamy Card gives Teleport Lv1, so the Zeny Hunter can teleport past monsters you skip (without it, or the Teleport skill, it walks: Fly Wings cost too much). Its 10 SP a cast isn't counted"><input type="checkbox" data-cd="creamy" style="width:auto"> Creamy (Teleport Lv1)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Phen Card: casts can't be interrupted, variable cast +25%. Without it (or Bloody Butterfly) a hit that lands while you cast interrupts it and you start again. Build mode reads it from your gear"><input type="checkbox" data-cd="phen" style="width:auto"> Phen (no interrupted casts, cast +25%)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Bloody Butterfly Card: casts can't be interrupted, variable cast +30%. Build mode reads it from your gear"><input type="checkbox" data-cd="bbfly" style="width:auto"> Bloody Butterfly (no interrupted casts, cast +30%)</label>
-        <span id="cardInfo"></span>
+      <div class="cdList note" id="cardRow">
+        <div class="cdHead"><b>Cards any job can slot</b> <span class="muted">tick the ones you wear; build mode already reads Vitata, Phen and Bloody Butterfly from your gear</span></div>
+        <div class="cdItem" title="Vitata Card gives Heal Lv1, which you cast yourself: each cast costs SP (plus the card's SP cost) and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="vitata" style="width:auto"> <b>Vitata</b></label><span class="muted">you cast Heal Lv1 between kills; every skill costs more SP</span><span class="cdOpts">SP cost +<input data-cd="spBonus" type="number" style="width:50px">% · Heal: <input data-cd="healSp" type="number" style="width:50px"> SP → <input data-cd="healHp" type="number" style="width:64px"> HP</span></div>
+        <div class="cdItem" title="Hunter Fly Card: physical attacks (basic attacks, Spell Fist, physical skills) have a chance to restore HP every second for 5 s"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="hfOn" style="width:auto"> <b>Hunter Fly</b></label><span class="muted">physical attacks can restore HP for 5 s, so less HP lost</span><span class="cdOpts"><input data-cd="hfPct" type="number" style="width:50px">% chance · <input data-cd="hfHp" type="number" style="width:60px"> HP/s</span></div>
+        <div class="cdItem" title="Side Winder Card: basic attacks hit twice this often (right hand only). With Double Attack learned on the Skills card the card follows the skill, so nothing is added; Thief presets already count Double Attack"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="daSF" style="width:auto"> <b>Side Winder</b></label><span class="muted">basic attacks sometimes hit twice (right hand only; with Spell Fist the 2nd hit procs it too)</span><span class="cdOpts"><input data-cd="daPct" type="number" style="width:50px">% chance</span></div>
+        <div class="cdItem" title="Creamy Card gives Teleport Lv1, so the Zeny Hunter can teleport past monsters you skip (without it, or the Teleport skill, it walks: Fly Wings cost too much). Its 10 SP a cast isn't counted"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="creamy" style="width:auto"> <b>Creamy</b></label><span class="muted">Teleport Lv1: the Zeny Hunter teleports past monsters you skip</span></div>
+        <div class="cdItem" title="Phen Card: casts can't be interrupted, variable cast +25%. Without it (or Bloody Butterfly) a hit that lands while you cast interrupts it and you start again. Build mode reads it from your gear"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="phen" style="width:auto"> <b>Phen</b></label><span class="muted">casts can't be interrupted; variable cast +25%</span></div>
+        <div class="cdItem" title="Bloody Butterfly Card: casts can't be interrupted, variable cast +30%. Build mode reads it from your gear"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="bbfly" style="width:auto"> <b>Bloody Butterfly</b></label><span class="muted">casts can't be interrupted; variable cast +30%</span></div>
+        <div id="cardInfo"></div>
       </div>
-      <div class="bar note" id="spCardRow"><span title="Cards that give SP back. SP Recovery +% cards (Eggyra, Sohee, Merman): build mode reads them from your gear; in status window mode add an &quot;SP recovery&quot; line under Equipment stats">SP back (cards):</span>
-        <label class="bar" style="flex-direction:row;gap:4px" title="Dracula Card: physical and magic attacks have a chance to restore SP every second for 7 s"><input type="checkbox" data-cd="dracOn" style="width:auto"> Dracula (<input data-cd="dracPct" type="number" style="width:56px">% · <input data-cd="dracSp" type="number" style="width:56px"> SP/s)</label>
-        <label class="bar" style="flex-direction:row;gap:4px" id="dpWrap" title="Dark Priest Card, when a Sage wears it: 1 SP each time a physical attack hits (Spell Fist's physical hit too)"><input type="checkbox" data-cd="dpOn" style="width:auto"> Dark Priest (+1 SP per physical hit)</label>
-        <span title="Weapon cards: 5 SP when a melee physical attack kills a monster of that race. Not counted with Spell Fist or a bow, instrument or whip">+5 SP per melee kill:</span>
-        <span id="killSpBoxes" class="bar" style="gap:8px"></span>
-        <span id="spCardInfo"></span>
+      <div class="cdList note" id="spCardRow">
+        <div class="cdHead"><b>Cards that give SP back</b> <span class="muted">SP Recovery +% cards (Eggyra, Sohee, Merman): build mode reads them from your gear; in status window mode add an &quot;SP recovery&quot; line under Equipment stats</span></div>
+        <div class="cdItem" title="Dracula Card: physical and magic attacks have a chance to restore SP every second for 7 s"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="dracOn" style="width:auto"> <b>Dracula</b></label><span class="muted">physical and magic attacks can restore SP for 7 s</span><span class="cdOpts"><input data-cd="dracPct" type="number" style="width:56px">% chance · <input data-cd="dracSp" type="number" style="width:56px"> SP/s</span></div>
+        <div class="cdItem" id="dpWrap" title="Dark Priest Card, when a Sage wears it: 1 SP each time a physical attack hits (Spell Fist's physical hit too)"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="dpOn" style="width:auto"> <b>Dark Priest</b></label><span class="muted">a Sage gets 1 SP each time a physical attack hits (Spell Fist too)</span></div>
+        <div class="cdItem" title="Weapon cards: 5 SP when a melee physical attack kills a monster of that race. Not counted with Spell Fist or a bow, instrument or whip"><b>+5 SP per melee kill</b><span class="muted">weapon cards, per race killed:</span><span id="killSpBoxes" class="bar" style="gap:8px"></span></div>
+        <div id="spCardInfo"></div>
       </div>
       <div class="bar note" id="ecRow"><span title="The Mage quest skill: Wizards and Sages have it too">Energy Coat (Mage, Wizard, Sage):</span>
         <label class="bar" style="flex-direction:row;gap:4px" title="Cuts damage taken by 6–30% and costs 1–3% of Max SP per hit taken; the fuller your SP, the bigger both"><input type="checkbox" data-ec="on" style="width:auto"> on</label>
@@ -229,41 +229,8 @@
         <label class="bar" style="flex-direction:row;gap:4px">Lv <input data-sg="dbLv" type="number" min="1" max="5" style="width:56px"></label>
       </div>
       <div class="note" id="sageInfo"></div>
-      <div class="note">SP items (below) only count with Hindsight on: regen pays SP first, items cover the rest.</div>
+      <div class="note">SP items (Consumables card) only count with Hindsight on: regen pays SP first, items cover the rest.</div>
     </details>
-    <details class="card sub" id="consPanel" open>
-      <summary><b>Consumables &amp; buffs</b> <span class="note">read your status window with these off; they add on top</span></summary>
-      <div class="warnc" id="consOff" hidden>Not added: the status window box above says your numbers already include buffs and items.</div>
-      <div class="bar note"><span>ASPD potion:</span>
-        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="potOn" style="width:auto"> using one</label>
-        <select id="potType" aria-label="Which potion" style="width:auto"></select>
-        <label class="bar" style="flex-direction:row;gap:4px"><input id="potPrice" type="number" step="100" style="width:80px"> z each</label>
-        <label class="bar" style="flex-direction:row;gap:4px">lasts <input id="potMin" type="number" step="1" style="width:56px"> min</label>
-        <span id="potInfo"></span>
-      </div>
-      <div class="bar note"><span>Elemental converter:</span>
-        <select id="convSel" aria-label="Elemental converter" style="width:auto"><option value="">none</option><option value="auto">best per monster / map</option><option>Fire</option><option>Water</option><option>Earth</option><option>Wind</option></select>
-        <span class="muted">one element at a time, on basic attacks and weapon-element skills</span> <span id="convNote" class="warnc"></span>
-        <div id="convInfo" style="flex-basis:100%"></div>
-      </div>
-      <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px" title="Consumes 1 World Tree Dew or Zelstar for a 1-hour buff"><input type="checkbox" id="yggOn" style="width:auto"> Blessing of Yggdrasil</label>
-        <span class="muted">World Tree Dew or Zelstar (KP shop), lasts 1 hour: all stats +7, ATK +30, MATK +30, HIT +5, FLEE +5</span>
-      </div>
-      <div class="note">Stats from food and other consumables: + adds to the stat, +% is a share of your total stat, rounded down</div>
-      <table id="consStats" class="cstats"><thead><tr><th>Stat</th><th>+</th><th>+%</th></tr></thead><tbody></tbody></table>
-      <div class="note"><b>Other effects</b> (ATK, HIT, ASPD…)</div>
-      <div id="consList" class="eqlist"></div>
-      <div class="bar"><button type="button" class="small" id="consAdd">+ Add</button><span class="note" id="consNote"></span></div>
-      <div class="note"><b>Buffs from others</b></div>
-      <div id="pbuffList" class="eqlist"></div>
-    </details>
-    <div class="bar note"><span>SP items:</span>
-      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
-      <span id="spItemUse"></span>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Discount only cuts what you buy from an NPC; untick when you buy the ASPD potion, skill items and a Custom SP item from players. Recovery items have their own Buy with Discount box"><input type="checkbox" id="npcBuy" style="width:auto"> from NPCs</label>
-      <span id="itemInfo"></span>
-      <span id="mercNote"></span>
-    </div>
     <div class="bar note"><span>Weight:</span>
       <label class="bar" style="flex-direction:row;gap:4px">carrying <input id="curW" type="number" min="0" style="width:72px" title="What you carry when you leave town: gear, potions, scrolls… Only the room above it fills with loot"> of max <input id="maxW" type="number" min="0" placeholder="off" style="width:72px" title="Worked out from STR, job and skills; type a number to override"></label>
       <label class="bar" style="flex-direction:row;gap:4px" title="Gym Membership (KP shop) teaches it: +200 Max Weight per level, kept forever">Increase Capacity Lv <input id="gymLv" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
@@ -286,7 +253,10 @@
   </section>
 
   <section class="card" data-tab="char" id="recCard">
-    <div class="bar"><h2 class="grow">Recovery items</h2><span class="note" id="recNote"></span></div>
+    <div class="bar"><h2 class="grow">Consumables</h2><span class="note" id="recNote"></span></div>
+    <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px" title="Saved for the whole account: a Merchant on the account with Discount Lv 10 (−24%) buys for the others. Covers recovery items, the ASPD potion, skill items and a Custom SP item. Off: the NPC price"><input type="checkbox" id="recDisc" style="width:auto"> Buy with Discount <span class="muted">(Lv 10 on another character, this account)</span></label>
+      <span id="mercNote"></span>
+    </div>
     <div class="bar note" id="recSet">
       <label class="bar" style="flex-direction:row;gap:4px">HP item <select id="recHp" style="width:auto"></select></label>
       <label class="bar" style="flex-direction:row;gap:4px">SP item <select id="recSp" style="width:auto"></select></label>
@@ -294,18 +264,43 @@
         <label class="bar" style="flex-direction:row;gap:4px">restores <input id="itemSp" type="number" style="width:64px"> SP</label>
         <label class="bar" style="flex-direction:row;gap:4px">costs <input id="itemPrice" type="number" style="width:80px"> z</label>
       </span>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Saved for the whole account: a Merchant with Discount (FXFighter) can buy for the other characters. Off: the NPC price"><input type="checkbox" id="recDisc" style="width:auto"> Buy with Discount <span class="muted">(this account)</span></label>
-      <label class="bar" style="flex-direction:row;gap:4px" title="Off by default: Ragnarok Zero's values don't follow classic RO. On: × (100 + VIT × 2 for HP, INT × 2 + Increase SP Recovery Lv × 10 for SP, + Potion Research Lv × 5) / 100, relative to the stats the values were measured on"><input type="checkbox" id="recScale" style="width:auto"> Scale by stats</label>
     </div>
-    <div class="bar note" id="recRef" hidden><span>Values measured on a Merchant with</span>
-      <label class="bar" style="flex-direction:row;gap:4px">VIT <input data-rref="vit" type="number" min="0" placeholder="0" style="width:60px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">INT <input data-rref="int" type="number" min="0" placeholder="0" style="width:60px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">Increase SP Recovery Lv <input data-rref="isr" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
-      <label class="bar" style="flex-direction:row;gap:4px">Potion Research Lv <input data-rref="lp" type="number" min="0" max="10" placeholder="0" style="width:56px"></label>
-      <span id="recScaleNote"></span>
+    <div class="bar note"><span>SP items:</span>
+      <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="autoSp" style="width:auto"> auto-use when needed</label>
+      <span id="spItemUse"></span>
+      <span id="itemInfo"></span>
     </div>
+    <div class="bar note" id="useItems"></div>
     <div class="scroll"><table id="recTable"><thead><tr><th data-sk="name">Item</th><th data-sk="kind">Type</th><th data-sk="avg" title="min – max restored (edit them); the average is what's counted">Avg amount</th><th data-sk="price" title="With Buy with Discount: the Discount price, else the NPC price; player-only items use the player price">Price used</th><th data-sk="per">Cost per HP / SP</th><th data-sk="perW" title="restored per point of weight (edit the weight)">HP or SP per weight</th><th data-sk="uph">Uses / hr</th><th data-sk="zph">Cost / hr</th><th data-sk="wph">Weight / hr</th></tr></thead><tbody></tbody></table></div>
-    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
+    <div class="note">Values measured in Ragnarok Zero Global on a Merchant. Edit any min, max, price or weight in the table (saved for this job); "reset" goes back to the defaults. Uses / hr: HP items cover the map's HP lost / min, SP items the SP your attack uses beyond regen. SP items are only bought with "auto-use when needed" on (Sage: with Hindsight); otherwise you rest. Pick None to use no HP or SP item. The EXP Hunter takes healing off in Heal cost / hr and Net zeny / hr, the Zeny Hunter in Costs / hr.</div>
+    <details class="card sub" id="consPanel" open>
+      <summary><b>ASPD potion, converters, food &amp; buffs</b> <span class="note">read your status window with these off; they add on top</span></summary>
+      <div class="warnc" id="consOff" hidden>Not added: the status window box above says your numbers already include buffs and items.</div>
+      <div class="bar note"><span>ASPD potion:</span>
+        <label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" id="potOn" style="width:auto"> using one</label>
+        <select id="potType" aria-label="Which potion" style="width:auto"></select>
+        <label class="bar" style="flex-direction:row;gap:4px"><input id="potPrice" type="number" step="100" style="width:80px"> z each</label>
+        <label class="bar" style="flex-direction:row;gap:4px">lasts <input id="potMin" type="number" step="1" style="width:56px"> min</label>
+        <span id="potInfo"></span>
+      </div>
+      <div class="bar note"><span>Elemental converter:</span>
+        <select id="convSel" aria-label="Elemental converter" style="width:auto"><option value="">none</option><option value="auto">best per monster / map</option><option>Fire</option><option>Water</option><option>Earth</option><option>Wind</option></select>
+        <span class="muted">one element at a time, on basic attacks and weapon-element skills</span> <span id="convNote" class="warnc"></span>
+        <div id="convInfo" style="flex-basis:100%"></div>
+      </div>
+      <div class="bar note"><label class="bar" style="flex-direction:row;gap:4px" title="Consumes 1 World Tree Dew or Zelstar for a 1-hour buff"><input type="checkbox" id="yggOn" style="width:auto"> Blessing of Yggdrasil</label>
+        <span class="muted">World Tree Dew or Zelstar (KP shop), lasts 1 hour: all stats +7, ATK +30, MATK +30, HIT +5, FLEE +5</span>
+      </div>
+      <div class="note">Stats from food: + adds to the stat (it doesn't stack with Blessing of Yggdrasil: the higher one counts), +% is a share of your total stat, rounded down. Course meals and event drinks go in Other effects and stack on top</div>
+      <table id="consStats" class="cstats"><thead><tr><th>Stat</th><th>+</th><th>+%</th></tr></thead><tbody></tbody></table>
+      <div class="note"><b>Other effects</b> (ATK, HIT, ASPD…)</div>
+      <div id="consList" class="eqlist"></div>
+      <div class="bar"><button type="button" class="small" id="consAdd">+ Add</button><select id="consPreset" aria-label="Add an event item" style="width:auto"></select><span class="note" id="consNote"></span></div>
+      <div class="note"><b>Buffs from others</b></div>
+      <div id="pbuffList" class="eqlist"></div>
+      <div id="pbuffOwn" class="eqlist"></div>
+      <div class="bar"><button type="button" class="small" id="pbuffAdd">+ Add</button><span class="note">a buff that isn't listed, e.g. "STR +5, ATK +20, ASPD +10%"</span><span class="note" id="pbuffNote"></span></div>
+    </details>
   </section>
 
   <section class="card" data-tab="char" id="skillCard">
@@ -408,7 +403,7 @@
     <div class="bar" id="autoLoot" style="align-items:center"><b>Auto loot</b></div>
     <div class="calc" id="huntTiles"></div>
     <div class="scroll"><table id="huntTable"><thead><tr><th data-sk="rank">#</th><th data-sk="name">Map / monster</th><th data-sk="from" title="maps: the monsters you hunt there; monsters: its map and every drop">Earns from</th><th data-sk="net" title="Loot / hr less Costs / hr">Net zeny / hr</th><th data-sk="loot">Loot / hr</th><th data-sk="cost" title="HP items for the HP lost / min and SP items (priced in Recovery items), the ASPD potion and ground buffs. Hover a row for each">Costs / hr</th><th data-sk="kph">Kills / hr</th><th data-sk="zk">Zeny / kill</th><th data-sk="epm">EXP / min</th><th data-sk="hpm">HP lost / min</th></tr><tr class="filters"><td><input type="search" data-tf="rank" placeholder="<=5"></td><td><input type="search" data-tf="name" placeholder="map or monster"></td><td><input type="search" data-tf="from" placeholder="card"></td><td><input type="search" data-tf="net" placeholder=">50000"></td><td><input type="search" data-tf="loot" placeholder=">50000"></td><td><input type="search" data-tf="cost" placeholder="<5000"></td><td><input type="search" data-tf="kph" placeholder=">300"></td><td><input type="search" data-tf="zk" placeholder=">100"></td><td><input type="search" data-tf="epm" placeholder=">2000"></td><td><input type="search" data-tf="hpm" placeholder="<500"></td></tr></thead><tbody></tbody></table></div>
-    <div class="note">Open maps ranked by net zeny / hr: loot after drop bonus and level penalty, minus skill items, HP and SP items (Recovery items on the Character tab) and consumables. Bosses and skipped monsters are left out; unticked auto-loot groups count as 0 everywhere. Click a monster on a map to stop or start hunting it; skipping monsters costs extra walking, or teleports if you have a Creamy Card or the Teleport skill (never Fly Wings: they cost too much). Click "teleport ok" if a map blocks teleport.</div>
+    <div class="note">Open maps ranked by net zeny / hr: loot after drop bonus and level penalty, minus skill items, HP and SP items (Consumables on the Character tab) and consumables. Bosses and skipped monsters are left out; unticked auto-loot groups count as 0 everywhere. Click a monster on a map to stop or start hunting it; skipping monsters costs extra walking, or teleports if you have a Creamy Card or the Teleport skill (never Fly Wings: they cost too much). Click "teleport ok" if a map blocks teleport.</div>
   </section>
 
   <section class="card" id="mapCard" data-tab="maps">
