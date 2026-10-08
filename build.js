@@ -178,13 +178,17 @@ const BUILD=(()=>{
     LEGACY.forEach(x=>{if(!by[x.k]&&!OPT_ALIAS[x.k]){by[x.k]={...x,g:"Other",gear:{}};o.push(by[x.k])}});return o})();
   const OPT_BY=Object.fromEntries(OPTIONS.map(x=>[x.k,x]));
   // the gear kind a row's item rolls options as: weapons by type (staves magic, bows / instruments / whips ranged, the rest
-  // melee; a weapon in the Shield row too), else armor / garment / shoes; null for parts rozerodb lists no pool for
+  // melee; a weapon in the Shield row too), else armor / garment / shoes; null for parts rozerodb lists no pool for. Books and
+  // weapons with MATK (Encyclopedia, Bazerald) also roll the magic series: "melee+magic"
   function optGear(slot,it){if(it&&(it.slot||[]).includes("weapon")){const w=WTYPE[it.type];
-      return /staff/.test(it.type||"")?"magic":RANGED_W.includes(w)?"ranged":"melee"}
+      if(/staff/.test(it.type||""))return "magic";const k=RANGED_W.includes(w)?"ranged":"melee";return it.type==="book"||it.matk>0?k+"+magic":k}
     return {armor:"armor",garment:"garment",shoes:"shoes"}[slot]||null}
-  // the options a row offers, with the min–max for its gear; every option when its gear has no pool
-  function optChoices(slot,it){const gk=optGear(slot,it);if(!gk||!OPTIONS.some(x=>x.gear[gk]))return OPTIONS.map(x=>({...x,range:null}));
-    return OPTIONS.filter(x=>x.gear[gk]).map(x=>({...x,range:x.gear[gk]}))}
+  // the options a row offers, with the min–max for its gear (over every kind it rolls as); every option when its gear has no
+  // pool. Options rozerodb has no affix for ("Other": special enchants, like a dungeon's gear) go on every part
+  function optChoices(slot,it){const gk=optGear(slot,it),ks=gk?gk.split("+"):[],other=x=>!Object.keys(x.gear).length;
+    if(!ks.some(k=>OPTIONS.some(x=>x.gear[k])))return OPTIONS.map(x=>({...x,range:null}));
+    return OPTIONS.filter(x=>other(x)||ks.some(k=>x.gear[k])).map(x=>{const rs=ks.map(k=>x.gear[k]).filter(Boolean);
+      return {...x,range:rs.length?[Math.min(...rs.map(r=>r[0])),Math.max(...rs.map(r=>r[1]))]:null}})}
   const optKey=k=>OPT_ALIAS[k]||k;
   // the picked rows; a build saved before the lists keeps its typed text and is read as rows where it matches one
   function optRows(opts){if(Array.isArray(opts))return opts.filter(x=>x&&OPT_BY[optKey(x.k)]).map(x=>({...x,k:optKey(x.k)}));

@@ -178,12 +178,20 @@ t("random options come from rozerodb's affixes, filtered to what the row's gear 
   // a sword rolls melee weapon affixes (monster / MVP drop, forging, activation), with the min–max over all of them
   const sword = keys("weapon", BUILD.item(1));
   assert.ok(sword.includes("atk") && sword.includes("dmg_race_demon") && sword.includes("dmg_size_small") && sword.includes("ign_def_race_demon"));
-  assert.ok(!sword.includes("matk") && !sword.includes("res_race_demon") && !sword.includes("mdmg_race_demon") && !sword.includes("str"));
+  assert.ok(!sword.includes("matk") && !sword.includes("res_race_demon") && !sword.includes("mdmg_race_demon"));
+  // options rozerodb has no affix for ("Other": special enchants) go on every part, with no min–max
+  assert.ok(sword.includes("str") && sword.includes("magic_damage_percent") && keys("armor", BUILD.item(2)).includes("str"));
+  assert.equal(by("weapon", BUILD.item(1), "str").range, null);
   assert.deepEqual(by("weapon", BUILD.item(1), "atk").range, [1, 60]);           // drops 5–30, activation 1–39, forging 1–60
   // staves roll the magic series; bows the ranged one (no forging); a weapon in the Shield row rolls weapon affixes
   const staff = { slot: ["weapon"], type: "staff_1h" }, bow = { slot: ["weapon"], type: "bow" };
   assert.ok(keys("weapon", staff).includes("mdmg_race_demon") && !keys("weapon", staff).includes("atk"));
   assert.equal(BUILD.optGear("weapon", bow), "ranged");
+  // books and weapons with MATK roll the magic series too, with their own
+  const book = { slot: ["weapon"], type: "book" }, mdagger = { slot: ["weapon"], type: "dagger", matk: 105 };
+  assert.equal(BUILD.optGear("weapon", book), "melee+magic");
+  for (const w of [book, mdagger]) assert.ok(keys("weapon", w).includes("mdmg_race_demon") && keys("weapon", w).includes("matk") && keys("weapon", w).includes("dmg_size_small"));
+  assert.deepEqual(by("weapon", book, "atk").range, [1, 60]);
   assert.ok(!keys("weapon", bow).includes("dmg_size_small"));
   assert.deepEqual(keys("shield", BUILD.item(6)), keys("weapon", BUILD.item(6)));
   // armor, garment and shoes have their own pools
