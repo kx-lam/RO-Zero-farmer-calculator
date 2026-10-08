@@ -6,6 +6,7 @@ The numbers are estimates. Skill values and formulas follow the sources below an
 
 - Monsters, drops, NPC prices and skills: [rozerodb.com](https://rozerodb.com)
 - Gear, cards, refine and job data: [roz.prontera.info](https://roz.prontera.info)
+- The names cards give gear in the equipment window ("Healing" for Vitata Card): [divine-pride.net](https://www.divine-pride.net/database/item/4053)
 - Random options (affixes) per gear type, pool and slot, with their min–max: [rozerodb.com Affixes Simulator](https://rozerodb.com/tools/affixes)
 - Costume enchant stones and their sets: item descriptions on [rozerodb.com](https://rozerodb.com/guides/enchant), cross-checked with [midgardhub.com](https://midgardhub.com/guides/enchant-stones)
 - Taming Ring pet egg enchants: item descriptions on [rozerodb.com](https://rozerodb.com), cross-checked with [midgardhub.com pet bonuses](https://midgardhub.com/guides/pet-bonuses)
