@@ -1019,6 +1019,38 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
   assert.equal(run("vitPct()"), 0);
 });
 
+t("cards: Hunter Fly and Dracula copies (box or counted in the gear) roll on every attack, one restore at a time", () => {
+  const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed sword", hitTxt: "300", aspd: 170, maxSp: 500, st: {}, skills: {}, a: AUTO });
+  const n5 = run("atkPerSec()") * 5, n7 = run("atkPerSec()") * 7;
+  run("CRD().hfOn=true");
+  near(run("hfHpPerSec()"), (1 - Math.pow(0.95, n5)) * 100);              // 1 copy, as before
+  run("CRD().hfN=2");                                                      // 2 copies: twice the rolls, still 100 HP/s at most
+  near(run("hfHpPerSec()"), (1 - Math.pow(0.95, 2 * n5)) * 100);
+  assert.ok(run("hfHpPerSec()") < 2 * (1 - Math.pow(0.95, n5)) * 100);
+  run("CRD().hfN=9"); assert.equal(run("hfCards()"), 4);                    // 1–4
+  run("CRD().hfN='';CRD().hfOn=false"); assert.equal(run("hfHpPerSec()"), 0);
+  run("CRD().dracOn=true");
+  near(run("dracSPPerSec()"), (1 - Math.pow(0.9, n7)) * 20);
+  run("CRD().dracN=2");
+  near(run("dracSPPerSec()"), (1 - Math.pow(0.9, 2 * n7)) * 20);
+  run("CRD().dracOn=false;CRD().dracN=1");
+  // build mode counts the copies in the gear, and they count as ticked
+  run("C().mode='build';C().build={gear:{weapon:{id:1158,cards:[27266,27266,27268,0]}}}");
+  assert.equal(run("cardsInGear(C(),[HUNTER_FLY])"), 2); assert.equal(run("hfCards()"), 2); assert.equal(run("dracCards()"), 1);
+  const na = run("atkPerSec()") * 5;
+  near(run("hfHpPerSec()"), (1 - Math.pow(0.95, 2 * na)) * 100);
+  run("C().mode='status'"); assert.equal(run("hfCards()"), 0);               // status window mode: the boxes again
+  // an old save without the counts loads as 1, and a share link keeps a 2
+  const app = load({ job: "Knight", current: "s1", sessions: [{ id: "s1", name: "t", mobIds: [], entries: [] }], chars: { Knight: { cards: { hfOn: true, dracOn: true } } } });
+  assert.equal(app("CRD().hfN"), 1); assert.equal(app("CRD().dracN"), 1); assert.equal(app("hfCards()"), 1);
+  run(`state.job="Knight";state.chars={};CRD().hfOn=true;CRD().hfN=2`);
+  const packed = JSON.parse(run(`JSON.stringify(packState(state))`));
+  assert.ok(!JSON.stringify(packed).includes('"dracN"'));                   // defaults aren't written
+  const back = JSON.parse(run(`JSON.stringify(unpackState(${JSON.stringify(packed)}))`));
+  assert.equal(back.chars.Knight.cards.hfN, 2);
+});
+
 t("cards: a Sage's old Vitata, Hunter Fly and Side Winder settings move out of Sage options", () => {
   const app = load({ job: "Sage", current: "s1", sessions: [{ id: "s1", name: "t", mobIds: [], entries: [] }],
     chars: { Sage: { sage: { hsLv: 10, vitata: false, hfOn: true, hfHp: 120, daSF: true } }, Knight: { sage: { vitata: true } }, Wizard: { sage: { hsLv: 5 } } } });

@@ -45,13 +45,13 @@ Left blank, SP regen per 8 s is worked out: 1 + Max SP/100 + INT/6, plus more fr
 
 ## HP back from cards
 
-- **Hunter Fly:** physical attacks have a chance to restore HP every second for 5 s, so less HP lost per minute.
+- **Hunter Fly:** physical attacks have a chance to restore HP every second for 5 s, so less HP lost per minute. Set how many copies you wear (1–4); build mode counts them in your gear and counts the card as on. Each copy rolls on every attack until one procs, but the restore doesn't add up, so the HP restore runs 1 − (1 − 5%)^(copies × attacks in 5 s) of the time (not checked in game).
 
 HP Recovery +x% cards (Muka, Zombie, Wooden Golem, Merman) raise natural HP regen; they aren't modelled, so count them in "HP back per minute".
 
 ## SP back from cards
 
-- **Dracula:** attacks have a chance to restore SP every second for 7 s.
+- **Dracula:** attacks have a chance to restore SP every second for 7 s. Copies (1–4, or counted from your gear in build mode) work like Hunter Fly's: more rolls per attack, one restore at a time.
 - **Dark Priest:** a Sage gets 1 SP per physical hit that lands.
 - **+5 SP per kill weapon cards** (Beetle King, Caterpillar, Driller, Nereid, Phendark, Tri-Joint, Zombie Master): when a melee physical attack kills that race, spread over the fight; not with Spell Fist.
 
