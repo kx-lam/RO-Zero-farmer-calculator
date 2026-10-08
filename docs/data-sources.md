@@ -6,6 +6,7 @@ The numbers are estimates. Skill values and formulas follow the sources below an
 
 - Monsters, drops, NPC prices and skills: [rozerodb.com](https://rozerodb.com)
 - Gear, cards, refine and job data: [roz.prontera.info](https://roz.prontera.info)
+- Random options (affixes) per gear type, pool and slot, with their min–max: [rozerodb.com Affixes Simulator](https://rozerodb.com/tools/affixes)
 - Spawn counts: the official Ragnarok Zero Global client (navigation table)
 - Map names: the official client (`System/mapInfo_enUS.lub`)
 - Spawn, drop and item name cross-check, in-game map codes: [ragnarokzero.net](https://ragnarokzero.net/database/maps)

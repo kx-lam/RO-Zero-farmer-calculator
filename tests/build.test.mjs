@@ -1,5 +1,6 @@
 // Engine tests for build.js with a small made-up dataset. Run: node tests/build.test.mjs
 import { createRequire } from "module";
+import { readFileSync } from "fs";
 import assert from "assert/strict";
 const require = createRequire(import.meta.url);
 
@@ -27,6 +28,8 @@ Object.assign(globalThis, {
             armor: Array.from({ length: 20 }, (_, i) => [0, 0, (i + 1) ** 2]) },
   JOBDATA: { Knight: { bonus: { str: [1, 6], vit: [5] }, hp: [40, 48, 58], sp: [10, 12, 14] } },
 });
+// the real affix list (rozerodb), as the page loads it before build.js
+(0, eval)(readFileSync(new URL("../data/affixes.js", import.meta.url), "utf8").replace(/^const (\w+)=/gm, "globalThis.$1="));
 const BUILD = require("../build.js");
 const aspdBase = () => 150;
 const base = { str: 50, agi: 30, vit: 20, int: 1, dex: 30, luk: 10 };
@@ -166,6 +169,43 @@ t("random options picked from lists: any item takes up to 4, resists and cast ti
   const old = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { armor: { id: 2, opts: "ATK +25, FLEE +20" } } }, "Knight", aspdBase);
   assert.equal(old.acc.atk, 25);
   assert.deepEqual(BUILD.optRows("ATK +25, MATK +3%"), [{ k: "atk", v: 25 }, { k: "matk_percent", v: 3 }]);
+});
+
+t("random options come from rozerodb's affixes, filtered to what the row's gear rolls", () => {
+  const keys = (slot, it) => BUILD.optChoices(slot, it).map(o => o.k);
+  const by = (slot, it, k) => BUILD.optChoices(slot, it).find(o => o.k === k);
+  // a sword rolls melee weapon affixes (monster / MVP drop, forging, activation), with the min–max over all of them
+  const sword = keys("weapon", BUILD.item(1));
+  assert.ok(sword.includes("atk") && sword.includes("dmg_race_demon") && sword.includes("dmg_size_small") && sword.includes("ign_def_race_demon"));
+  assert.ok(!sword.includes("matk") && !sword.includes("res_race_demon") && !sword.includes("mdmg_race_demon") && !sword.includes("str"));
+  assert.deepEqual(by("weapon", BUILD.item(1), "atk").range, [1, 60]);           // drops 5–30, activation 1–39, forging 1–60
+  // staves roll the magic series; bows the ranged one (no forging); a weapon in the Shield row rolls weapon affixes
+  const staff = { slot: ["weapon"], type: "staff_1h" }, bow = { slot: ["weapon"], type: "bow" };
+  assert.ok(keys("weapon", staff).includes("mdmg_race_demon") && !keys("weapon", staff).includes("atk"));
+  assert.equal(BUILD.optGear("weapon", bow), "ranged");
+  assert.ok(!keys("weapon", bow).includes("dmg_size_small"));
+  assert.deepEqual(keys("shield", BUILD.item(6)), keys("weapon", BUILD.item(6)));
+  // armor, garment and shoes have their own pools
+  assert.deepEqual(by("armor", BUILD.item(2), "res_race_demon").range, [3, 7]);
+  assert.ok(keys("garment", null).includes("res_ele_fire") && !keys("armor", BUILD.item(2)).includes("res_ele_fire"));
+  assert.deepEqual(by("shoes", BUILD.item(3), "hp").range, [150, 300]);
+  // rozerodb has no pool for accessories, headgear or shields: those list every option, old hand-made ones too
+  assert.equal(BUILD.optGear("acc1", BUILD.item(7)), null);
+  assert.equal(keys("acc1", BUILD.item(7)).length, BUILD.OPTIONS.length);
+  assert.ok(keys("acc1", BUILD.item(7)).includes("str") && keys("headTop", BUILD.item(4)).includes("mele_fire"));
+  assert.equal(by("acc1", BUILD.item(7), "atk").range, null);
+  // options the model can't use are listed, then reported; ones apply() can't place report through it
+  const opts = [{ k: "heal_percent", v: 8 }, { k: "mdmg_ele_fire", v: 5 }, { k: "ign_def_race_demon", v: 10 }, { k: "ign_def_kind_normal", v: 5 },
+    { k: "res_race_demon", v: 5 }, { k: "pres_ele_water", v: 6 }, { k: "sp_cost_percent", v: 4 }, { k: "mele_fire", v: 3 }];
+  const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { weapon: { id: 1, opts } } }, "Knight", aspdBase);
+  assert.ok(r.unmodelled.includes("Blade option not counted: Heal increase 8%"));
+  assert.ok(r.unmodelled.includes("Blade option not counted: Magic Damage to Fire enemies 5%"));
+  assert.ok(r.unmodelled.some(x => x.includes("ignore_def_percent demon")));
+  assert.equal(r.acc.ignDef, 5);
+  assert.equal(r.acc.taken.race.Demon, -5);
+  assert.equal(r.acc.taken.ele.Water, -6);
+  assert.equal(r.acc.spCost, -4);
+  assert.equal(r.acc.myEle.Fire, 3);                                          // a key from the hand-made list still counts
 });
 
 t("a refined accessory counts its own refine lines, with no armor DEF schedule", () => {

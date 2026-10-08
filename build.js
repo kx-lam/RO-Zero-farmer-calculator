@@ -110,10 +110,48 @@ const BUILD=(()=>{
     if(!k){bad.push(p);return}const v=parseFloat(m[2].replace(/\s/g,""));
     if(m[3]){if(PCT[k])out.push([PCT[k],null,null,v]);else bad.push(p)}else out.push([k,null,null,v])});return {lines:out,bad}}
   // random options picked from lists in build mode: gear.opts = [{k, v}], up to OPT_MAX per item whatever the item
-  // (one item can roll 2 on one drop and 4 on the next). k picks a line below; neg lines store the value negated
-  // ("Resist Fire 10%" is damage taken −10%, "Variable cast time −5%" is the data's −5)
+  // (one item can roll 2 on one drop and 4 on the next). The list is rozerodb's affixes (data/affixes.js), one entry per
+  // distinct affix with the bonus line apply() counts it as; line null = an affix the model has no use for (shown, but listed
+  // under "Not counted"). neg lines store the value negated: "Resistance to Demon 5%" is damage taken −5%, "Variable Casting
+  // reduction 5%" is the data's −5. gear: the min–max it rolls on each gear kind (all pools together)
   const OPT_MAX=4;
-  const OPTIONS=(()=>{const o=[],add=(g,k,label,type,kind,target,pct,neg)=>o.push({k,g,label,line:[type,kind||null,target||null],pct:!!pct,neg:!!neg});
+  const RACE_BY=Object.fromEntries(Object.entries(RACE).map(([k,v])=>[v.toLowerCase(),k]));
+  const ELES=["neutral","water","earth","fire","wind","poison","holy","shadow","ghost","undead"];
+  // rozerodb gear type -> gear kinds (see optGear). Blacksmiths forge melee weapons; the Activation System's Physical Series
+  // covers melee and ranged weapons
+  const AFFIX_GEAR={"Melee Series":["melee"],"Ranged Series":["ranged"],"Magic Series":["magic"],"Physical Series":["melee","ranged"],
+    "Forging Weapons":["melee"],"Armor":["armor"],"Garment":["garment"],"Shoes":["shoes"]};
+  // rozerodb affix name -> [key, group, bonus line or null, neg]
+  function affixOpt(name){const n=name.replace(/\s*\(%\)$/,"").trim();let m;const L=(t,kind,target)=>[t,kind||null,target||null];
+    const flat={"ATK":["atk","Offense","atk"],"MATK":["matk","Offense","matk"],"ASPD":["aspd","Offense","aspd"],"CRI":["crit","Offense","crit"],"HIT":["hit","Offense","hit"],
+      "FLEE":["flee","Defense","flee"],"DEF":["def","Defense","def"],"MDEF":["mdef","Defense","mdef"],"MaxHP":["hp","Defense","hp"],"MaxHP(MHP)":["hp","Defense","hp"],
+      "MaxSP":["sp","Defense","sp"],"MaxSP(MSP)":["sp","Defense","sp"],"ASPD increase":["aspd_percent","Offense","aspd_percent"],
+      "Critical Damage increase":["crit_damage_percent","Offense","crit_damage_percent"],"Long-range Physical Damage increase":["ranged_damage_percent","Offense","ranged_damage_percent"],
+      "HP Recovery speed increase":["hp_recovery_percent","Healing","hp_recovery_percent"],"SP Recovery speed increase":["sp_recovery_percent","Healing","sp_recovery_percent"]}[n];
+    const pct=/\(%\)$/.test(name);
+    if(flat)return [pct&&!/_percent$/.test(flat[0])?flat[0]+"_percent":flat[0],flat[1],L(pct&&!/_percent$/.test(flat[2])?flat[2]+"_percent":flat[2])];
+    if(/^Variable Casting reduction$/.test(n))return ["cast_time_variable_percent","Offense",L("cast_time_variable_percent"),true];
+    if(n==="SP Consumption reduction")return ["sp_cost_percent","Offense",L("sp_cost_percent"),true];
+    if(n==="Heal increase")return ["heal_percent","Healing",null];
+    if(n==="Received Healing increase")return ["heal_received_percent","Healing",null];
+    const race=r=>RACE_BY[r.toLowerCase()],ele=e=>ELES.includes(e.toLowerCase())?e.toLowerCase():null;
+    if((m=n.match(/^(Phys|Magic) Damage to (.+) monsters$/))&&race(m[2]))return [(m[1]==="Phys"?"dmg":"mdmg")+"_race_"+race(m[2]),"Race",L(m[1]==="Phys"?"damage_percent":"magic_damage_percent","race",race(m[2]))];
+    if((m=n.match(/^(Phys|Magic) Damage to (Boss|Normal) enemies$/)))return [(m[1]==="Phys"?"dmg":"mdmg")+"_kind_"+m[2].toLowerCase(),"Monster type",L(m[1]==="Phys"?"damage_percent":"magic_damage_percent","monster_kind",m[2].toLowerCase())];
+    if((m=n.match(/^Phys Damage to (Small|Medium|Large) targets$/)))return ["dmg_size_"+m[1].toLowerCase(),"Size",L("damage_percent","size",m[1].toLowerCase())];
+    if((m=n.match(/^Physical Damage to (.+) enemies$/))&&ele(m[1]))return ["dmg_ele_"+ele(m[1]),"Element",L("damage_percent","element",ele(m[1]))];
+    // magic damage vs a monster's element: apply() has no line for it ("Fire magic damage" lines boost your own Fire spells)
+    if((m=n.match(/^Magic Damage to (.+) enemies$/))&&ele(m[1]))return ["mdmg_ele_"+ele(m[1]),"Element",null];
+    // ignore DEF / MDEF of one race: apply() reports these itself; vs normal monsters it counts as plain ignore DEF / MDEF
+    if((m=n.match(/^Ignore (.+) (Phys|Magic) Def$/))){const t=m[2]==="Phys"?"ignore_def_percent":"ignore_mdef_percent",k=m[2]==="Phys"?"ign_def":"ign_mdef";
+      if(m[1]==="Normal Enemy")return [k+"_kind_normal","Monster type",L(t,"monster_kind","normal")];if(race(m[1]))return [k+"_race_"+race(m[1]),"Race",L(t,"race",race(m[1]))]}
+    if((m=n.match(/^Phys Damage from (.+) enemies reduction$/))&&ele(m[1]))return ["pres_ele_"+ele(m[1]),"Resist",L("damage_taken_percent","element",ele(m[1])),true];
+    // monster spells aren't in the damage-taken model
+    if((m=n.match(/^Magic Damage from (.+) enemies reduction$/))&&ele(m[1]))return ["mres_ele_"+ele(m[1]),"Resist",null];
+    if((m=n.match(/^(.+) resistance increase$/))&&ele(m[1]))return ["res_ele_"+ele(m[1]),"Resist",L("damage_taken_percent","element",ele(m[1])),true];
+    if((m=n.match(/^Resistance to (.+)$/))&&race(m[1]))return ["res_race_"+race(m[1]),"Resist",L("damage_taken_percent","race",race(m[1])),true];
+    return ["affix_"+n.toLowerCase().replace(/[^a-z0-9]+/g,"_"),"Other",null]} // an affix added to rozerodb since: listed, not counted
+  // options lists made by hand before data/affixes.js: kept so builds and share links saved with them still load and count
+  const LEGACY=(()=>{const o=[],add=(g,k,label,type,kind,target,pct,neg)=>o.push({k,g,label,line:[type,kind||null,target||null],pct:!!pct,neg:!!neg});
     STAT6.forEach(k=>add("Stats",k,k.toUpperCase(),k));
     [["atk","ATK"],["matk","MATK"],["hit","HIT"],["crit","CRIT"],["aspd","ASPD"]].forEach(([k,l])=>add("Offense",k,l,k));
     [["atk_percent","ATK"],["matk_percent","MATK"],["aspd_percent","ASPD"],["crit_damage_percent","Critical damage"],["ranged_damage_percent","Ranged physical damage"],
@@ -126,17 +164,35 @@ const BUILD=(()=>{
     for(const r in RACE){add("Race","dmg_race_"+r,`Damage vs ${RACE[r]} %`,"damage_percent","race",r,true);add("Race","mdmg_race_"+r,`Magic damage vs ${RACE[r]} %`,"magic_damage_percent","race",r,true);
       add("Race","res_race_"+r,`Resist ${RACE[r]} %`,"damage_taken_percent","race",r,true,true)}
     for(const z in SIZE){add("Size","dmg_size_"+z,`Damage vs ${cap(z)} %`,"damage_percent","size",z,true);add("Size","mdmg_size_"+z,`Magic damage vs ${cap(z)} %`,"magic_damage_percent","size",z,true)}
-    ["neutral","water","earth","fire","wind","poison","holy","shadow","ghost","undead"].forEach(e=>{add("Element","dmg_ele_"+e,`Damage vs ${cap(e)} monsters %`,"damage_percent","element",e,true);
+    ELES.forEach(e=>{add("Element","dmg_ele_"+e,`Damage vs ${cap(e)} monsters %`,"damage_percent","element",e,true);
       add("Element","mele_"+e,`${cap(e)} magic damage %`,"magic_damage_percent","element",e,true);add("Element","res_ele_"+e,`Resist ${cap(e)} %`,"damage_taken_percent","element",e,true,true)});
     [["normal","Normal"],["boss","Boss"]].forEach(([t,l])=>{add("Monster type","dmg_kind_"+t,`Damage vs ${l} monsters %`,"damage_percent","monster_kind",t,true);
       add("Monster type","mdmg_kind_"+t,`Magic damage vs ${l} monsters %`,"magic_damage_percent","monster_kind",t,true)});
     return o})();
+  // keys an affix replaced; none so far: each affix that means the same as a hand-made entry took over its key
+  const OPT_ALIAS={};
+  const OPTIONS=(()=>{const o=[],by={};
+    ((typeof AFFIXES!=="undefined"&&AFFIXES.rows)||[]).forEach(([,type,,name,min,max,pct])=>{const [k,g,line,neg]=affixOpt(name);
+      let x=by[k];if(!x){x=by[k]={k,g,label:name.replace(/\s*\(%\)$/,"")+(pct?" %":""),line,pct:!!pct,neg:!!neg,gear:{}};o.push(x)}
+      (AFFIX_GEAR[type]||[]).forEach(gk=>{const r=x.gear[gk];x.gear[gk]=r?[Math.min(r[0],min),Math.max(r[1],max)]:[min,max]})});
+    LEGACY.forEach(x=>{if(!by[x.k]&&!OPT_ALIAS[x.k]){by[x.k]={...x,g:"Other (not a rozerodb affix)",gear:{}};o.push(by[x.k])}});return o})();
   const OPT_BY=Object.fromEntries(OPTIONS.map(x=>[x.k,x]));
+  // the gear kind a row's item rolls options as: weapons by type (staves magic, bows / instruments / whips ranged, the rest
+  // melee; a weapon in the Shield row too), else armor / garment / shoes; null for parts rozerodb lists no pool for
+  function optGear(slot,it){if(it&&(it.slot||[]).includes("weapon")){const w=WTYPE[it.type];
+      return /staff/.test(it.type||"")?"magic":RANGED_W.includes(w)?"ranged":"melee"}
+    return {armor:"armor",garment:"garment",shoes:"shoes"}[slot]||null}
+  // the options a row offers, with the min–max for its gear; every option when its gear has no pool
+  function optChoices(slot,it){const gk=optGear(slot,it);if(!gk||!OPTIONS.some(x=>x.gear[gk]))return OPTIONS.map(x=>({...x,range:null}));
+    return OPTIONS.filter(x=>x.gear[gk]).map(x=>({...x,range:x.gear[gk]}))}
+  const optKey=k=>OPT_ALIAS[k]||k;
   // the picked rows; a build saved before the lists keeps its typed text and is read as rows where it matches one
-  function optRows(opts){if(Array.isArray(opts))return opts.filter(x=>x&&OPT_BY[x.k]);
-    return parseOptions(opts).lines.map(([t,,,v])=>{const o=OPTIONS.find(x=>x.line[0]===t&&!x.line[1]);return o&&{k:o.k,v:o.neg?-v:v}}).filter(Boolean)}
-  function optLines(opts){if(!Array.isArray(opts))return parseOptions(opts);
-    return {lines:optRows(opts).filter(x=>+x.v).map(x=>{const o=OPT_BY[x.k];return [...o.line,o.neg?-x.v:+x.v]}),bad:[]}}
+  function optRows(opts){if(Array.isArray(opts))return opts.filter(x=>x&&OPT_BY[optKey(x.k)]).map(x=>({...x,k:optKey(x.k)}));
+    return parseOptions(opts).lines.map(([t,,,v])=>{const o=OPTIONS.find(x=>x.line&&x.line[0]===t&&!x.line[1]);return o&&{k:o.k,v:o.neg?-v:v}}).filter(Boolean)}
+  // bonus lines of the picked rows; off: the ones the model can't count (shown under "Not counted")
+  function optLines(opts){if(!Array.isArray(opts))return {...parseOptions(opts),off:[]};const lines=[],off=[];
+    optRows(opts).filter(x=>+x.v).forEach(x=>{const o=OPT_BY[x.k];if(o.line)lines.push([...o.line,o.neg?-x.v:+x.v]);else off.push(`${o.label.replace(/ %$/,"")} ${x.v}${o.pct?"%":""}`)});
+    return {lines,bad:[],off}}
   // does a bonus group apply? r: item refine, rs: combined refine of a set, lv: base level, cls: job slugs
   // ("Acolyte Class" in game covers Priest and Monk, so a 2nd job also matches its 1st job)
   const groupOn=(g,ctx)=>(g.r==null||ctx.refine>=g.r)&&(g.rs==null||ctx.refineSum>=g.rs)&&(g.lv==null||ctx.baseLv>=g.lv)&&(!g.cls||!g.cls.length||g.cls.includes(ctx.jobSlug)||g.cls.includes(ctx.firstSlug));
@@ -157,7 +213,7 @@ const BUILD=(()=>{
       // a weapon in the Shield row is the left hand (Assassin); its ATK shows on the gear side of the status window like the right one's
       if(s.k==="shield"){if((it.slot||[]).includes("weapon"))wpnL=it;else shield=true}gearMatk+=it.matk||0;gearDef+=it.def||0;gearMdef+=it.mdef||0;refDef+=rd});
     worn.forEach(w=>{const ctx={...ctxBase,refine:w.r};applyGroups(A,w.it.g,ctx,w.it.name);w.cards.forEach(c=>applyGroups(A,c.g,ctx,c.name));
-      const o=optLines((gear[w.slot]||{}).opts);o.lines.forEach(b=>apply(A,b,w.it.name+" option"));o.bad.forEach(x=>A.unmodelled.push(`${w.it.name} option not understood: ${x}`))});
+      const o=optLines((gear[w.slot]||{}).opts);o.lines.forEach(b=>apply(A,b,w.it.name+" option"));o.bad.forEach(x=>A.unmodelled.push(`${w.it.name} option not understood: ${x}`));o.off.forEach(x=>A.unmodelled.push(`${w.it.name} option not counted: ${x}`))});
     // consumables and buffs picked on the Character tab: plain bonus lines on top of the gear
     (b.extra||[]).forEach(x=>apply(A,x,"consumable"));
     // sets: every piece worn; "combined refine" sums the pieces' refines
@@ -186,5 +242,5 @@ const BUILD=(()=>{
       lw:dual?lw:"",lwAtk:dual?f(((wpnL.atk||0)+refineAt(wpnL,(gear.shield||{}).refine)[0])*(1+A.atkPct/100)):0,lwElem:dual&&wpnL.el?cap(wpnL.el):"Neutral"};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines,optGear,optChoices}})();
 if(typeof module!=="undefined")module.exports=BUILD;

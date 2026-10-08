@@ -210,10 +210,15 @@ const leftHandOk=it=>state.job==="Assassin"&&(it.slot||[]).includes("weapon")&&B
 function gearChoices(slot){const s=BUILD.SLOTS.find(x=>x.k===slot);return (typeof EQUIP!=="undefined"?EQUIP:[]).filter(it=>((it.slot||[]).some(x=>s.takes.includes(x))||slot==="shield"&&leftHandOk(it))&&canWear(it))}
 // cards follow the item: a weapon in the Shield row takes weapon cards
 function cardChoices(slot,it){const cs=it&&(it.slot||[]).includes("weapon")?"weapon":BUILD.CARD_FOR[slot];return (typeof CARDS!=="undefined"?CARDS:[]).filter(c=>(c.slot||[]).some(x=>x===cs||x.startsWith(cs)))}
-// random options: a list per option the item rolled, plus an empty one to add the next (any item takes up to OPT_MAX)
-const OPT_LIST=(()=>{const gs=[...new Set(BUILD.OPTIONS.map(o=>o.g))];
-  return gs.map(g=>`<optgroup label="${esc(g)}">${BUILD.OPTIONS.filter(o=>o.g===g).map(o=>`<option value="${o.k}">${esc(o.label)}</option>`).join("")}</optgroup>`).join("")})();
-function optBoxes(g){const rows=BUILD.optRows(g.opts),one=(x,i)=>`<div class="opt"><select data-opt="${i}"><option value="">${x?"remove":"+ option"}</option>${OPT_LIST}</select>${x?`<input data-optv="${i}" type="number" step="any" value="${esc(x.v??"")}">`:""}</div>`;
+// random options: a list per option the item rolled, plus an empty one to add the next (any item takes up to OPT_MAX). Each list holds
+// the affixes the row's gear rolls (BUILD.optChoices: a weapon by its type, also in the Shield row; every option for parts rozerodb has
+// no pool for), with its min–max on the value box. An option saved before that this gear can't roll stays, listed under "Saved"
+const OPT_HTML={};
+const optList=ch=>{const gs=[...new Set(ch.map(o=>o.g))];
+  return gs.map(g=>`<optgroup label="${esc(g)}">${ch.filter(o=>o.g===g).map(o=>`<option value="${o.k}">${esc(o.label)}${o.range?` (${o.range[0]}${o.range[1]!==o.range[0]?"–"+o.range[1]:""})`:""}</option>`).join("")}</optgroup>`).join("")};
+function optBoxes(slot,g,it){const ch=BUILD.optChoices(slot,it),gk=BUILD.optGear(slot,it)||"all",list=OPT_HTML[gk]||(OPT_HTML[gk]=optList(ch)),rows=BUILD.optRows(g.opts);
+  const one=(x,i)=>{const o=x&&ch.find(c=>c.k===x.k),saved=x&&!o?BUILD.OPTIONS.find(c=>c.k===x.k):null,r=o&&o.range;
+    return `<div class="opt"><select data-opt="${i}"><option value="">${x?"remove":"+ option"}</option>${saved?`<optgroup label="Saved"><option value="${saved.k}">${esc(saved.label)}</option></optgroup>`:""}${list}</select>${x?`<input data-optv="${i}" type="number" step="any"${r?` min="${r[0]}" max="${r[1]}" placeholder="${r[0]}–${r[1]}" title="${esc(o.label)}: ${r[0]}–${r[1]}"`:""} value="${esc(x.v??"")}">`:""}</div>`};
   return `<div class="opts">${rows.map(one).join("")}${rows.length<BUILD.OPT_MAX?one(null,rows.length):""}</div>`}
 function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
   const rows=BUILD.SLOTS.map(s=>{const g0=b.gear[s.k]||{},items=gearChoices(s.k),cards=cardChoices(s.k,g0.id&&BUILD.item(g0.id));GEAR_LISTS["g_"+s.k]=pickList(items);GEAR_LISTS["c_"+s.k]=pickList(cards);
@@ -223,7 +228,7 @@ function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
     const refinable=it&&s.k!=="ammo"; // every part: some accessories and headgear refine though the data has no schedule for them
     return `<tr data-slot="${s.k}"><td>${s.k==="shield"&&state.job==="Assassin"?"Shield / left hand":s.label}</td><td><input class="item" list="gl_${s.k}" placeholder="${items.length?"none":"no items for this job"}" value="${esc(it?labelOf(it,items):"")}"></td>
       <td>${refinable?`<input class="ref" type="number" min="0" max="20" value="${num(g.refine)}">`:""}</td><td><div class="cards">${cardBoxes}</div></td>
-      <td>${it?optBoxes(g):""}</td></tr>`}).join("");
+      <td>${it?optBoxes(s.k,g,it):""}</td></tr>`}).join("");
   $("gearTable").tBodies[0].innerHTML=rows;$("gearLists").innerHTML=lists;
   BUILD.SLOTS.forEach(s=>{const g=b.gear[s.k];if(g)BUILD.optRows(g.opts).forEach((x,i)=>{const el=$("gearTable").querySelector(`tr[data-slot="${s.k}"] [data-opt="${i}"]`);if(el)el.value=x.k})})}
 function renderBuild(){const c=C(),on=c.mode==="build";
