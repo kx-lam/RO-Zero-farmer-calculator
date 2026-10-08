@@ -80,10 +80,13 @@ const consLines=()=>{const lines=[],bad=[],cs=consStatOf(C()),ygg=Object.fromEnt
   STAT6_UI.forEach(k=>{const o=cs[k]||{},n=Math.max(num(o.n),ygg[k]||0);if(n)lines.push([k,null,null,n]);if(num(o.p))lines.push([k+"_percent",null,null,num(o.p)])});
   OWN_LISTS.forEach(L=>rowsOf(C(),L.key).filter(r=>r.on).forEach(r=>{const o=parseCons(r.eff);lines.push(...o.lines);bad.push(...o.bad.map(x=>`${r.name||L.what}: ${x}`))}));return {lines,bad}};
 // ---- ASPD potions and buffs from others, from the RO樂園攻速計算機 sheet (2026-09-07, "增益"). "aspd_mod" is the sheet's potion/skill
-// value: it adds value × AGI/200 to ASPD1 (see build.js) ----
-const ASPD_POT={conc:{name:"Concentration Potion",mod:4},awak:{name:"Awakening Potion",mod:6,no:["Novice","Acolyte","Priest","Bard","Dancer"]},
-  bers:{name:"Berserk Potion",mod:9,only:["Mage","Merchant","Swordsman","Wizard","Blacksmith","Alchemist","Knight","Crusader","Rogue"]}};
-const potOk=(k,job=state.job)=>{const p=ASPD_POT[k];return !!p&&!(p.no||[]).includes(job)&&(!p.only||p.only.includes(job))};
+// value: it adds value × AGI/200 to ASPD1 (see build.js). Who can drink them and from which base level (lv): rAthena item_db_usable ----
+const ASPD_POT={conc:{name:"Concentration Potion",mod:4},awak:{name:"Awakening Potion",mod:6,lv:40,no:["Novice","Acolyte","Priest","Bard","Dancer"]},
+  bers:{name:"Berserk Potion",mod:9,lv:85,only:["Mage","Merchant","Swordsman","Wizard","Blacksmith","Alchemist","Knight","Crusader","Rogue"]}};
+const potJobOk=(k,job=state.job)=>{const p=ASPD_POT[k];return !!p&&!(p.no||[]).includes(job)&&(!p.only||p.only.includes(job))};
+// below the potion's base level it can't be drunk (a blank base level doesn't hold it back)
+const potLvOk=(k,lv=num(C().baseLv))=>{const p=ASPD_POT[k];return !p||!p.lv||!(lv>0)||lv>=p.lv};
+const potOk=(k,job=state.job,lv)=>potJobOk(k,job)&&potLvOk(k,lv);
 // the potion in use: the one picked, else the strongest this job can drink (older saves had a flat "+ASPD" box instead)
 const potKey=c=>potOk(c.potType)?c.potType:["bers","awak","conc"].find(k=>potOk(k));
 const AXE_MACE=["One-handed axe","Two-handed axe","One-handed mace","Two-handed mace"];
@@ -141,7 +144,8 @@ function renderCons(){const c=C(),cs=consStatOf(c);
     <button type="button" class="small danger" data-del aria-label="Remove">✕</button></div>`).join("")||(L.key==="cons"?'<div class="note">None yet.</div>':""));consNote()}
 // redrawn on every render (job and weapon change what's allowed), except while you're typing in it
 function renderAspdBuffs(){const c=C(),k=potKey(c),act=document.activeElement;$("consOff").hidden=c.mode==="build"||addOnTop(c);
-  if(act!==$("potType"))$("potType").innerHTML=Object.entries(ASPD_POT).filter(([key])=>potOk(key)).map(([key,p])=>`<option value="${key}"${key===k?" selected":""}>${p.name} (${p.mod})</option>`).join("");
+  if(act!==$("potType"))$("potType").innerHTML=Object.entries(ASPD_POT).filter(([key])=>potJobOk(key)).map(([key,p])=>{const lvOk=potLvOk(key);
+    return `<option value="${key}"${key===k?" selected":""}${lvOk?"":" disabled"}>${p.name} (${p.mod})${lvOk?"":` · Base Lv ${p.lv}+`}</option>`}).join("");
   if(!$("pbuffList").contains(act))$("pbuffList").innerHTML=PBUFF.map(b=>{const o=pbuffOf(c)[b.k]||{},off=b.w&&!b.w.includes(c.weapon),own=PB_SELF[b.k]&&(c.buffs||{})[PB_SELF[b.k]]&&skLv(c,PB_SELF[b.k]);
     return `<div class="eqrow" data-pb="${b.k}"><label class="bar" style="flex-direction:row;gap:6px;min-width:250px"><input type="checkbox" data-f="on" ${o.on?"checked":""} style="width:auto">${esc(b.name)}</label>
     ${b.lv?`<label class="bar" style="flex-direction:row;gap:4px">${b.lv[3]||"Lv"} <input data-f="lv" type="number" min="${b.lv[0]}" max="${b.lv[1]}" value="${pbLv(b,o)}" style="width:60px"></label>`:""}

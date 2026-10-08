@@ -16,7 +16,7 @@ Basic attacks hit with both hands: the right hand × Righthand Mastery (50 + 10 
 
 One card for everything you buy and use up: the Discount setting, HP and SP items (below) and the ASPD potion, converters, food and buffs. Read your status window with these off; they add on top. If your typed numbers already include your buffs and items, untick the box under the status window stats and nothing is added (the ASPD potion still costs zeny).
 
-- **ASPD potion**
+- **ASPD potion:** Concentration (any job), Awakening (Base Lv 40+, not Novice, Acolyte, Priest, Bard or Dancer) or Berserk (Base Lv 85+; Swordsman, Knight, Crusader, Mage, Wizard, Merchant, Blacksmith, Alchemist and Rogue). One you can't drink yet is greyed out, and the strongest you can drink is used instead.
 - **Elemental converter:** one element at a time. Pick Fire, Water, Earth or Wind, or let it pick the best per monster and map; it shows each one's element-table rate against the monster you picked.
 - **Blessing of Yggdrasil:** a World Tree Dew or Zelstar from the KP shop each hour: all stats +7, ATK +30, MATK +30, HIT +5, FLEE +5.
 - **Food and other consumables:** type them as + and +% per main stat (STR … LUK; +% is a share of the total stat, rounded down; the + doesn't stack with Blessing of Yggdrasil, the higher one counts, as in Landgris ROCalculator), anything else as effect lines ("ATK +20, ASPD +10%"). Other consumables carry no zeny cost.
