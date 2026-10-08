@@ -922,12 +922,18 @@ t("elemental converter: one element picked, or the best per monster / map", () =
 });
 
 t("ASPD potion and buffs from others (RO樂園攻速計算機 values)", () => {
-  setup("Knight", { atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
+  setup("Knight", { baseLv: 90, atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
     potOn: true, potType: "conc", cons: [], pbuffs: {}, buffs: {}, skills: {}, a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   assert.equal(run(`aspdEff()`), Math.floor(160 + 4 * 80 / 200));          // Concentration: 4 × AGI/200 on top of the typed ASPD
   run(`C().potType="bers";SKFX=skillEffects(C());applyBuild();applyConsumables()`);
   assert.equal(run(`aspdEff()`), Math.floor(160 + 9 * 80 / 200));          // Berserk is 9 and Knights can drink it
   assert.equal(run(`potOk("bers","Priest")`), false);
+  // base level (rAthena): Berserk from 85, Awakening from 40; below it the strongest one you can drink is used
+  run(`C().baseLv=84`); assert.equal(run(`potOk("bers")`), false); assert.equal(run(`potKey(C())`), "awak");
+  run(`C().baseLv=39`); assert.equal(run(`potKey(C())`), "conc");
+  run(`C().baseLv=""`); assert.equal(run(`potKey(C())`), "bers");          // blank base level: not held back
+  assert.equal(run(`potOk("awak","Bard",99)`), false); assert.equal(run(`potOk("bers","Assassin",99)`), false);
+  run(`C().baseLv=90;C().potType="bers"`);
   run(`C().potOn=false;C().pbuffs={incAgi:{on:true,lv:10},canto:{on:true}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
   const lines = run(`JSON.stringify(aspdBuffLines())`);
   assert.ok(lines.includes('"agi",null,null,19') && !lines.includes('"agi",null,null,12'));   // Canto Candidus replaces Increase AGI
