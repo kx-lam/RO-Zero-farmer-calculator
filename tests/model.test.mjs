@@ -753,6 +753,10 @@ t("recovery items: cost per HP / SP, the cheapest pick and healing per hour", ()
   run(`REC().spItem="custom";C().itemSp=50;C().itemPrice=300;C().skills={}`);
   near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300 * 0.76);     // with Buy with Discount
   run(`state.recovery.discount=false`); near(run(`spItemPrice()`), 300); run(`state.recovery.discount=true`);
+  run(`REC().hpItem="custom";C().itemHp=200;C().itemHpPrice=500`);              // a Custom HP item: its own boxes
+  assert.equal(run(`recPick("hp").name`), "Custom HP item");
+  near(run(`hpHeal(100).n`), 100 * 60 / 200); near(run(`hpHeal(100).z`), 100 * 60 / 200 * 500 * 0.76);
+  near(run(`spItemAmt()`), 50);                                 // the SP item keeps its own
   // None: no HP item (HP loss costs nothing) and no SP item (auto-use has nothing to use, so you rest)
   run(`REC().hpItem="none";REC().spItem="none"`);
   assert.equal(run(`recPick("hp")`), null); assert.equal(run(`recPick("sp")`), null);

@@ -83,7 +83,7 @@ Under Attack details you see what a use costs, the zeny and weight per hour agai
 
 A Merchant, Blacksmith or Alchemist with Overcharge learned gets more from NPCs. That raises the loot value per kill and the NPC price that a market price replaces (7, 9, 11 … 23, 24% for Lv 1–10).
 
-**Buy with Discount** in the Consumables card (on by default, saved for the whole account) takes it that a Merchant on the account with Discount Lv 10 buys for every character: −24% on the ASPD potion, skill items and a Custom SP item, and the Discount price for HP and SP items. Untick it to use NPC prices. The character's own Discount level isn't used.
+**Buy with Discount** in the Consumables card (on by default, saved for the whole account) takes it that a Merchant on the account with Discount Lv 10 buys for every character: −24% on the ASPD potion, skill items and Custom HP / SP items, and the Discount price for HP and SP items. Untick it to use NPC prices. The character's own Discount level isn't used.
 
 ## HP and SP items
 
@@ -92,7 +92,7 @@ In the Consumables card: HP and SP items with what they really cost per HP / SP:
 - With **Buy with Discount** each item uses its Discount price, else the NPC price. Items NPCs don't sell (Strawberry, Blue Potion) use a player price you type; Blue Potion has none until you do, shows n/a and is never picked as the cheapest.
 - Edit any item's min, max, price or weight in the table (saved per job); "reset" goes back to the defaults. Sort by any column; the item in use is marked.
 - Uses, zeny and weight per hour are worked out for the Map planner's map (else the monster you picked): HP items cover its HP lost / min, SP items the SP your attack uses beyond regen and cards.
-- Pick the HP and SP item per job, leave them on Auto (cheapest), or pick None to use no item: no HP item means HP loss costs nothing (regen, cards, heals cover it), no SP item means you rest. The SP item is the one "SP items: auto-use when needed" and Sage Hindsight use; Custom keeps the restores / costs boxes. Older saves with their own SP item typed carry it over as Custom.
+- Pick the HP and SP item per job, leave them on Auto (cheapest), or pick None to use no item: no HP item means HP loss costs nothing (regen, cards, heals cover it), no SP item means you rest. The SP item is the one "SP items: auto-use when needed" and Sage Hindsight use; Custom (HP or SP) lets you type what one restores and costs. Older saves with their own SP item typed carry it over as Custom.
 
 ## Weight
 

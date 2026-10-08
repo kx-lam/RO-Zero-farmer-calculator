@@ -25,7 +25,7 @@ const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)));
 const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILLS[state.job]||[])for(const s of t.skills)if(s.slug===slug){const r=String((s.lv[lv-1]||[])[7]||"").match(/(\d+)%/);return r?+r[1]:0}return 0};
 const ocMul=()=>1+skRate("overcharge")/100;
 // Discount only helps with what you buy from an NPC: untick "from NPCs" when you buy SP items and potions from players
-// Discount on what you buy from NPCs (ASPD potion, skill items, a Custom SP item): the account's Buy with Discount box, taken as
+// Discount on what you buy from NPCs (ASPD potion, skill items, Custom HP / SP items): the account's Buy with Discount box, taken as
 // a Merchant on the account with Discount Lv 10 (−24%) buying for every character. Recovery items use their measured Discount prices
 const DISC_LV10=24;
 const discMul=()=>recDisc()?1-DISC_LV10/100:1;
@@ -316,7 +316,7 @@ const fieldBuffs=()=>{const c=C();return Object.keys(FIELD_ITEM).filter(k=>(c.bu
 const fieldCostHr=()=>fieldBuffs().reduce((t,f)=>t+f.perHr*consPrice(f.id),0);
 // ---- recovery items (data/recovery.js): HP and SP items priced per HP / SP ----
 // per character (chars.<Job>.recovery): the HP and SP item you use ("auto" = the cheapest per HP / SP that has a price; "none" = no item;
-// SP "custom" = the restores / costs boxes) and your own min / max / weight / prices per item (overrides).
+// "custom" = the restores / costs boxes next to it) and your own min / max / weight / prices per item (overrides).
 // Per account (state.recovery.discount, on by default): buy at the Discount price, since a Merchant on the account can buy for the others
 const REC_D={hpItem:"auto",spItem:"auto",overrides:{}};
 const REC=()=>{const c=C();if(!c.recovery||typeof c.recovery!=="object")c.recovery={};const r=c.recovery;for(const k in REC_D)if(r[k]==null||typeof r[k]!==typeof REC_D[k])r[k]=JSON.parse(JSON.stringify(REC_D[k]));return r};
@@ -334,7 +334,8 @@ const recItems=kind=>REC_IDS.filter(id=>!kind||RECOVERY[id].kind===kind).map(rec
 const recCheapest=kind=>recItems(kind).filter(x=>x.per!=null).sort((a,b)=>a.per-b.per)[0]||null;
 // the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price); null with "none"
 function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];if(k==="none")return null;
-  if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp)*recMul(),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
+  if(k==="custom"){const c=C(),hp=kind==="hp",avg=num(hp?c.itemHp:c.itemSp)*recMul(),price=num(hp?c.itemHpPrice:c.itemPrice)*discMul();
+    return {id:"custom",name:`Custom ${kind.toUpperCase()} item`,kind,avg,price,per:avg>0?price/avg:null,custom:true}}
   const it=RECOVERY[k]&&RECOVERY[k].kind===kind?recItem(k):null;if(it&&it.per!=null)return it;const ch=recCheapest(kind);return ch?{...ch,auto:true,want:it}:null}
 const spItemAmt=()=>{const p=recPick("sp");return p?num(p.avg):0};
 const spItemPrice=()=>{const p=recPick("sp");return p?num(p.price):0};
