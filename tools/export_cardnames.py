@@ -6,7 +6,7 @@ into data/cardnames.js.
 
 Names come from divine-pride.net's item pages (the "Prefix" row; a name starting with "of " goes after the item name, like
 "Boots of Health"). Cards are the ones in data/cards.js. Pages are fetched one per second and cached in tools/cache/
-(gitignored). Delete a cached file to refetch it. Zero's own MVP cards take the classic card's name (CLASSIC). Cards divine-pride has no English name for are left out and listed at the end.
+(gitignored). Delete a cached file to refetch it. Zero's own versions of classic cards take the classic card's name (CLASSIC). Cards divine-pride has no English name for are left out and listed at the end.
 """
 import html, json, os, re, sys, time, urllib.error, urllib.request
 
@@ -16,7 +16,7 @@ SITE = "https://www.divine-pride.net"
 UA = "RO-Zero-farmer-calculator data export"
 # names divine-pride has only in Korean, as the Global equipment window shows them; other non-English names are left out
 GLOBAL = {300835: "Shark Family"}  # "+4 Shark Family Muffler"
-# Zero's own MVP / boss cards (27xxx) have no name on divine-pride: they take the classic card's (ids from rAthena's item_db).
+# Zero's own versions of classic cards (27xxx: Maya, Hunter Fly, Bloody Knight...) have no name on divine-pride: they take the classic card's (ids from rAthena's item_db).
 # Checked in game for Hunter Fly: "Hybrid Malicious Sage..." is a Sidewinder and a Hunter Fly Card ("Malicious")
 CLASSIC = {27275: 4320, 27206: 4142, 27268: 4134, 27271: 300293, 27270: 300292, 27153: 4128, 27266: 4115, 27272: 300294,
            27269: 4318, 27154: 4146, 27207: 4131, 27273: 300295, 27208: 4144, 27267: 4121, 27274: 300296}
