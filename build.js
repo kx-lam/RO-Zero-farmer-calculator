@@ -56,7 +56,7 @@ const BUILD=(()=>{
   // ---- bonus accumulation ----
   const blank=()=>({st:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},stPct:{str:0,agi:0,vit:0,int:0,dex:0,luk:0},atk:0,matk:0,atkPct:0,matkPct:0,hit:0,flee:0,crit:0,critDmg:0,aspd:0,aspdPct:0,aspdMod:0,
     hp:0,hpPct:0,sp:0,spPct:0,def:0,mdef:0,ranged:0,melee:0,skill:0,skillOf:{},vct:0,fct:0,acd:0,vctOf:{},fctOf:{},ignDef:0,ignMdef:0,
-    phys:{all:0,race:{},size:{},ele:{},kind:{},group:{}},magic:{all:0,race:{},size:{},ele:{},kind:{},group:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},critRace:{},spCost:0,spRec:0,wEle:null,unmodelled:[]});
+    phys:{all:0,race:{},size:{},ele:{},kind:{},group:{}},magic:{all:0,race:{},size:{},ele:{},kind:{},group:{}},myEle:{},taken:{race:{},ele:{},kind:{}},exp:{all:0,race:{}},critRace:{},spCost:0,spRec:0,hpRec:0,wEle:null,unmodelled:[]});
   // lines that only matter for PvP survival, healing or status resistance: not part of the farming maths, so not reported either
   const QUIET=["resistance_percent","heal_amount_percent","item_heal_percent","sp_recovery_percent","hp_recovery_percent","perfect_dodge","perfect_hit","magic_damage_taken_percent","sp_per_hit","hp_per_hit"];
   const addTo=(o,k,v)=>{o[k]=(o[k]||0)+v};
@@ -67,6 +67,7 @@ const BUILD=(()=>{
   // one bonus line: [type, target kind, target, value, per N refines, skill, scaling skill]
   function apply(A,b,src){const [type,kind,target,value]=b;const v=+value||0;
     if(type==="sp_recovery_percent"&&!kind){A.spRec+=v;return true}
+    if(type==="hp_recovery_percent"&&!kind){A.hpRec+=v;return true}
     if(QUIET.includes(type))return true;
     // "Fire Magical Damage +x%" boosts your own spells of that element; physical lines with an element target the monster's element
     if(type==="magic_damage_percent"&&kind==="element"){addTo(A.myEle,tgt(kind,target),v);return true}

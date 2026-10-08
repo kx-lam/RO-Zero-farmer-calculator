@@ -295,7 +295,7 @@ t("Vitata: you cast Heal Lv1, so healing takes time away from attacking", () => 
   assert.ok(f > 0 && f < 1);
   near(run(`fightSec(${MOB})`), off / (1 - f));                       // the fight takes longer by the time spent healing
   near(d.healSP, heals * 13 * 1.25);                                  // Heal's SP carries Vitata's +25%
-  run("CRD().healHp=1");                                                // a heal too small to keep up
+  run("CRD().healHp=0.01");                                             // a heal too small to keep up
   assert.equal(run(`fightSec(${MOB})`), Infinity);
 });
 
@@ -395,7 +395,7 @@ t("mini bosses are tagged apart from Boss class: Vocal is a mini boss, Owl Duke 
 });
 
 t("Zeny Hunter: net zeny per hour is loot less skill and item costs, and counts monsters with no EXP", () => {
-  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, weapon: "Two-handed spear", st: {}, autoSp: false, potOn: false, cons: [], hpRegen6: 1, a: { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 } });
   const mob = MOB.replace("drops:[]", "drops:[],loot:500");
   const r = run(`huntMob0(${mob},2)`), sec = run(`fightSec(${mob})`) + 2;
   near(r.zk, 500); near(r.loot, 500 * 3600 / sec);
@@ -753,6 +753,10 @@ t("recovery items: cost per HP / SP, the cheapest pick and healing per hour", ()
   run(`REC().spItem="custom";C().itemSp=50;C().itemPrice=300;C().skills={}`);
   near(run(`spItemAmt()`), 50); near(run(`spItemPrice()`), 300 * 0.76);     // with Buy with Discount
   run(`state.recovery.discount=false`); near(run(`spItemPrice()`), 300); run(`state.recovery.discount=true`);
+  run(`REC().hpItem="custom";C().itemHp=200;C().itemHpPrice=500`);              // a Custom HP item: its own boxes
+  assert.equal(run(`recPick("hp").name`), "Custom HP item");
+  near(run(`hpHeal(100).n`), 100 * 60 / 200); near(run(`hpHeal(100).z`), 100 * 60 / 200 * 500 * 0.76);
+  near(run(`spItemAmt()`), 50);                                 // the SP item keeps its own
   // None: no HP item (HP loss costs nothing) and no SP item (auto-use has nothing to use, so you rest)
   run(`REC().hpItem="none";REC().spItem="none"`);
   assert.equal(run(`recPick("hp")`), null); assert.equal(run(`recPick("sp")`), null);
@@ -763,7 +767,7 @@ t("recovery items: cost per HP / SP, the cheapest pick and healing per hour", ()
 
 t("recovery items: SP items in the SP model, Heal cost / hr and Net zeny / hr in the EXP Hunter", () => {
   const sk = { name: "x", type: "phys", pct: 300, hits: 1, el: "Neutral", cast: 0, delay: 1, sp: 40, targets: 1 };
-  setup("Merchant", { atkTxt: "100+300", wAtk: 0, st: {}, a: sk, autoSp: true, potOn: false, cons: [], spRegen: 5, maxSp: 300 });
+  setup("Merchant", { atkTxt: "100+300", wAtk: 0, st: {}, a: sk, autoSp: true, potOn: false, cons: [], spRegen: 5, maxSp: 300, hpRegen6: 1 });
   run(`state.recovery={discount:true};state.skipMobs=[]`);
   const mob = MOB.replace("drops:[]", "drops:[],loot:5000");
   // SP items per second cover what regen doesn't, at the Cheese's 32 SP each
@@ -995,7 +999,7 @@ t("consumables: + and +% per main stat, old food buffs move into the table", () 
 
 t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
   const AUTO = { name: "x", type: "auto", pct: 100, hits: 1, el: "W", cast: 0, delay: 0, sp: 0, targets: 1 };
-  setup("Knight", { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", hitTxt: "300", crit: 0, aspd: 170, defTxt: "10+10", hitScale: 1, mobInterval: 1.5, hpRegen: 0,
+  setup("Knight", { atkTxt: "100+300", wAtk: 0, wElem: "Neutral", hitTxt: "300", crit: 0, aspd: 170, defTxt: "10+10", hitScale: 1, mobInterval: 1.5,
     st: {}, skills: {}, a: AUTO });
   assert.equal(run("JSON.stringify(CRD())"), run("JSON.stringify(CARD_D)"));  // all off for a new job
   const per = run(`perUse(${MOB})`), hp = run(`hpLossPerMin(${MOB})`), fight = run(`fightSec(${MOB})`), sp = run("spNeedPerSec()");
@@ -1012,6 +1016,8 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
   const hf = run("hfHpPerSec()"), n = run("atkPerSec()") * 5;
   near(hf, (1 - Math.pow(0.95, n)) * 100);
   near(run(`hpLossPerMin(${MOB})`), Math.max(0, hp - hf * 60));
+  const raw = run(`defense(${MOB})`).taken;                                  // Hunter Fly and HP regen each come off once
+  near(run(`hpLossPerMin(${MOB})`), Math.max(0, raw - hf - run("hpRegenPerSec()")) * 60);
   run("C().a={...C().a,type:'magic'}");                                     // spells don't trigger it
   assert.equal(run("hfHpPerSec()"), 0);
   run(`C().a=${JSON.stringify(AUTO)};CRD().hfOn=false;CRD().vitata=true`);  // Vitata: you cast Heal Lv1 as on a Sage
@@ -1019,6 +1025,10 @@ t("cards any job can slot: Side Winder, Hunter Fly, Vitata", () => {
   near(run(`healsPerSec(${MOB})`), heals);
   near(run(`fightSec(${MOB})`), fight / (1 - f));
   near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`), sp + heals * 13 * 1.25);   // Heal's SP, +25%
+  assert.equal(run(`hpLossPerMin(${MOB})`), 0);                             // Heal covers the HP, so no HP items on top
+  run("C().hpRegen6=60");                                                   // more HP regen: fewer Heals
+  near(run(`healsPerSec(${MOB})`), Math.max(0, raw - 10) / 357);
+  run("C().hpRegen6=0");
   run("C().a={...C().a,sp:20}");
   near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()-defSP()}finally{SG_MOB=null}})()`), 20 * 1.25 / run("useSec()"));   // skills cost +25% SP
   run("C().mode='build';C().build={gear:{acc1:{id:2601,cards:[4053]}}}");    // build mode: the card in your gear already counts its +25%
@@ -1072,16 +1082,16 @@ t("cards: a Sage's old Vitata, Hunter Fly and Side Winder settings move out of S
 });
 
 t("Energy Coat works on any Mage, Wizard or Sage attack", () => {
-  setup("Wizard", { matkTxt: "300+200", aspd: 170, defTxt: "10+10", maxSp: 1000, maxHp: 4000, hitScale: 1, mobInterval: 1.5, spRegen: 40, st: {}, intTxt: "", autoSp: false,
+  setup("Wizard", { matkTxt: "300+200", aspd: 170, defTxt: "10+10", maxSp: 1000, maxHp: 4000, hitScale: 1, mobInterval: 1.5, spRegen: 40, hpRegen6: 1, st: {}, intTxt: "", autoSp: false,
     a: { name: "x", type: "magic", pct: 100, hits: 1, el: "Fire", cast: 0, delay: 1, sp: 1, targets: 1 } });
   assert.equal(run("ecOn()"), false);                                       // off for a new Wizard
-  const raw = run(`defense(${MOB})`).taken, hp = run(`hpLossPerMin(${MOB})`), sp = run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`);
+  const raw = run(`defense(${MOB})`).taken, sp = run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`);
   run("ECO().on=true");
   let d = run(`defense(${MOB})`);
   assert.equal(d.red, 30);                                                  // 40 SP per 8 s holds full SP: −30%, 3% of Max SP a hit
-  near(d.hp, raw * 0.7);
+  near(d.hp, raw * 0.7 - 1 / 6);                                            // less HP regen (1 per 6 s)
   near(d.ecSP, raw / run(`mobHitDmg(${MOB})`) * 0.03 * 1000);
-  near(run(`hpLossPerMin(${MOB})`), hp * 0.7);
+  near(run(`hpLossPerMin(${MOB})`), d.hp * 60);
   near(run(`(()=>{SG_MOB=${MOB};try{return spNeedPerSec()}finally{SG_MOB=null}})()`), sp + d.ecSP);
   run("C().a={...C().a,sp:60}");                                            // the skill eats the regen: SP runs low, −6%
   assert.equal(run(`defense(${MOB})`).red, 6);
@@ -1196,6 +1206,29 @@ t("SP back from cards: Dracula, Dark Priest, +5 SP per kill, SP recovery %", () 
   near(at("dpSPPerSec()"), run("atkPerSec()") * hc);
   run("C().mode='build';C().build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{shoes:{id:470011,cards:[4070]}}};applyBuild()");   // build mode: Eggyra in your shoes
   assert.equal(run("C().bx.spRec"), 15);
+});
+
+t("HP regen works like SP regen: worked out unless typed, HP Recovery +% gear, Increase HP Recovery, none when overweight", () => {
+  setup("Knight", { atkTxt: "100+300", maxHp: 5000, st: { vit: "40" }, skills: {}, cons: [], eq: [], hpRegen6: 0 });
+  assert.equal(run("hpRegen6()"), 8 + 25);                                    // VIT/5 + Max HP/200
+  near(run("hpRegenPerSec()"), 33 / 6);
+  run("C().eq=[{by:'hpRec',v:10}];applyBuild()");                           // Muka Card in status window mode: an Equipment stats line
+  assert.equal(run("hpRegen6()"), Math.floor(33 * 1.1));
+  run("C().hpRegen6=50");                                                   // a typed regen already has it
+  assert.equal(run("hpRegen6()"), 50);
+  run("C().skills={'increase-hp-recovery':10}");                            // Increase HP Recovery Lv 10: 10 × (5 + 0.2% of 5000) per 10 s
+  assert.equal(run("ihrPer10()"), 150);
+  near(run("hpRegenPerSec()"), 50 / 6 + 15);
+  assert.equal(run("withRegenOff(()=>hpRegenPerSec())"), 0);                // past 70% weight: none
+  run("C().mode='build';C().build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{acc1:{id:2601,cards:[4036]}}};applyBuild()");   // build mode: Muka in a ring
+  assert.equal(run("C().bx.hpRec"), 10);
+});
+
+t("an old \"HP back per minute\" box carries over as the 6 s tick", () => {
+  const app = load({ chars: { Knight: { hpRegen: 300 }, Sage: { hpRegen: 0 } } });
+  assert.equal(app("state.chars.Knight.hpRegen6"), 30);
+  assert.equal(app("state.chars.Knight.hpRegen"), undefined);
+  assert.equal(app("state.chars.Sage.hpRegen6"), undefined);
 });
 
 t("hits interrupt casts unless Phen or Bloody Butterfly", () => {

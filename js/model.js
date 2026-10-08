@@ -25,7 +25,7 @@ const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)));
 const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILLS[state.job]||[])for(const s of t.skills)if(s.slug===slug){const r=String((s.lv[lv-1]||[])[7]||"").match(/(\d+)%/);return r?+r[1]:0}return 0};
 const ocMul=()=>1+skRate("overcharge")/100;
 // Discount only helps with what you buy from an NPC: untick "from NPCs" when you buy SP items and potions from players
-// Discount on what you buy from NPCs (ASPD potion, skill items, a Custom SP item): the account's Buy with Discount box, taken as
+// Discount on what you buy from NPCs (ASPD potion, skill items, Custom HP / SP items): the account's Buy with Discount box, taken as
 // a Merchant on the account with Discount Lv 10 (−24%) buying for every character. Recovery items use their measured Discount prices
 const DISC_LV10=24;
 const discMul=()=>recDisc()?1-DISC_LV10/100:1;
@@ -149,6 +149,11 @@ function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m
 const spRecPct=()=>{const c=C();return c.bx?num(c.bx.spRec):0};
 const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVal(C(),"int");const r=1+Math.floor(num(cf("maxSp"))/100)+Math.floor(i/6)+(i>=120?Math.floor((i-120)/2)+4:0);
   return spRecPct()?Math.floor(r*(1+spRecPct()/100)):r};
+// HP: natural regen is floor(VIT/5) + max(1, floor(MaxHP/200)) per 6s (rAthena, not checked in game), unless typed;
+// "HP Recovery +x%" from gear (Muka, Zombie, Wooden Golem, Merman Cards…) raises it by x%; a typed regen already has it
+const hpRecPct=()=>{const c=C();return c.bx?num(c.bx.hpRec):0};
+const hpRegen6=()=>{if(num(C().hpRegen6)>0)return num(C().hpRegen6);const r=Math.floor((statVal(C(),"vit")||0)/5)+Math.max(1,Math.floor(num(cf("maxHp"))/200));
+  return hpRecPct()?Math.floor(r*(1+hpRecPct()/100)):r};
 // gear "SP consumption +x%" (build mode) scales the SP each use costs
 // Vitata Card's +25% counts when ticked, unless build mode already has the card in your gear
 const vitInGear=c=>cardInGear(c,[4053]);
@@ -164,6 +169,10 @@ const consSPPerSec=()=>consSum("sp_regen")+consSum("sp_regen_pct")*num(cf("maxSp
 const consHPPerSec=()=>consSum("hp_regen")+consSum("hp_regen_pct")*num(cf("maxHp"))/100;
 // Increase SP Recovery (Mage, Wizard, Sage; Skills card): every 10 s, Lv × (3 + 0.2% of Max SP) on top of natural regen (Zero's skill data)
 const isrPer10=()=>{const l=skLv(C(),"increase-sp-recovery");return l>0?Math.floor(l*(3+num(cf("maxSp"))*0.002)):0};
+// Increase HP Recovery (Swordsman, Knight, Crusader; Skills card): every 10 s, Lv × (5 + 0.2% of Max HP) on top of natural regen (Zero's skill data)
+const ihrPer10=()=>{const l=skLv(C(),"increase-hp-recovery");return l>0?Math.floor(l*(5+num(cf("maxHp"))*0.002)):0};
+// HP back per second: natural regen and Increase HP Recovery (stop when you're overweight) plus HP-over-time consumables, which keep going
+const hpRegenPerSec=()=>(REGEN_OFF?0:hpRegen6()/6+ihrPer10()/10)+consHPPerSec();
 // SP the attack itself costs per second (Spell Fist: its upkeep); defSP adds Energy Coat and Vitata's heals against the monster in play
 const skillSPPerSec=()=>num(C().a.sp)*spCostMul()/useSec();
 const spNeedPerSec=()=>isSF()?sgUpkeep()+defSP()+hsFullSP()*hsSustain():skillSPPerSec()+defSP();
@@ -180,7 +189,9 @@ const defParts=()=>{const p=String(cf("defTxt")||"0").split("+").map(x=>parseFlo
 // dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
 const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(cf("fleeTxt"))-m.flee95));
 const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,((m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)*takenMul(m))};
-const hpLossPerMin=m=>{const d=defense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)-consHPPerSec()*60):null};
+// HP lost per minute that HP items must cover: defense() already takes off Hunter Fly and HP regen (hpRegenPerSec);
+// with Vitata your Heal casts cover the rest (paid in SP and time, see healsPerSec), so no HP items
+const hpLossPerMin=m=>{const d=defense(m);return d?CRD().vitata&&healHpEff()>0?0:d.hp*60:null};
 // ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, SP items; Energy Coat from ECO(), Vitata, Hunter Fly and Side Winder from CRD()) ----
 const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5};
 const G=()=>{const c=C();if(!c.sage)c.sage={};for(const k in SAGE_D)if(c.sage[k]==null)c.sage[k]=JSON.parse(JSON.stringify(SAGE_D[k]));return c.sage};
@@ -232,15 +243,15 @@ const cardSPPerSec=()=>dracSPPerSec()+dpSPPerSec()+killSPPerSec();
 const EC_BANDS=[[30,3,"100–81%"],[24,2.5,"80–61%"],[18,2,"60–41%"],[12,1.5,"40–21%"],[6,1,"20–1%"]];
 const hsFullSP=()=>atkPerSec()*hsChance()*hsProcSP();
 const sgItemsOn=()=>hsOnNow()&&spItemAmt()>0; // SP items go with Hindsight
-// damage taken, any attack: Energy Coat (Mage, Wizard, Sage), Hunter Fly and Vitata's heals. Energy Coat's cut and SP per hit depend on
+// damage taken, any attack: Energy Coat (Mage, Wizard, Sage), HP back (Hunter Fly, HP regen, consumables) and Vitata's heals. Energy Coat's cut and SP per hit depend on
 // how full your SP is: the fullest band your regen can hold after the attack's own SP, else where SP items keep it, else nearly empty
 const itemsOnNow=()=>isSF()?sgItemsOn():!!C().autoSp&&spItemAmt()>0;
 // its hits that land on you per second: a swing every interval, times "swings reach you", less what you dodge
 const hitsOnYou=m=>{if(!m||m.atkMin==null)return 0;const dg=dodge(m);return Math.max(0,num(C().hitScale,1))*(dg==null?1:(100-dg)/100)/Math.max(.3,num(C().mobInterval,1.5))};
 function defense(m){
   const raw=mobHitDmg(m);if(raw==null)return null;const hits=hitsOnYou(m);
-  const sf=isSF(),max=num(cf("maxSp")),ec=ecOn(),regen=regenPerSec(),up=sf?sgUpkeep():skillSPPerSec(),hs=sf?hsFullSP():0,spMul=sf?sgSpMult():spCostMul();
-  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),cd=CRD(),healSP=cd.vitata&&healHpEff()>0?hp/healHpEff()*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
+  const sf=isSF(),max=num(cf("maxSp")),ec=ecOn(),hpBack=hfHpPerSec()+hpRegenPerSec(),regen=regenPerSec(),up=sf?sgUpkeep():skillSPPerSec(),hs=sf?hsFullSP():0,spMul=sf?sgSpMult():spCostMul();
+  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hpBack),cd=CRD(),healSP=cd.vitata&&healHpEff()>0?hp/healHpEff()*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
   const cost=b=>up+b.ecSP+b.healSP;
   let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
   if(!b){const p=num(ECO().spPct,50);b=itemsOnNow()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}
@@ -314,7 +325,7 @@ const fieldBuffs=()=>{const c=C();return Object.keys(FIELD_ITEM).filter(k=>(c.bu
 const fieldCostHr=()=>fieldBuffs().reduce((t,f)=>t+f.perHr*consPrice(f.id),0);
 // ---- recovery items (data/recovery.js): HP and SP items priced per HP / SP ----
 // per character (chars.<Job>.recovery): the HP and SP item you use ("auto" = the cheapest per HP / SP that has a price; "none" = no item;
-// SP "custom" = the restores / costs boxes) and your own min / max / weight / prices per item (overrides).
+// "custom" = the restores / costs boxes next to it) and your own min / max / weight / prices per item (overrides).
 // Per account (state.recovery.discount, on by default): buy at the Discount price, since a Merchant on the account can buy for the others
 const REC_D={hpItem:"auto",spItem:"auto",overrides:{}};
 const REC=()=>{const c=C();if(!c.recovery||typeof c.recovery!=="object")c.recovery={};const r=c.recovery;for(const k in REC_D)if(r[k]==null||typeof r[k]!==typeof REC_D[k])r[k]=JSON.parse(JSON.stringify(REC_D[k]));return r};
@@ -332,7 +343,8 @@ const recItems=kind=>REC_IDS.filter(id=>!kind||RECOVERY[id].kind===kind).map(rec
 const recCheapest=kind=>recItems(kind).filter(x=>x.per!=null).sort((a,b)=>a.per-b.per)[0]||null;
 // the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price); null with "none"
 function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];if(k==="none")return null;
-  if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp)*recMul(),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
+  if(k==="custom"){const c=C(),hp=kind==="hp",avg=num(hp?c.itemHp:c.itemSp)*recMul(),price=num(hp?c.itemHpPrice:c.itemPrice)*discMul();
+    return {id:"custom",name:`Custom ${kind.toUpperCase()} item`,kind,avg,price,per:avg>0?price/avg:null,custom:true}}
   const it=RECOVERY[k]&&RECOVERY[k].kind===kind?recItem(k):null;if(it&&it.per!=null)return it;const ch=recCheapest(kind);return ch?{...ch,auto:true,want:it}:null}
 const spItemAmt=()=>{const p=recPick("sp");return p?num(p.avg):0};
 const spItemPrice=()=>{const p=recPick("sp");return p?num(p.price):0};

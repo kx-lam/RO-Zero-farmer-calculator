@@ -32,12 +32,14 @@ if(!state.chars||typeof state.chars!=="object")state.chars={};
 // per character: learned skill levels and the build-mode "Check against the game" values are numbers; anything else is dropped
 const numMap=o=>Object.fromEntries(Object.entries(o&&typeof o==="object"?o:{}).map(([k,v])=>[k,v===""||v==null?NaN:+v]).filter(([,v])=>Number.isFinite(v)));
 for(const j in state.chars){const c=state.chars[j];if(!c||typeof c!=="object"){delete state.chars[j];continue}
+  // "HP back per minute" (hpRegen) became "HP regen per 6s" (hpRegen6, blank = worked out): a typed value carries over as 10 ticks a minute
+  if(c.hpRegen!=null){const v=+c.hpRegen;if(v>0&&c.hpRegen6==null)c.hpRegen6=Math.max(1,Math.round(v/10));delete c.hpRegen}
   if(c.skills!=null)c.skills=Object.fromEntries(Object.entries(numMap(c.skills)).map(([k,v])=>[k,Math.max(0,Math.round(v))]).filter(([,v])=>v>0));
   if(c.build&&typeof c.build==="object"&&c.build.check!=null)c.build.check=numMap(c.build.check);
   // your price per skill item (item id → zeny) and support casts per kill: numbers of 0 or more
   if(c.itemPrices!=null)c.itemPrices=Object.fromEntries(Object.entries(numMap(c.itemPrices)).filter(([k,v])=>/^\d+$/.test(k)&&v>=0));
   if(c.supCasts!=null)c.supCasts=Object.fromEntries(Object.entries(numMap(c.supCasts)).filter(([,v])=>v>=0));
-  // recovery items (the Consumables card): the HP / SP item picked (text: an item id, "auto", "none" or SP "custom") and your values per item
+  // recovery items (the Consumables card): the HP / SP item picked (text: an item id, "auto", "none" or "custom") and your values per item
   // (numbers of 0 or more). A save from before it with its own SP item typed (not the 37 SP for 200 z default) keeps that as the Custom SP item
   if(c.recovery==null&&((c.itemSp!=null&&+c.itemSp!==37)||(c.itemPrice!=null&&+c.itemPrice!==200)))c.recovery={spItem:"custom"};
   if(c.recovery!=null){const r=c.recovery&&typeof c.recovery==="object"&&!Array.isArray(c.recovery)?c.recovery:{},o=r.overrides&&typeof r.overrides==="object"?r.overrides:{},keys=(x,ks)=>Object.fromEntries(Object.entries(numMap(x)).filter(([k,v])=>ks.includes(k)&&v>=0));
@@ -60,7 +62,7 @@ state.tsort=Object.fromEntries(Object.entries(objOr(state.tsort)).filter(([,v])=
 [["bestTable","bestSort","bestDir"],["huntTable","huntSort","huntDir"]].forEach(([id,k,d])=>{if(typeof state[k]==="string"&&!state.tsort[id])state.tsort[id]=[state[k],state[d]===1?1:-1];delete state[k];delete state[d]});
 state.tfilt=Object.fromEntries(Object.entries(objOr(state.tfilt)).map(([k,v])=>[k,Object.fromEntries(Object.entries(objOr(v)).filter(([,x])=>typeof x==="string"))]));
 state.noTele=(Array.isArray(state.noTele)?state.noTele:[]).map(String);
-// per account: buy at the Discount price (on unless switched off): recovery items, the ASPD potion, skill items and a Custom SP item
+// per account: buy at the Discount price (on unless switched off): recovery items, the ASPD potion, skill items and Custom HP / SP items
 state.recovery={discount:!(state.recovery&&state.recovery.discount===false)};
 delete state.flyPrice;
 ["teleSec","tripEarly","tripMin"].forEach(k=>{if(state[k]!=null&&!(Number.isFinite(+state[k])&&+state[k]>=0))delete state[k]});

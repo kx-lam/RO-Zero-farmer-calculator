@@ -5,8 +5,8 @@ const syncChar=()=>{
   const c=C();$("job").value=state.job;renderEq();renderCons();
   $("preset").innerHTML=JOBS[state.job].p.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("")+'<option value="-1">Custom</option>';
   $("preset").value=String(c.preset??0);renderSkills();
-  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","mobInterval","hitScale","hpRegen"].forEach(k=>$(k).value=c[k]??"");["curW","maxW","gymLv"].forEach(k=>$(k).value=num(c[k])>0?c[k]:"");$("townMin").value=c.townMin??3;$("sellAt").value=num(c.sellAt)>0?c.sellAt:"";$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
-  $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";
+  ["baseLv","jobLv","atkTxt","matkTxt","hitTxt","fleeTxt","aspd","defTxt","maxHp","maxSp","intTxt","wAtk","fctSec","normalPct","myElPct","ignDef","ignMdef","mastery","rangePct","skillPct","crit","critDmg","fixedShare","vctPct","fctPct","acdPct","dmgBonus","nameSel","namePct","itemSp","itemPrice","itemHp","itemHpPrice","mobInterval","hitScale"].forEach(k=>$(k).value=c[k]??"");["curW","maxW","gymLv"].forEach(k=>$(k).value=num(c[k])>0?c[k]:"");$("townMin").value=c.townMin??3;$("sellAt").value=num(c.sellAt)>0?c.sellAt:"";$("wAtk").value=num(c.wAtk)>0?c.wAtk:"";
+  $("spRegen").value=num(c.spRegen)>0?c.spRegen:"";$("hpRegen6").value=num(c.hpRegen6)>0?c.hpRegen6:"";
   $("weapon").value=c.weapon;$("wElem").value=c.wElem;$("dualRow").hidden=state.job!=="Assassin";$("lw").value=c.lw||"";$("lwElem").value=c.lwElem||"Neutral";$("lwAtk").value=num(c.lwAtk)>0?c.lwAtk:"";$("shield").checked=!!c.shield;$("shieldNote").textContent=`${state.job} shield penalty: ASPD −${BUILD.SHIELD_ASPD[state.job]??"?"}${state.job==="Assassin"?"; it replaces a left-hand weapon":""}. Ticking or unticking moves the ASPD above`;$("nameType").value=c.nameType||"phys";$("autoSp").checked=!!c.autoSp;$("convSel").value=!c.converters?"":convFixed()||"auto";$("potOn").checked=!!c.potOn;$("potPrice").value=c.potPrice??2200;$("potMin").value=c.potMin??30;potInfo();$("yggOn").checked=!!c.yggOn;$("convNote").textContent=c.converters&&c.a.el!=="W"?"(this attack has its own element, so converters don't change it)":"";
   const a=c.a;$("aType").value=a.type;$("aPct").value=a.pct;$("aHits").value=a.hits;$("aElem").value=a.el;$("aCast").value=a.cast;$("aDelay").value=a.delay;$("aSp").value=a.sp;$("aTargets").value=a.targets;$("aZeny").value=a.zeny||"";$("cartW").value=c.cartW||"";$("cartWrap").hidden=!num(a.cart);
   {const ac=AC();$("acSpell").innerHTML=Object.keys(AC_SPELLS).map(n=>`<option>${esc(n)}</option>`).join("");$("acOn").checked=!!ac.on;$("acSpell").value=ac.spell;$("acLv").value=ac.lv;$("acPct").value=ac.pct}
@@ -14,7 +14,7 @@ const syncChar=()=>{
   {const cd=CRD();ROOTQ("[data-cd]").forEach(i=>{const k=i.dataset.cd;if(i.type==="checkbox")i.checked=!!cd[k];else i.value=cd[k]??""})}
   syncCardOpts();
   $("dpWrap").hidden=state.job!=="Sage";
-  {const ks=CRD().killSp;$("killSpBoxes").innerHTML=Object.entries(KILL_SP).map(([r,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cdkill="${esc(r)}" style="width:auto"${ks.includes(r)?" checked":""}> ${esc(n)} (${esc(r)})</label>`).join("")}
+  {const ks=CRD().killSp;$("killSpBoxes").innerHTML=Object.entries(KILL_SP).map(([r,n])=>`<label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cdkill="${esc(r)}" style="width:auto"${ks.includes(r)?" checked":""}> <b>${esc(n)}</b> (${esc(r)})</label>`).join("")}
   $("ecRow").hidden=!EC_JOBS.includes(state.job);{const e=ECO();ROOTQ("[data-ec]").forEach(i=>{const k=i.dataset.ec;if(i.type==="checkbox")i.checked=!!e[k];else i.value=e[k]??""})}
   $("sagePanel").hidden=state.job!=="Sage";if(state.job==="Sage"){const g=G();ROOTQ("[data-sg]").forEach(i=>{const k=i.dataset.sg;if(i.type==="checkbox")i.checked=!!g[k];else i.value=g[k]??""});ROOTQ("[data-sgbolt]").forEach(i=>i.checked=!!g.bolts[i.dataset.sgbolt]);$("sg_hsOn").disabled=!!g.hsAuto}STATS.forEach(k=>$("st_"+k).value=(c.st&&c.st[k])||"");renderStatNote();
 };
@@ -39,7 +39,9 @@ function renderChar(){renderAspdBuffs();potInfo();
   const atk=a.type==="magic"||a.type==="spellfist"?`MATK ${fmtN(sumStat(c.matkTxt))}`:`ATK ${fmtN(sumStat(c.atkTxt))}`;
   {const cd=CRD(),m=calcMob(),k0=SG_MOB;SG_MOB=m;try{const hf=hfHpPerSec(),hs=m?healsPerSec(m):0,sh=m?healShare(m):0,parts=[];
     {const k=hfCards(),lbl=`Hunter Fly${k>1?` ×${k}`:""}${cardsInGear(c,[HUNTER_FLY])>0?" (from your gear)":""}`;
-      $("hpCardInfo").innerHTML=k?(hf>0?`${lbl} heals ~${fmtN(hf*60)} HP/min`:`${lbl}: only physical attacks trigger it`):""}
+      const hp=[];if(k)hp.push(hf>0?`${lbl} heals ~${fmtN(hf*60)} HP/min`:`${lbl}: only physical attacks trigger it`);if(hpRecPct())hp.push(`HP recovery +${hpRecPct()}% from gear`);
+      $("hpCardInfo").innerHTML=hp.join(" · ");
+      $("hpInfo").textContent=`${fmtN(hpRegen6())} per 6s${ihrPer10()?` + ${ihrPer10()} per 10s (Increase HP Recovery)`:""}${consHPPerSec()>0?` + ${fmtSig(consHPPerSec()*60)}/min from consumables`:""} = ${fmtN(hpRegenPerSec()*60)} HP/min${hf>0?`, + ${fmtN(hf*60)} from Hunter Fly`:""}`}
     if(cd.vitata)parts.push((vitInGear(c)?"Vitata SP cost from your gear":`SP cost +${num(cd.spBonus)}%`)+(hs>0?` · vs ${esc(m.name)}: Heal ${(hs*60).toFixed(1)} casts/min${sh>=1?` <span class="bad">(can't keep up: more than all of your time)</span>`:` (${Math.round(sh*100)}% of your time not attacking)`}`:""));
     if(cd.creamy)parts.push("Creamy: the Zeny Hunter teleports past monsters you skip");
     if(noBreak())parts.push(cd.phen||cd.bbfly?`casts aren't interrupted${vctCards()?` · cast +${vctCards()}%`:" · cast time from your gear"}`:"Phen / Bloody Butterfly in your gear: casts aren't interrupted");
@@ -92,11 +94,11 @@ const REC_SRC={disc:"Discount",npc:"NPC",player:"players"};
 function recNeed(){let mp=mapKey(state.map);if(!MAPMOBS[mp]){const m=calcMob(),om=m?openMaps(m):[];mp=om.length?om[0][0]:currentMap()}if(!MAPMOBS[mp])return null;
   const w=walkSec(),r=mapStats(mp,w);return {mp,hpm:r?r.hpm:null,sp:r?mapSpShort(mp,w,r.el2):0}}
 function renderRecovery(){const R=REC(),need=recNeed(),pick={hp:recPick("hp"),sp:recPick("sp")},ch={hp:recCheapest("hp"),sp:recCheapest("sp")};
-  const opts=kind=>`<option value="auto">Auto (cheapest${ch[kind]?": "+esc(ch[kind].name):""})</option><option value="none">None</option>`+recItems(kind).map(x=>`<option value="${x.id}">${esc(x.name)}${x.per==null?" (no price)":""}</option>`).join("")+(kind==="sp"?'<option value="custom">Custom (type it)</option>':"");
-  $("recHp").innerHTML=opts("hp");$("recHp").value=R.hpItem==="none"||(RECOVERY[R.hpItem]&&RECOVERY[R.hpItem].kind==="hp")?R.hpItem:"auto";
+  const opts=kind=>`<option value="auto">Auto (cheapest${ch[kind]?": "+esc(ch[kind].name):""})</option><option value="none">None</option>`+recItems(kind).map(x=>`<option value="${x.id}">${esc(x.name)}${x.per==null?" (no price)":""}</option>`).join("")+'<option value="custom">Custom (type it)</option>';
+  $("recHp").innerHTML=opts("hp");$("recHp").value=R.hpItem==="custom"||R.hpItem==="none"||(RECOVERY[R.hpItem]&&RECOVERY[R.hpItem].kind==="hp")?R.hpItem:"auto";
   $("recSp").innerHTML=opts("sp");$("recSp").value=R.spItem==="custom"||R.spItem==="none"||(RECOVERY[R.spItem]&&RECOVERY[R.spItem].kind==="sp")?R.spItem:"auto";
   $("recHp").title=pick.hp&&pick.hp.want?`${pick.hp.want.name} has no price, so the cheapest is used`:"";$("recSp").title=pick.sp&&pick.sp.want?`${pick.sp.want.name} has no price, so the cheapest is used`:"";
-  $("recCustom").hidden=R.spItem!=="custom";$("recDisc").checked=recDisc();
+  $("recCustom").hidden=R.spItem!=="custom";$("recCustomHp").hidden=R.hpItem!=="custom";$("recDisc").checked=recDisc();
   $("recNote").textContent=need?`${state.job} on ${mapCode(need.mp)}: ${need.hpm==null?"HP loss unknown":`${fmtN(need.hpm)} HP lost/min`} · ${fmtN(need.sp/60)} SP/min short`+` · using ${pick.hp?pick.hp.name:"no HP item"} and ${pick.sp?pick.sp.name:"no SP item"}`:"pick a monster or a map (Map planner) to see uses per hour";
   // don't rebuild the box you're typing in; the table catches up when you leave it
   const f=document.activeElement;if(f&&f.tagName==="INPUT"&&$("recTable").tBodies[0].contains(f))return;
