@@ -14,4 +14,5 @@ The numbers are estimates. Skill values and formulas follow the sources below an
 - Zero skill data, element table and ASPD table: [Landgris ROCalculator](https://landgris.github.io/ROCalculator/?zero)
 - Consumables: values from the in-game item tooltips (Ragnarok Zero Global). How they stack follows Landgris: stat food and Blessing of Yggdrasil take the higher per stat, course meals and event drinks add on top
 - Size table and EXP tables: [official game guide](https://roz.mygnjoy.com/en/intro/guide/12)
+- Clan buffs: [Midgard Hub new player guide](https://midgardhub.com/guides/new-player), the same as iRO Wiki's Clan System
 - Drop rate level penalty: [official game guide](https://roz.mygnjoy.com/en/intro/guide/11)
