@@ -1,18 +1,28 @@
-// Gives every local script and stylesheet in index.html a ?v= of its own content hash, so a browser never runs a new page with an
-// old cached file (or the other way round) after a deploy. Run after changing any of them: node tools/stamp.mjs  (--check only reports)
-import { readFileSync, writeFileSync } from "fs";
+// Builds the deployed site: index.html with every local script and stylesheet given a ?v= of its own content hash, so a browser
+// never runs a new page with an old cached file (or the other way round) after a deploy, plus a copy of each of those files.
+// The committed index.html carries no stamps (they changed in nearly every PR and conflicted); the Pages workflow runs this.
+// Run: node tools/stamp.mjs [outDir]  (default _site)
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from "fs";
+import { dirname, join } from "path";
 import { createHash } from "crypto";
-import { pathToFileURL } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 
 const root = new URL("../", import.meta.url);
 // CRLF is read as LF, so a Windows checkout stamps the same hashes as the LF files that get deployed
 export const hashOf = path => createHash("sha256").update(readFileSync(new URL(path, root), "utf8").replace(/\r\n/g, "\n")).digest("hex").slice(0, 10);
-// the stamped page: each local src="…" / href="…" (not http, not #) with ?v= set to that file's hash
-export const stamp = html => html.replace(/(<(?:script|link)\b[^>]*?\b(?:src|href)=")(?![a-z]+:|\/\/|#)([^"?]+)(?:\?v=[^"]*)?"/g,
-  (_, pre, path) => `${pre}${path}?v=${hashOf(path)}"`);
+// each local src="…" / href="…" (not http, not #) on a script or link tag
+const LOCAL = /(<(?:script|link)\b[^>]*?\b(?:src|href)=")(?![a-z]+:|\/\/|#)([^"?]+)(?:\?v=[^"]*)?"/g;
+export const localFiles = html => [...html.matchAll(LOCAL)].map(m => m[2]);
+// the stamped page: each local file's ?v= set to that file's hash
+export const stamp = html => html.replace(LOCAL, (_, pre, path) => `${pre}${path}?v=${hashOf(path)}"`);
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const file = new URL("index.html", root), html = readFileSync(file, "utf8"), out = stamp(html);
-  if (process.argv.includes("--check")) { if (out !== html) { console.error("index.html file stamps are stale: run node tools/stamp.mjs"); process.exit(1) } console.log("stamps up to date") }
-  else { writeFileSync(file, out); console.log(out === html ? "stamps already up to date" : "index.html stamps updated") }
+  const out = process.argv[2] || "_site", html = readFileSync(new URL("index.html", root), "utf8");
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "index.html"), stamp(html));
+  // .nojekyll: serve the files as they are
+  writeFileSync(join(out, ".nojekyll"), "");
+  const files = localFiles(html);
+  for (const f of files) { mkdirSync(dirname(join(out, f)), { recursive: true }); copyFileSync(fileURLToPath(new URL(f, root)), join(out, f)) }
+  console.log(`${out}: index.html and ${files.length} files, stamped`);
 }

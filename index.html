@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=572710bffe">
+<link rel="stylesheet" href="style.css">
 <!-- full width is a per-device display choice: set it before the page draws so it doesn't jump -->
 <script>try{if(localStorage.getItem("rozero-farm-planner-wide")==="1")document.documentElement.classList.add("wide")}catch(e){}</script>
 </head>
@@ -541,35 +541,36 @@
 
 </div>
 
-<script src="data/exp.js?v=855bc3c269"></script>
-<script src="data/mobs.js?v=34a10f6123"></script>
-<script src="data/spawn.js?v=cd836c11c8"></script>
-<script src="data/maps.js?v=87995d3039"></script>
-<script src="data/loot.js?v=20c1a8cceb"></script>
-<script src="data/items.js?v=fa511f8dca"></script>
-<script src="data/weights.js?v=bd3508b5f9"></script>
-<script src="data/prices.js?v=6d792a7e03"></script>
-<script src="data/itemtypes.js?v=f1fe83752f"></script>
-<script src="data/mstat.js?v=61b9b8f45d"></script>
-<script src="data/elem.js?v=fe0a711216"></script>
-<script src="data/sizes.js?v=00947c6895"></script>
-<script src="data/equipment.js?v=fcba740336"></script>
-<script src="data/cards.js?v=c1576fc929"></script>
-<script src="data/refine.js?v=d8d0c9f03a"></script>
-<script src="data/jobs.js?v=11de79e714"></script>
-<script src="data/consumables.js?v=d87e716e0e"></script>
-<script src="data/recovery.js?v=ead6e4af72"></script>
-<script src="data/skills.js?v=38bebfead1"></script>
-<script src="build.js?v=99fe625055"></script>
+<!-- no ?v= stamps here: the Pages deploy adds each file's content hash (tools/stamp.mjs), so PRs never conflict over them -->
+<script src="data/exp.js"></script>
+<script src="data/mobs.js"></script>
+<script src="data/spawn.js"></script>
+<script src="data/maps.js"></script>
+<script src="data/loot.js"></script>
+<script src="data/items.js"></script>
+<script src="data/weights.js"></script>
+<script src="data/prices.js"></script>
+<script src="data/itemtypes.js"></script>
+<script src="data/mstat.js"></script>
+<script src="data/elem.js"></script>
+<script src="data/sizes.js"></script>
+<script src="data/equipment.js"></script>
+<script src="data/cards.js"></script>
+<script src="data/refine.js"></script>
+<script src="data/jobs.js"></script>
+<script src="data/consumables.js"></script>
+<script src="data/recovery.js"></script>
+<script src="data/skills.js"></script>
+<script src="build.js"></script>
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
-<script src="js/game.js?v=3d451ea1cf"></script>
-<script src="js/state.js?v=06a2b1a4e0"></script>
-<script src="js/model.js?v=b3a9f1f9ef"></script>
-<script src="js/render.js?v=d5c9f81775"></script>
-<script src="js/events.js?v=8c73f530aa"></script>
-<script src="js/skills.js?v=4e9e35293d"></script>
-<script src="js/build-ui.js?v=aa78806cd0"></script>
-<script src="js/ref.js?v=0cc8633f35"></script>
-<script src="js/start.js?v=cc10b74f5b"></script>
+<script src="js/game.js"></script>
+<script src="js/state.js"></script>
+<script src="js/model.js"></script>
+<script src="js/render.js"></script>
+<script src="js/events.js"></script>
+<script src="js/skills.js"></script>
+<script src="js/build-ui.js"></script>
+<script src="js/ref.js"></script>
+<script src="js/start.js"></script>
 </body>
 </html>
