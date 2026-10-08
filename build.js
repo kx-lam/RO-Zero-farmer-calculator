@@ -203,7 +203,9 @@ const BUILD=(()=>{
   const groupOn=(g,ctx)=>(g.r==null||ctx.refine>=g.r)&&(g.rs==null||ctx.refineSum>=g.rs)&&(g.lv==null||ctx.baseLv>=g.lv)&&(!g.cls||!g.cls.length||g.cls.includes(ctx.jobSlug)||g.cls.includes(ctx.firstSlug));
   function applyGroups(A,gs,ctx,src){(gs||[]).forEach(g=>{if(!groupOn(g,ctx))return;
     if(g.proc||g.text){A.unmodelled.push(`${src}: ${g.proc||g.text}`);}
-    (g.b||[]).forEach(b=>{const per=b[4];const k=per?Math.floor(ctx.refine/per):1;if(k<=0)return;const bb=b.slice();bb[3]=(+b[3]||0)*k;apply(A,bb,src)})})}
+    // "For every 10 BaseLv ... (up to BaseLv 50)": lvPer / lvMax on the group multiply its lines by the base level steps
+    const lk=g.lvPer?Math.floor(Math.min(ctx.baseLv,g.lvMax||Infinity)/g.lvPer):1;
+    (g.b||[]).forEach(b=>{const per=b[4];const k=(per?Math.floor(ctx.refine/per):1)*lk;if(k<=0)return;const bb=b.slice();bb[3]=(+b[3]||0)*k;apply(A,bb,src)})})}
 
   // ---- the whole build ----
   // b = {baseLv, jobLv, base:{str..luk}, gear:{slot:{id, refine, cards:[ids]}}, hpBase?, spBase?}; job = "Knight"

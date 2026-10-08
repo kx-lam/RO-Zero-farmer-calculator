@@ -39,12 +39,15 @@ GVG_ONLY = {450012, 450013, 450014, 470011, 470012, 470013, 480007, 520001, 5500
 # bonuses roz.prontera.info has wrong or missing, as the client describes them; each applies only while prontera still lacks it
 RACE_CRIT = {4297: ("brute", 7), 4310: ("brute", 7), 4192: ("fish", 7)}  # "When attacking Brute/Fish monsters, CRIT +7"
 TAKEN = {2254: ("demon", -3), 2255: ("angel", -3), 2327: ("demon", -15)}  # "Damage Taken from Demon/Angel Monsters -x%"
+# Baby Shark / Shark Family Card (event over, the level bonus stays): garment cards; prontera has no slot and only the text
+# "For every 10 BaseLv, ATK (MATK) +7, DEF +3, and MDEF +1. (Up to BaseLv 50.)"
+LV_STEP = {300834: "atk", 300835: "matk"}
 # "Physical / Magic damage against Boulder Dwarves +30%": prontera has only the description text, no bonus line
 GROUP_DMG = {300944: ("physical_damage_percent", "boulder_dwarf", 30), 300943: ("magic_damage_percent", "boulder_dwarf", 30)}
 
 
 def client_fix(row):
-    """Apply GVG_ONLY, RACE_CRIT, TAKEN, GROUP_DMG and Fur Seal Card (CRIT +9 vs Demon/Undead, Acolyte Class only) to an item row."""
+    """Apply GVG_ONLY, RACE_CRIT, TAKEN, GROUP_DMG, LV_STEP and Fur Seal Card (CRIT +9 vs Demon/Undead, Acolyte Class only) to an item row."""
     i, g = row.get("id"), row.get("g", [])
     lines = lambda: [b for x in g for b in x.get("b", [])]
     if i in GVG_ONLY:
@@ -62,6 +65,10 @@ def client_fix(row):
     if i in GROUP_DMG and not any(len(b) > 1 and b[1] == "monster_group" for b in lines()):
         t, grp, v = GROUP_DMG[i]
         g = g + [{"b": [[t, "monster_group", grp, v]]}]
+    if i in LV_STEP and not lines():
+        row["slot"] = row.get("slot") or ["garment"]
+        g = [x for x in g if not (x.get("text") or "").startswith("For every 10 BaseLv")]
+        g += [{"lvPer": 10, "lvMax": 50, "b": [[LV_STEP[i], None, None, 7], ["def", None, None, 3], ["mdef", None, None, 1]]}]
     if g: row["g"] = g
     else: row.pop("g", None)
     return row
@@ -204,7 +211,7 @@ def main():
 
     src = "Exported by tools/export_prontera.py from roz.prontera.info"
     fields = ("// fields: id, slug, name, slot (every slot it takes), type (weapon type), el, slots, lv (required), wlv (weapon level), refine (schedule),\n"
-              "// atk, matk, def, mdef, g: bonus groups {r: min refine, rs: min combined refine, lv: min base level, cls: job slugs,\n"
+              "// atk, matk, def, mdef, g: bonus groups {r: min refine, rs: min combined refine, lv: min base level, cls: job slugs, lvPer / lvMax: lines count once per lvPer base levels up to lvMax,\n"
               "// proc: text of an effect that isn't a plain stat, b: [[type, target kind, target, value, per N refines, skill, scaling skill]]}")
     write("equipment.js", f"// Equipment ({src}); GvG-only bonuses are left out.\n{fields}\n// SETS: combos by item slug, same bonus groups.",
           f"const EQUIP={js(equip)};\nconst SETS={js(list(sets.values()))};")
