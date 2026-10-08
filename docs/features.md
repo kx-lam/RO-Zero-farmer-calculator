@@ -25,6 +25,7 @@
 ## Session (EXP tracker)
 
 - Log Base and Job EXP % as you farm. Entries go on today's date unless you pick another. If a session runs past midnight or over several days, the date shows next to each time.
+- **Died −5%** logs a death: your EXP % box (or your last entry, if the box is empty) less 5%, at the current time. The lost EXP counts against your EXP/hr.
 - See EXP/hr, time to the next level and a progress chart. Kill pace is split into fighting and walking time.
 - Rename a session with ✎ next to the session picker (Enter or ✓ saves, Esc cancels), and compare sessions side by side.
 - **Goal:** the EXP needed and the farming time to a target base and job level, charted together, with a date for each level-up if you farm non-stop.

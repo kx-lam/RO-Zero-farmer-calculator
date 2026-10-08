@@ -126,6 +126,11 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();cons
   const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=Math.min(jobMax(),num(C().jobLv)+1)}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
   if(s.job===state.job&&num(C().jobLv)>0&&s.entries.every(x=>x.t<=t))ent.jlv=num(C().jobLv);
   if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm(true);$("fPct").focus()});
+// a death costs 5% base EXP: log the EXP % box (or the last entry) less 5% through the form, so it goes in like any entry
+$("dieBtn").addEventListener("click",()=>{const es=[...cur().entries].sort((a,b)=>a.t-b.t),last=es[es.length-1],box=$("fPct").value;
+  if(box===""&&!last){$("pasteMsg").textContent="Type your EXP % before you died, then press Died.";$("fPct").focus();return}
+  const before=box!==""?num(box):last.pct,after=Math.max(0,Math.round((before-5)*100)/100);$("fPct").value=after;$("addForm").requestSubmit();
+  if(!$("fPct").value)$("pasteMsg").textContent=`Died: logged ${after}% (${before}% − 5%).`});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
   const [h0,m0]=nowTime().split(":").map(Number),lines=$("pasteBox").value.split(/\n/).map(pasteLine).filter(Boolean).map(([h,m,...r])=>h==null?[h0,m0,...r]:[h,m,...r]);
   const ts=pasteTimes(lines,pickedDay()),parsed=[...new Map(lines.map(([,,pct,jpct],i)=>[ts[i],{t:ts[i],pct,jpct}])).values()].sort((a,b)=>a.t-b.t);
