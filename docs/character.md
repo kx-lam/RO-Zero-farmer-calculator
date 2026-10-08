@@ -30,7 +30,7 @@ Any job, Mages included, can add a spell from a card, weapon or scroll that proc
 
 ## Cards any job can slot
 
-- **Vitata:** SP cost +25%, and the Heal Lv1 you cast costs SP and time you aren't attacking. Heal covers the HP you lose (after Hunter Fly, "HP back per minute" and consumables), so no HP items are counted on top. In build mode a Vitata Card in your gear already counts its SP cost.
+- **Vitata:** SP cost +25%, and the Heal Lv1 you cast costs SP and time you aren't attacking. Heal covers the HP you lose (after Hunter Fly, HP regen and consumables), so no HP items are counted on top. In build mode a Vitata Card in your gear already counts its SP cost.
 - **Side Winder:** basic attacks hit twice some of the time, right hand only. With Double Attack learned the card adds nothing.
 - **Creamy:** Teleport Lv1, so the Zeny Hunter can teleport past monsters you skip. Its 10 SP a cast isn't counted.
 - **Phen / Bloody Butterfly:** casts can't be interrupted, variable cast +25% / +30%. Build mode reads them from your gear.
@@ -43,11 +43,13 @@ A hit that lands while you cast interrupts it and you start again, so with λ hi
 
 Left blank, SP regen per 8 s is worked out: 1 + Max SP/100 + INT/6, plus more from INT 120, raised by SP Recovery +% gear. Increase SP Recovery from your Skills card adds Lv × (3 + 0.2% of Max SP) every 10 s on top, and consumables that restore SP over time add theirs, so type only the natural tick if you type one. Natural regen and Increase SP Recovery stop at 70% weight.
 
+HP works the same way. Under Taking damage in Attack details, HP regen per 6 s left blank is worked out: VIT/5 + Max HP/200 (at least 1), raised by HP Recovery +% gear (rAthena's formula, not checked in game). Increase HP Recovery (Swordsman, Knight, Crusader) adds Lv × (5 + 0.2% of Max HP) every 10 s on top, and consumables that restore HP over time and Hunter Fly add theirs, so type only the natural tick if you type one. Natural regen and Increase HP Recovery stop at 70% weight. Saves from before this kept an "HP back per minute" box; a number typed there carries over as the 6 s tick (a tenth of it).
+
 ## HP back from cards
 
 - **Hunter Fly:** physical attacks have a chance to restore HP every second for 5 s, so less HP lost per minute. Set how many copies you wear (1–4); build mode counts them in your gear and counts the card as on. Each copy rolls on every attack until one procs, but the restore doesn't add up, so the HP restore runs 1 − (1 − 5%)^(copies × attacks in 5 s) of the time (not checked in game).
 
-HP Recovery +x% cards (Muka, Zombie, Wooden Golem, Merman) raise natural HP regen; they aren't modelled, so count them in "HP back per minute". Don't add Hunter Fly, Vitata or HP-over-time consumables there: they're counted already.
+Card HP keeps coming when you're overweight, unlike natural regen. "HP Recovery +x%" (Muka, Zombie, Wooden Golem, Merman) raises natural HP regen: build mode reads it from your gear, and in Status window mode you add an "HP recovery" line under Equipment stats.
 
 ## SP back from cards
 

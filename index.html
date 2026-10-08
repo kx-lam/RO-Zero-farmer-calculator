@@ -181,7 +181,7 @@
         <div id="cardInfo"></div>
       </div>
       <div class="cdList note" id="hpCardRow">
-        <div class="cdHead"><b>Cards that give HP back</b> <span class="muted">build mode reads Hunter Fly from your gear. HP Recovery +% cards (Muka, Zombie, Wooden Golem, Merman) raise natural HP regen: count them in &quot;HP back per minute&quot; below</span></div>
+        <div class="cdHead"><b>Cards that give HP back</b> <span class="muted">build mode reads Hunter Fly and HP Recovery +% cards (Muka, Zombie, Wooden Golem, Merman) from your gear; in status window mode add an &quot;HP recovery&quot; line under Equipment stats</span></div>
         <div class="cdItem" title="Hunter Fly Card: physical attacks (basic attacks, Spell Fist, physical skills) have a chance to restore HP every second for 5 s"><label class="bar" style="flex-direction:row;gap:4px"><input type="checkbox" data-cd="hfOn" style="width:auto"> <b>Hunter Fly</b></label><span class="muted">physical attacks can restore HP for 5 s, so less HP lost</span><span class="cdOpts"><input data-cd="hfPct" type="number" style="width:50px">% chance · <input data-cd="hfHp" type="number" style="width:60px"> HP/s · <input data-cd="hfN" type="number" min="1" max="4" step="1" style="width:44px" title="Copies in your weapons (1–4). Each copy rolls on every physical attack; the restore doesn't add up"> cards</span></div>
         <div id="hpCardInfo"></div>
       </div>
@@ -198,7 +198,8 @@
         <span id="ecInfo"></span>
       </div>
       <div class="bar note"><span>Taking damage:</span>
-        <label class="bar" style="flex-direction:row;gap:4px">HP back per minute <input id="hpRegen" type="number" style="width:80px"> <span class="muted">(natural regen, HP Recovery cards; Hunter Fly, Vitata and HP-over-time consumables are counted already)</span></label>
+        <label class="bar" style="flex-direction:row;gap:4px" title="Blank (auto): VIT/5 + Max HP/200, with HP Recovery +% gear. Increase HP Recovery (Skills card), Hunter Fly and consumables that restore HP over time are added on their own, so type only the natural regen tick">HP regen per 6s <input id="hpRegen6" type="number" placeholder="auto" style="width:72px"></label>
+        <span class="muted" id="hpInfo"></span>
       </div>
       <details class="note">
         <summary>Advanced: monster attack timing</summary>

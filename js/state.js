@@ -32,6 +32,8 @@ if(!state.chars||typeof state.chars!=="object")state.chars={};
 // per character: learned skill levels and the build-mode "Check against the game" values are numbers; anything else is dropped
 const numMap=o=>Object.fromEntries(Object.entries(o&&typeof o==="object"?o:{}).map(([k,v])=>[k,v===""||v==null?NaN:+v]).filter(([,v])=>Number.isFinite(v)));
 for(const j in state.chars){const c=state.chars[j];if(!c||typeof c!=="object"){delete state.chars[j];continue}
+  // "HP back per minute" (hpRegen) became "HP regen per 6s" (hpRegen6, blank = worked out): a typed value carries over as 10 ticks a minute
+  if(c.hpRegen!=null){const v=+c.hpRegen;if(v>0&&c.hpRegen6==null)c.hpRegen6=Math.max(1,Math.round(v/10));delete c.hpRegen}
   if(c.skills!=null)c.skills=Object.fromEntries(Object.entries(numMap(c.skills)).map(([k,v])=>[k,Math.max(0,Math.round(v))]).filter(([,v])=>v>0));
   if(c.build&&typeof c.build==="object"&&c.build.check!=null)c.build.check=numMap(c.build.check);
   // your price per skill item (item id → zeny) and support casts per kill: numbers of 0 or more

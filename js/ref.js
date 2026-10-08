@@ -44,7 +44,8 @@ function refFormulas(){const c=C(),m=calcMob(),ok=STATS.every(k=>statVal(c,k)!=n
    R("Damage taken","(monster ATK × (4000 + hard DEF) / (4000 + 10 × hard DEF) − soft DEF) × (1 + race %) × (1 + element %) × (1 + boss/normal %)",()=>need(x=>mobHitDmg(x)==null?null:`${fmtN(mobHitDmg(x))} per hit${mn}`),"% is your damage taken from its race, element and boss/normal; at least 1")+
    R("Hits you can take","floor(Max HP / damage taken per hit)",()=>need(x=>{const h=mobHitDmg(x),hp=num(cf("maxHp"));return h&&hp>0?`${fmtN(Math.floor(hp/h))}${mn}`:null}),"from full HP")+
    R("Perfect Dodge","1 + floor(LUK/10) + gear Perfect Dodge",()=>sv("luk")!=null?`${1+Math.floor(sv("luk")/10)} + gear`:null,"physical attacks only")+
-   R("HP regen","max(1, floor(Max HP/200)) every 6 s",()=>num(cf("maxHp"))>0?`${fmtN(Math.max(1,Math.floor(num(cf("maxHp"))/200)))} / 6 s`:null,"standing still; HP loss uses the HP back per minute box")+
+   R("HP regen","floor(VIT/5) + max(1, floor(Max HP/200)) every 6 s, × (1 + HP Recovery %)",()=>`${fmtN(hpRegen6())} / 6 s`,"standing still; none at 70% weight or more")+
+   R("Increase HP Recovery","floor(Lv × (5 + 0.2% of Max HP)) every 10 s, on top of natural regen",()=>ihrPer10()?`${fmtN(ihrPer10())} / 10 s`:null,"Swordsman, Knight, Crusader; none at 70% weight or more")+
    R("SP regen","1 + floor(Max SP/100) + floor(INT/6) every 8 s; from INT 120 also + floor((INT − 120)/2) + 4",()=>`${fmtN(spRegen8())} / 8 s`,"none at 70% weight or more")+
    R("Increase SP Recovery","floor(Lv × (3 + 0.2% of Max SP)) every 10 s, on top of natural regen",()=>isrPer10()?`${fmtN(isrPer10())} / 10 s`:null,"Mage, Wizard, Sage; none at 70% weight or more")+
    R("Overcharge / Discount","sell = floor(NPC price × (1 + Overcharge %)); buy = NPC price × (1 − Discount %)",()=>{const o=skRate("overcharge"),d=recDisc()?DISC_LV10:0;return o||d?`+${o}% / −${d}%`:null},"Lv 1–10: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24%")+
