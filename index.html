@@ -340,7 +340,8 @@
         <label>Party members<input id="partyN" type="number" min="1" max="12" value="1"></label>
         <label>Party EXP bonus %<input id="partyBonus" type="number" value="0" readonly tabindex="-1" title="Worked out from the party size"></label>
         <div class="note" id="partyNote" style="grid-column:2/-1;align-self:center"></div>
-        <div class="bar" style="grid-column:1/-1"><button class="primary grow" type="submit">Add entry</button><button type="button" id="dieBtn" title="You died: logs your EXP % 5% lower at this time (from the EXP % box, or your last entry if the box is empty)">Died −5%</button><button type="button" id="pauseBtn" style="min-width:6.5em" title="Stop the clock while you sell, change maps or do something else">Pause</button></div>
+        <div class="bar" style="grid-column:1/-1"><button class="primary grow" type="submit">Add entry</button><button type="button" id="dieBtn" title="You died: type your EXP % from just before, then press this. It logs that EXP and, a second later, the EXP left after the death penalty">Died −10%</button><button type="button" id="pauseBtn" style="min-width:6.5em" title="Stop the clock while you sell, change maps or do something else">Pause</button></div>
+        <label class="bar note" style="grid-column:1/-1;flex-direction:row;gap:4px"><input type="checkbox" id="dieItem" style="width:auto"> Death penalty item from the shop: a death costs 5% EXP instead of 10%</label>
       </form>
       <label>Paste several entries (one per line: [time] EXP% [job%], the % signs optional, on the date above; no time means now)<textarea id="pasteBox" rows="3" placeholder="15:05 17.9% 63%&#10;15:20 19.2% 64%&#10;20.4% 65% (now)" style="font:inherit;font-family:var(--mono);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:vertical"></textarea></label>
       <button type="button" id="pasteAdd">Add pasted entries</button>

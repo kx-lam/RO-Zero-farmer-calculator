@@ -111,7 +111,7 @@ function renderRecovery(){const R=REC(),need=recNeed(),pick={hp:recPick("hp"),sp
       <td>${fmtQty(x.uph)}</td><td>${x.per==null?"n/a":x.zph==null?"–":fmtN(x.zph)}</td><td>${fmtQty(x.wph)}</td></tr>`}).join("")}
 // ---- render: tracker ----
 function renderSessions(){$("sessionSel").innerHTML=state.sessions.map(s=>`<option value="${esc(s.id)}" ${s.id===state.current?"selected":""}>${esc(s.name)}</option>`).join("")}
-function renderTracker(){
+function renderTracker(){$("dieItem").checked=!!state.dieItem;$("dieBtn").textContent=`Died −${diePct()}%`;
   const s=cur(),st=stats(s);
   if(document.activeElement!==$("partyN"))$("partyN").value=partyN(s);$("partyBonus").value=partyBonus(s);
   $("partyNote").textContent=partyN(s)>1?`Each kill gives you ${partyPct(s)}% of its EXP (party of ${partyN(s)}). Even Share only works within 15 base levels.`:"";
@@ -235,7 +235,7 @@ function renderLog(s){
     if(ed&&ed.t===e.t)return {t:e.t,k:0,h:`<tr class="editRow"><td><input type="datetime-local" data-f="t" value="${dtLocal(e.t)}" aria-label="Time"></td>
       <td class="nowrap">B ${inN("lv",e.lv,'min="1" max="99" step="1" aria-label="Base level"')} J ${inN("jlv",jl.get(e),'min="1" max="70" step="1" placeholder="?" aria-label="Job level"')}</td>
       <td>${inN("pct",e.pct,'min="0" max="100" step="0.01" aria-label="EXP %"')}</td><td>${inN("jpct",e.jpct,'min="0" max="100" step="0.01" placeholder="–" aria-label="Job EXP %"')}</td>${saveBtns}</tr>`};
-    let rate="";if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>=1/60?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):`<span title="under a minute of unpaused time since the last entry">–</span>`}
+    let rate="";if(e.died)rate=`<span class="pill down">died −${esc(e.died)}%</span>`;else if(i>0){const q=es[i-1],h=activeH(s,q.t,e.t);rate=h>=1/60?pct((cumulative(e,base)-cumulative(q,base))/h/(lvExp(e.lv)||100)*100):`<span title="under a minute of unpaused time since the last entry">–</span>`}
     return {t:e.t,k:0,h:`<tr data-t="${esc(e.t)}" style="cursor:default"><td>${when(e.t)}</td><td>B${esc(e.lv)}${jl.get(e)?`/J${esc(jl.get(e))}`:""}</td><td>${e.pct.toFixed(2)}%</td><td>${e.jpct!=null?e.jpct.toFixed(2)+"%":"–"}</td><td>${rate}</td>${btns(`data-edit="${esc(e.t)}"`,`data-del="${esc(e.t)}"`,"entry")}</tr>`}});
   ps.forEach((p,i)=>rows.push({t:p.from,k:1,h:ed&&ed.p===i?`<tr class="pauseRow editRow"><td colspan="4">Paused from <input type="datetime-local" data-f="from" value="${dtLocal(p.from)}" aria-label="Paused from">
       to <input type="datetime-local" data-f="to" value="${p.to!=null?dtLocal(p.to):""}" aria-label="Paused until"> <span class="note">empty: still paused</span></td>${saveBtns}</tr>`

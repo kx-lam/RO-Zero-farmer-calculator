@@ -399,6 +399,8 @@ Object.entries(SPAWN).forEach(([id,arr])=>{const m=MOBS.find(x=>x.id===+id);if(!
 // ---- tracker math ----
 function cumulative(e,base){let total=0;for(let l=base;l<e.lv;l++)total+=lvExp(l)||100;return total+(e.pct/100)*(lvExp(e.lv)||100)}
 // pausing: s.pauses=[{from,to}] (to missing while paused); paused time is left out of every rate, EXP gained is still counted
+// EXP % lost on death: 10%, halved by the shop's death penalty item
+const diePct=()=>state.dieItem?5:10;
 const openPause=s=>(s.pauses||[]).find(p=>p.to==null);
 const pausedMs=(s,a,b)=>(s.pauses||[]).reduce((x,p)=>x+Math.max(0,Math.min(b,p.to??Date.now())-Math.max(a,p.from)),0);
 const activeH=(s,a,b)=>(b-a-pausedMs(s,a,b))/36e5;
@@ -406,7 +408,8 @@ const activeH=(s,a,b)=>(b-a-pausedMs(s,a,b))/36e5;
 const autoResume=(s,t)=>{const p=openPause(s);if(p&&t>=p.from)p.to=Math.max(p.from,t)};
 function stats(s){
   const es=[...s.entries].sort((a,b)=>a.t-b.t);if(es.length<2)return null;
-  const base=es[0].lv,last=es[es.length-1],prev=es[es.length-2];const raw=e=>cumulative(e,base);const hrs=(a,b)=>activeH(s,a.t,b.t);
+  // the recent rate runs from the newest entry at least a minute (unpaused) before the last, so a death logged a second after your EXP doesn't blow it up
+  const base=es[0].lv,last=es[es.length-1],prev=es.slice(0,-1).reverse().find(e=>activeH(s,e.t,last.t)>=1/60)||es[es.length-2];const raw=e=>cumulative(e,base);const hrs=(a,b)=>activeH(s,a.t,b.t);
   if(hrs(es[0],last)<=0)return null;
   const avgRaw=(raw(last)-raw(es[0]))/hrs(es[0],last);const recRaw=hrs(prev,last)>0?(raw(last)-raw(prev))/hrs(prev,last):0;const L=lvExp(last.lv)||100;
   return {es,last,prev,avgRaw,recRaw,avgPct:avgRaw/L*100,recPct:recRaw/L*100,L,recentMin:Math.round(hrs(prev,last)*60),spanMin:Math.round(hrs(es[0],last)*60),
