@@ -25,7 +25,10 @@ const aspdEff=()=>Math.min(190,Math.max(100,num(cf("aspd"),170)));
 const skRate=slug=>{const lv=skLv(C(),slug);if(!lv)return 0;for(const t of SKILLS[state.job]||[])for(const s of t.skills)if(s.slug===slug){const r=String((s.lv[lv-1]||[])[7]||"").match(/(\d+)%/);return r?+r[1]:0}return 0};
 const ocMul=()=>1+skRate("overcharge")/100;
 // Discount only helps with what you buy from an NPC: untick "from NPCs" when you buy SP items and potions from players
-const discMul=()=>C().npcBuy===false?1:1-skRate("discount")/100;
+// Discount on what you buy from NPCs (ASPD potion, skill items, a Custom SP item): the account's Buy with Discount box, taken as
+// a Merchant on the account with Discount Lv 10 (−24%) buying for every character. Recovery items use their measured Discount prices
+const DISC_LV10=24;
+const discMul=()=>recDisc()?1-DISC_LV10/100:1;
 const potOnlyHr=()=>C().potOn&&num(C().potMin)>0?60/num(C().potMin)*num(C().potPrice)*discMul():0;
 // zeny per hour spent on the ASPD potion (consumables carry no price; Blessing of Yggdrasil's items come from the KP shop)
 const potCostHr=()=>potOnlyHr();
@@ -39,12 +42,14 @@ const vctFactor=()=>{const c=C();const dex=statVal(c,"dex");if(dex==null)return 
 const cardInGear=(c,ids)=>c.mode==="build"&&Object.values((c.build&&c.build.gear)||{}).some(g=>g&&(g.cards||[]).some(id=>ids.includes(+id)));
 // Phen (4077) and Bloody Butterfly (4327) Cards: casts can't be interrupted, variable cast +25% / +30%
 const PHEN=4077,BBFLY=4327;
-const noBreak=()=>{const cd=CRD();return !!(cd.phen||cd.bbfly)||cardInGear(C(),[PHEN,BBFLY])};
+const noBreak=()=>{const cd=CRD();return !!(cd.phen||cd.bbfly)||cardInGear(C(),[PHEN,BBFLY])||consSum("no_break")>0};
+// fixed cast % cut: only the highest one counts (the box, or a consumable such as Challenge Drink)
+const fctPctEff=()=>Math.max(num(C().fctPct),-consSum("fct_percent"));
 const vctCards=()=>{const cd=CRD(),c=C();return (cd.phen&&!cardInGear(c,[PHEN])?25:0)+(cd.bbfly&&!cardInGear(c,[BBFLY])?30:0)};
 const castSec=()=>{const c=C(),a=c.a,vp=num(c.vctPct)-vctCards();
-  if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-vp/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-num(c.fctPct)/100));
+  if(a.fct!=null||a.vct!=null)return Math.max(0,num(a.vct)*vctFactor()*(1-vp/100))+Math.max(0,(num(a.fct)-num(c.fctSec))*(1-fctPctEff()/100));
   const base=num(a.cast),f=Math.min(100,Math.max(0,num(c.fixedShare)))/100;
-  return Math.max(0,base*(1-f)*vctFactor()*(1-vp/100))+Math.max(0,(base*f-num(c.fctSec))*(1-num(c.fctPct)/100))};
+  return Math.max(0,base*(1-f)*vctFactor()*(1-vp/100))+Math.max(0,(base*f-num(c.fctSec))*(1-fctPctEff()/100))};
 // a hit that lands while you cast interrupts it and you start again (SP is only spent on a cast that finishes). With λ hits landing per
 // second from the monster in play, a T-second cast takes (e^(λT) − 1)/λ on average. Not with Phen or Bloody Butterfly
 const castEff=()=>{const T=castSec();if(T<=0||noBreak())return T;const l=hitsOnYou(SG_MOB||calcMob());return l>0?Math.expm1(l*T)/l:T};
@@ -66,6 +71,8 @@ const bonusMul=(m,magic=false)=>{const c=C();let k=1+num(c.dmgBonus)/100;
   if(B)k*=(1+(B.race[m.race]||0)/100)*(1+(B.size[m.size]||0)/100)*(1+(B.ele[el]||0)/100)*(1+(B.all||0)/100)*(1+(B.kind[m.boss?"boss":"normal"]||0)/100)*groupMul(B,m);
   if(!m.boss)k*=1+num(c.normalPct)/100;
   k*=1+num(c.myElPct)/100;if(magic&&c.bx)k*=1+((c.bx.myEle||{})[atkEl()]||0)/100;
+  // consumables: magic damage % (Unlimited Drink) on spells, ranged damage % on physical attacks with a ranged weapon
+  k*=1+consSum(magic?"magic_dmg":RANGED.includes(c.weapon)?"range_dmg":"")/100;
   // learned passives and buffs: physical damage % (Advanced Katar Mastery, Power Thrust), element % for spells (Endow, Volcano...)
   // and, for an element's plain "Damage" bonus (Volcano, Deluge, Whirlwind), for physical attacks of that element too
   if(SKFX){if(!magic)k*=(1+SKFX.pct/100)*(1+(SKFX.physEle[atkEl()]||0)/100);else k*=1+(SKFX.myEle[atkEl()]||0)/100}return k};
@@ -75,8 +82,8 @@ const expGear=m=>{const c=C();return c.bx?(c.bx.exp.all||0)+((c.bx.exp.race||{})
 // matching the in-game kills noted at partyN). Gear EXP counts for base and job EXP; an item's "EXP +X%" is base EXP only and
 // only "Job EXP +X%" raises job EXP (checked in game: a Captain with 10% gear gave +10% to both, an "EXP +10%" item +10% base only)
 const partyCut=(v,s=cur())=>Math.floor(v*(100+partyBonus(s))/100/partyN(s));
-const killExp=(m,s=cur())=>Math.floor(partyCut(m.exp,s)*(1+(expGear(m)+num(state.bonus))/100));
-const killJobExp=(m,s=cur())=>Math.floor(partyCut(m.job,s)*(1+(expGear(m)+num(state.jobBonus))/100));
+const killExp=(m,s=cur())=>Math.floor(partyCut(m.exp,s)*(1+(expGear(m)+num(state.bonus)+consSum("exp_base"))/100));
+const killJobExp=(m,s=cur())=>Math.floor(partyCut(m.job,s)*(1+(expGear(m)+num(state.jobBonus)+consSum("exp_job"))/100));
 const takenMul=m=>{const c=C();if(!c.bx)return 1;const t=c.bx.taken;return (1+(t.race[m.race]||0)/100)*(1+(t.ele[m.el||"Neutral"]||0)/100)*(1+(t.kind[m.boss?"boss":"normal"]||0)/100)};
 // ignore DEF / MDEF %: lowers the monster's hard defence before the (4000+DEF)/(4000+10·DEF) or (1000+MDEF)/(1000+10·MDEF) factor
 const effDef=m=>(m.def||0)*(1-Math.min(100,Math.max(0,num(C().ignDef)))/100);
@@ -129,7 +136,7 @@ const critChance=m=>{const c=C();if(c.a.type!=="auto")return 0;return Math.min(1
 // uses needed per kill: whole hits that land, spread over misses
 // average damage of one use: hits that land (crits always do, × 1.4 × (1 + crit damage %)) plus auto-casts, which only proc on swings that connect
 const procPerUse=m=>ssDmg(m)*SS_CHANCE+acDmg(m)*acChance();
-const useAvg=(m,per,proc)=>{const cr=critChance(m),hc=hitChance(m)/100;return per*(cr*1.4*(1+num(C().critDmg)/100)+(1-cr)*hc)+proc*(cr+(1-cr)*hc)};
+const useAvg=(m,per,proc)=>{const cr=critChance(m),hc=hitChance(m)/100;return per*(cr*1.4*(1+(num(C().critDmg)+consSum("crit_dmg"))/100)+(1-cr)*hc)+proc*(cr+(1-cr)*hc)};
 const dpsOf=m=>{if(isSF())return null;return useAvg(m,perUse(m),procPerUse(m))*targets()/useSec()};
 function usesPerKill(m){if(isSF()){const d=sfPerAttack(m);return d>0?Math.ceil(m.hp/d):Infinity}const per=perUse(m),proc=procPerUse(m);if(per<=0&&proc<=0)return Infinity;
   // Shadow Spell and card auto-casts are averaged into each attack
@@ -144,14 +151,24 @@ const spRegen8=()=>{if(num(C().spRegen)>0)return num(C().spRegen);const i=statVa
 // Vitata Card's +25% counts when ticked, unless build mode already has the card in your gear
 const vitInGear=c=>cardInGear(c,[4053]);
 const vitPct=()=>CRD().vitata&&!vitInGear(C())?num(CRD().spBonus):0;
-const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100+vitPct()/100)};
+// consumables' lines the status window doesn't show (parseCons in build-ui.js): "SP consumption −x%" and HP / SP restored over time
+// (only your own rows make them; summed once per change of those rows, as regen is asked for on every monster)
+let CONS_SUM={k:null,v:{}};
+const consSum=t=>{const c=C(),rows=OWN_LISTS.flatMap(L=>rowsOf(c,L.key)).filter(r=>r.on),k=rows.map(r=>r.eff).join("\n");
+  if(CONS_SUM.k!==k){const v={};rows.forEach(r=>parseCons(r.eff).lines.forEach(([x,,,n])=>v[x]=(v[x]||0)+num(n)));CONS_SUM={k,v}}return CONS_SUM.v[t]||0};
+const spCostMul=()=>{const c=C();return Math.max(0,1+(c.bx?num(c.bx.spCost):0)/100+(SKFX?SKFX.spCost:0)/100+vitPct()/100+consSum("sp_cost_percent")/100)};
+// SP / HP per second from consumables such as Small Mana Potion (5% of Max SP every 5 s); like cards it keeps going when you're overweight
+const consSPPerSec=()=>consSum("sp_regen")+consSum("sp_regen_pct")*num(cf("maxSp"))/100;
+const consHPPerSec=()=>consSum("hp_regen")+consSum("hp_regen_pct")*num(cf("maxHp"))/100;
+// Increase SP Recovery (Mage, Wizard, Sage; Skills card): every 10 s, Lv × (3 + 0.2% of Max SP) on top of natural regen (Zero's skill data)
+const isrPer10=()=>{const l=skLv(C(),"increase-sp-recovery");return l>0?Math.floor(l*(3+num(cf("maxSp"))*0.002)):0};
 // SP the attack itself costs per second (Spell Fist: its upkeep); defSP adds Energy Coat and Vitata's heals against the monster in play
 const skillSPPerSec=()=>num(C().a.sp)*spCostMul()/useSec();
 const spNeedPerSec=()=>isSF()?sgUpkeep()+defSP()+hsFullSP()*hsSustain():skillSPPerSec()+defSP();
-// SP back per second: natural regen (stops when you're overweight) plus SP from cards (cardSPPerSec), which keeps going
-const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8)+cardSPPerSec();
+// SP back per second: natural regen and Increase SP Recovery (stop when you're overweight) plus SP from cards and consumables, which keep going
+const regenPerSec=()=>(REGEN_OFF?0:spRegen8()/8+isrPer10()/10)+cardSPPerSec()+consSPPerSec();
 // items per second when auto SP items are on (covers the gap); otherwise you rest, which stretches fight time
-// the SP item is the one picked in Recovery items (spItemAmt: SP it restores, spItemPrice: what it costs)
+// the SP item is the one picked in Consumables (spItemAmt: SP it restores, spItemPrice: what it costs)
 const itemsPerSec=()=>isSF()?sgItemsPerSec():C().autoSp&&spItemAmt()>0?Math.max(0,spNeedPerSec()-regenPerSec())/spItemAmt():0;
 const restFactor=()=>{if(isSF())return 1;if(C().autoSp&&spItemAmt()>0)return 1;const need=spNeedPerSec(),r=regenPerSec();return need>r&&r>0?need/r:need>0&&r<=0?Infinity:1};
 const rawFight=m=>{const u=usesPerKill(m);return isFinite(u)?u*useSec()/targets():Infinity};
@@ -161,7 +178,7 @@ const defParts=()=>{const p=String(cf("defTxt")||"0").split("+").map(x=>parseFlo
 // dodge = 95 + your FLEE − the monster's "95% flee" value, 0–95%
 const dodge=m=>m.flee95==null?null:Math.max(0,Math.min(95,95+sumStat(cf("fleeTxt"))-m.flee95));
 const mobHitDmg=m=>{if(m.atkMin==null)return null;const {soft,hard}=defParts();return Math.max(1,((m.atkMin+m.atkMax)/2*(4000+hard)/(4000+10*hard)-soft)*takenMul(m))};
-const hpLossPerMin=m=>{const d=defense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)):null};
+const hpLossPerMin=m=>{const d=defense(m);return d?Math.max(0,d.hp*60-num(C().hpRegen)-consHPPerSec()*60):null};
 // ---- Sage: full Spell Fist model (bolt choice, Hindsight, Double Bolt, SP items; Energy Coat from ECO(), Vitata, Hunter Fly and Side Winder from CRD()) ----
 const SAGE_D={sfLv:10,boltLv:10,bolts:{Fire:true,Water:true,Wind:true},hsOn:false,hsAuto:true,hsLv:10,hsWorth:50000,dbOn:false,dbLv:5};
 const G=()=>{const c=C();if(!c.sage)c.sage={};for(const k in SAGE_D)if(c.sage[k]==null)c.sage[k]=JSON.parse(JSON.stringify(SAGE_D[k]));return c.sage};
@@ -214,7 +231,7 @@ const hitsOnYou=m=>{if(!m||m.atkMin==null)return 0;const dg=dodge(m);return Math
 function defense(m){
   const raw=mobHitDmg(m);if(raw==null)return null;const hits=hitsOnYou(m);
   const sf=isSF(),max=num(cf("maxSp")),ec=ecOn(),regen=regenPerSec(),up=sf?sgUpkeep():skillSPPerSec(),hs=sf?hsFullSP():0,spMul=sf?sgSpMult():spCostMul();
-  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),cd=CRD(),healSP=cd.vitata&&num(cd.healHp)>0?hp/num(cd.healHp)*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
+  const band=i=>{const red=ec?EC_BANDS[i][0]:0,ecSP=ec?hits*EC_BANDS[i][1]/100*max:0,taken=raw*(1-red/100)*hits,hp=Math.max(0,taken-hfHpPerSec()),cd=CRD(),healSP=cd.vitata&&healHpEff()>0?hp/healHpEff()*num(cd.healSp)*spMul:0;return {i,red,ecSP,healSP,hp,taken,label:ec?EC_BANDS[i][2]:""}};
   const cost=b=>up+b.ecSP+b.healSP;
   let b=null;for(let i=0;i<5;i++){const x=band(i);if(cost(x)+hs<=regen){b=x;break}}
   if(!b){const p=num(ECO().spPct,50);b=itemsOnNow()?band(p>80?0:p>60?1:p>40?2:p>20?3:4):band(4)}
@@ -224,7 +241,9 @@ function defense(m){
 // or an attack's worth of time if that's longer) is time you aren't attacking. healShare is that share of your time; at 100% you can't keep up
 const HEAL_DELAY=0.3;
 const healSec=()=>Math.max(HEAL_DELAY,1/atkPerSec());
-const healsPerSec=m=>{const cd=CRD();if(!cd.vitata||!(num(cd.healHp)>0))return 0;const hp=(defense(m)||{}).hp;return hp>0?hp/num(cd.healHp):0};
+// HP one Vitata Heal gives you: the box, + "Heal received +x%" from consumables (Ale's Blessing)
+const healHpEff=()=>num(CRD().healHp)*(1+consSum("heal_pct")/100);
+const healsPerSec=m=>{const cd=CRD();if(!cd.vitata||!(healHpEff()>0))return 0;const hp=(defense(m)||{}).hp;return hp>0?hp/healHpEff():0};
 const healShare=m=>healsPerSec(m)*healSec();
 let SG_MOB=null; // monster the SP balance is worked out against
 const defSP=()=>{const m=SG_MOB||calcMob();const d=m?defense(m):null;return d?d.extra:0};
@@ -265,8 +284,10 @@ function useItems(a=C().a){const out=[],add=(name,qty)=>{const id=CONS_ID[name];
   (a.consumes||[]).forEach(x=>add(x.item,num(x.qty,1)));if(usesArrows(a))add(ARROW_OF[atkEl()]||"Arrow",a.type==="auto"?1:num(a.arrows));return out}
 // zeny one use costs: its zeny (Mammonite) plus the items it uses up
 const useZeny=()=>num(C().a.zeny)+useItems().reduce((t,x)=>t+x.qty*consPrice(x.id),0);
-// support casts (traps, Stone Curse, Bomb: SUPPORT in game.js) for this job, and the items they take per kill at the casts per kill you typed
+// support casts (traps, Stone Curse, Bomb: SUPPORT in game.js) for this job, and the items they take per kill at the casts per kill you typed.
+// supShown: the ones to offer; with a skill tree only learned skills (or ones you already typed casts for)
 const supOf=()=>SUPPORT.filter(s=>s.jobs.includes(state.job));
+const supShown=()=>{const c=C();return supOf().filter(s=>!hasTree(c)||skLv(c,s.sk||s.key)>0||supCasts(s.key)>0)};
 const supCasts=k=>Math.max(0,num((C().supCasts||{})[k]));
 const supItemsKill=()=>supOf().flatMap(s=>s.items.map(([n,q])=>({id:CONS_ID[n],qty:q*supCasts(s.key)}))).filter(x=>x.id&&x.qty>0);
 // zeny skills cost per kill: zeny per use × uses per kill, shared across monsters hit, plus support casts
@@ -283,29 +304,26 @@ function useHour(m,w){const r=mobRow(m,w);if(!r||!isFinite(r.tot)||!(r.tot>0))re
 const fieldBuffs=()=>{const c=C();return Object.keys(FIELD_ITEM).filter(k=>(c.buffs||{})[k]&&skLv(c,k)>0).map(k=>({k,id:CONS_ID[FIELD_ITEM[k]],perHr:60/skLv(c,k)}))};
 const fieldCostHr=()=>fieldBuffs().reduce((t,f)=>t+f.perHr*consPrice(f.id),0);
 // ---- recovery items (data/recovery.js): HP and SP items priced per HP / SP ----
-// per character (chars.<Job>.recovery): the HP and SP item you use ("auto" = the cheapest per HP / SP that has a price; SP "custom" = the restores / costs
-// boxes), Scale by stats with the stats the values were measured on (refStats), and your own min / max / weight / prices per item (overrides).
+// per character (chars.<Job>.recovery): the HP and SP item you use ("auto" = the cheapest per HP / SP that has a price; "none" = no item;
+// SP "custom" = the restores / costs boxes) and your own min / max / weight / prices per item (overrides).
 // Per account (state.recovery.discount, on by default): buy at the Discount price, since a Merchant on the account can buy for the others
-const REC_D={hpItem:"auto",spItem:"auto",scaleByStats:false,refStats:{},overrides:{}};
+const REC_D={hpItem:"auto",spItem:"auto",overrides:{}};
 const REC=()=>{const c=C();if(!c.recovery||typeof c.recovery!=="object")c.recovery={};const r=c.recovery;for(const k in REC_D)if(r[k]==null||typeof r[k]!==typeof REC_D[k])r[k]=JSON.parse(JSON.stringify(REC_D[k]));return r};
 const recDisc=()=>!state.recovery||state.recovery.discount!==false;
 const REC_IDS=Object.keys(RECOVERY);
-// Scale by stats (off by default, as Zero's values don't follow classic RO): × (100 + VIT × 2 for HP, or INT × 2 + Increase SP Recovery Lv × 10 for SP,
-// + Potion Research (Learning Potion) Lv × 5) / 100, relative to the same worked out for the stats the values were measured on (blank counts as 0)
-const recFactor=(kind,s)=>(100+(kind==="hp"?2*num(s.vit):2*num(s.int)+10*num(s.isr))+5*num(s.lp))/100;
-const recStatsNow=()=>{const c=C();return {vit:statVal(c,"vit")||0,int:statVal(c,"int")||0,isr:skLv(c,"increase-sp-recovery"),lp:skLv(c,"potion-research")}};
-const recScale=kind=>REC().scaleByStats?recFactor(kind,recStatsNow())/recFactor(kind,REC().refStats):1;
-// one item with your changes: avg restored (min and max averaged, then scaled), the price used (Discount or NPC price, else the player price; null = n/a),
+// HP / SP items restore more with a consumable such as Ale's Blessing (+20%)
+const recMul=()=>1+consSum("rec_item_pct")/100;
+// one item with your changes: avg restored (min and max averaged, × recMul), the price used (Discount or NPC price, else the player price; null = n/a),
 // zeny per HP / SP and HP / SP per weight
 function recItem(id){const b=RECOVERY[id];if(!b)return null;const o=REC().overrides[id]||{},v=k=>o[k]!=null?o[k]:b[k];
-  const min=num(v("min")),max=Math.max(min,num(v("max"))),scale=recScale(b.kind),avg=(min+max)/2*scale,w=num(v("w")),npc=v("npc"),disc=v("disc"),player=v("player");
+  const min=num(v("min")),max=Math.max(min,num(v("max"))),avg=(min+max)/2*recMul(),w=num(v("w")),npc=v("npc"),disc=v("disc"),player=v("player");
   const src=npc!=null?(recDisc()&&disc!=null?"disc":"npc"):player!=null?"player":null,price=src?{disc,npc,player}[src]:null;
-  return {id,name:b.name,kind:b.kind,min,max,scale,avg,w,wOk:b.wOk!==false,npc,disc,player,src,price,per:price!=null&&avg>0?price/avg:null,perW:w>0?avg/w:null,edited:Object.keys(o).length>0}}
+  return {id,name:b.name,kind:b.kind,min,max,avg,w,wOk:b.wOk!==false,npc,disc,player,src,price,per:price!=null&&avg>0?price/avg:null,perW:w>0?avg/w:null,edited:Object.keys(o).length>0}}
 const recItems=kind=>REC_IDS.filter(id=>!kind||RECOVERY[id].kind===kind).map(recItem);
 const recCheapest=kind=>recItems(kind).filter(x=>x.per!=null).sort((a,b)=>a.per-b.per)[0]||null;
-// the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price)
-function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];
-  if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
+// the item in use: the one you picked when it has a price, else the cheapest (auto, with want = a picked item that has no price); null with "none"
+function recPick(kind){const k=REC()[kind==="hp"?"hpItem":"spItem"];if(k==="none")return null;
+  if(kind==="sp"&&k==="custom"){const c=C(),avg=num(c.itemSp)*recMul(),price=num(c.itemPrice)*discMul();return {id:"custom",name:"Custom SP item",kind,avg,price,per:avg>0?price/avg:null,custom:true}}
   const it=RECOVERY[k]&&RECOVERY[k].kind===kind?recItem(k):null;if(it&&it.per!=null)return it;const ch=recCheapest(kind);return ch?{...ch,auto:true,want:it}:null}
 const spItemAmt=()=>{const p=recPick("sp");return p?num(p.avg):0};
 const spItemPrice=()=>{const p=recPick("sp");return p?num(p.price):0};
