@@ -17,6 +17,18 @@ JOBS = ["Novice", "Swordsman", "Mage", "Archer", "Acolyte", "Merchant", "Thief",
 sys.setrecursionlimit(10000)
 # values roz.prontera.info is missing, from the official client (skillinfoz/skilldelaylist.lub): only fill in what it leaves blank
 CLIENT_FIX = {"falcon-assault": {"cooldown_ms": 500}}
+# Zero Global skill ratios that differ from roz.prontera.info (kRO Zero): slug -> (prontera's max-level damage %, % to add at every level);
+# applied only while prontera still shows its own value. Sonic Blow is 100% lower on Global (1100% at Lv10, not 1200%)
+GLOBAL_PCT = {"sonic-blow": (1200, -100)}
+
+
+def global_pct(slug, lv, f):
+    fix = GLOBAL_PCT.get(slug)
+    if not fix or not lv or lv[-1][1] != fix[0]:
+        return lv, f
+    d = fix[1]
+    lv = [[r[0], r[1] + d, *r[2:7], r[7].replace(f"ATK {r[1]}%", f"ATK {r[1] + d}%")] if r[1] is not None else r for r in lv]
+    return lv, f and re.sub(r"^(\d+)", lambda m: str(int(m.group(1)) + d), f)
 # gear checked against the official client's item descriptions (System/iteminfo_enUS.lub):
 # every option on these items is listed under "GvG-only options" / "Additional options in Siege areas", but roz.prontera.info
 # only flags the first line as GvG-only (e.g. Guild Fist's "Guillotine Fist fixed cast -30% in Siege" read as -30% for every skill)
@@ -224,9 +236,10 @@ def main():
                 lv = [[L.get("sp_cost") or 0, L.get("damage_ratio_percent"), L.get("hit_count"), L.get("cast_variable_ms"), L.get("cast_fixed_ms"),
                        L.get("after_cast_delay_ms"), L.get("cooldown_ms") if L.get("cooldown_ms") is not None else CLIENT_FIX.get(sk["slug"], {}).get("cooldown_ms"), L.get("description_text") or ""]
                       for L in sorted(sk["levels"], key=lambda L: L["level"])]
+                lv, f = global_pct(sk["slug"], lv, sk.get("damage_formula_expression"))
                 row = {"slug": sk["slug"], "name": sk["name"], "max": sk["max_level"], "slot": sk["tree_slot"], "passive": sk["passive"] == "passive",
                        "el": sk.get("element"), "pre": [[slug_of.get(p["skill_id"], p["skill_id"]), p["level"]] for p in sk.get("prerequisites") or []],
-                       "f": sk.get("damage_formula_expression"), "lv": lv, "g": groups(sk.get("bonus_groups")), "free": True if sk.get("free") else None}
+                       "f": f, "lv": lv, "g": groups(sk.get("bonus_groups")), "free": True if sk.get("free") else None}
                 rows.append({k: x for k, x in row.items() if x not in (None, [], "")})
             trees.append({"job": t["job_class"]["name"], "points": t.get("skill_points"), "skills": rows})
         skills[j] = trees
