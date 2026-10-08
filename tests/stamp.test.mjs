@@ -1,14 +1,19 @@
-// index.html loads each script and stylesheet as file?v=<its content hash>, so a deploy never mixes a new page with old cached files.
-// Run: node tests/stamp.test.mjs  (if it fails, run node tools/stamp.mjs)
+// The committed index.html carries no ?v= stamps (they conflicted in nearly every PR); the Pages deploy adds them with
+// tools/stamp.mjs, giving each script and stylesheet its content hash so a deploy never mixes a new page with old cached files.
+// Run: node tests/stamp.test.mjs
 import { readFileSync } from "fs";
 import assert from "assert/strict";
-import { stamp, hashOf } from "../tools/stamp.mjs";
+import { stamp, hashOf, localFiles } from "../tools/stamp.mjs";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-const local = [...html.matchAll(/<(?:script|link)\b[^>]*?\b(?:src|href)="(?![a-z]+:|\/\/|#)([^"]+)"/g)].map(m => m[1]);
+const local = localFiles(html);
 assert.ok(local.length > 20, `only ${local.length} local files found`);
-for (const u of local) assert.match(u, /\?v=[0-9a-f]{10}$/, `${u} has no ?v= stamp: run node tools/stamp.mjs`);
-assert.equal(stamp(html), html, "index.html stamps are stale: run node tools/stamp.mjs");
+for (const u of local) assert.doesNotMatch(u, /\?/, `${u} carries a query: leave the stamps to the deploy`);
+assert.doesNotMatch(html.replace(/<!--[\s\S]*?-->/g, ""), /\?v=/, "index.html has a ?v= stamp: leave the stamps to the deploy");
+// every local file exists (hashOf reads it) and gets its own hash in the deployed page
+const out = stamp(html);
+for (const u of local) assert.ok(out.includes(`"${u}?v=${hashOf(u)}"`), `${u} not stamped`);
+assert.equal(stamp(out), out, "stamping is stable");
 assert.notEqual(hashOf("js/events.js"), hashOf("js/state.js"));
-console.log(`ok ${local.length} files stamped with their current hash`);
+console.log(`ok ${local.length} files unstamped in index.html and stamped with their hash on deploy`);
 console.log("1 tests passed");

@@ -4,7 +4,7 @@
 
 The page is plain HTML, CSS and JavaScript with no dependencies. Open `index.html` directly or serve the folder.
 
-**After changing any script, stylesheet or data file, run `node tools/stamp.mjs`.** It sets each `?v=` in `index.html` to that file's content hash, so after a deploy a browser never runs the new page with an old cached file. `tests/stamp.test.mjs` fails while a stamp is out of date.
+**Don't put `?v=` stamps in `index.html`.** The Pages deploy (`.github/workflows/pages.yml`) runs `node tools/stamp.mjs`, which gives each script and stylesheet a `?v=` of its content hash, so after a deploy a browser never runs the new page with an old cached file. Keeping the hashes out of the repo means PRs don't conflict over them. `tests/stamp.test.mjs` fails if a stamp is committed.
 
 ## Project layout
 
@@ -15,7 +15,7 @@ The page is plain HTML, CSS and JavaScript with no dependencies. Open `index.htm
 | `build.js` | Build simulator: turns base stats, job level, gear, refine and cards into the status window's ATK/MATK/HIT/FLEE/ASPD/DEF/HP/SP. |
 | `js/` | Calculator and tracker code (see below). |
 | `data/` | Game data tables, one per file (see below). |
-| `tools/` | Python scripts that export and cross-check the data, and `stamp.mjs` for the file stamps in `index.html`. |
+| `tools/` | Python scripts that export and cross-check the data, and `stamp.mjs`, which builds the deployed site with each file stamped. |
 | `tests/` | Node tests. |
 
 ### `js/`
@@ -81,7 +81,7 @@ Notes on `export_prontera.py`:
 node tests/build.test.mjs    # build simulator
 node tests/ingame.test.mjs   # real characters against their in-game status window
 node tests/model.test.mjs    # damage and tracker maths, loaded with a stand-in page
-node tests/stamp.test.mjs    # every file in index.html carries its current ?v= hash
+node tests/stamp.test.mjs    # index.html carries no ?v= stamps, and the deploy stamps every file
 ```
 
-`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time, the monster table filters and recovery item costs. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`).
+`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time, the monster table filters and recovery item costs. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`). Each push to `main` also deploys the page (`.github/workflows/pages.yml`).
