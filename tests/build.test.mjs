@@ -28,8 +28,8 @@ Object.assign(globalThis, {
             armor: Array.from({ length: 20 }, (_, i) => [0, 0, (i + 1) ** 2]) },
   JOBDATA: { Knight: { bonus: { str: [1, 6], vit: [5] }, hp: [40, 48, 58], sp: [10, 12, 14] } },
 });
-// the real affix list (rozerodb), as the page loads it before build.js
-(0, eval)(readFileSync(new URL("../data/affixes.js", import.meta.url), "utf8").replace(/^const (\w+)=/gm, "globalThis.$1="));
+// the real affix list (rozerodb) and costume enchant stones, as the page loads them before build.js
+for (const f of ["affixes", "stones"]) (0, eval)(readFileSync(new URL(`../data/${f}.js`, import.meta.url), "utf8").replace(/^const (\w+)=/gm, "globalThis.$1="));
 const BUILD = require("../build.js");
 const aspdBase = () => 150;
 const base = { str: 50, agi: 30, vit: 20, int: 1, dex: 30, luk: 10 };
@@ -206,6 +206,31 @@ t("random options come from rozerodb's affixes, filtered to what the row's gear 
   assert.equal(r.acc.taken.ele.Water, -6);
   assert.equal(r.acc.spCost, -4);
   assert.equal(r.acc.myEle.Fire, 3);                                          // a key from the hand-made list still counts
+});
+
+t("costume enchant stones: one per slot, plus the sets they complete", () => {
+  const run = stones => BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {}, stones }, "Knight", aspdBase);
+  const none = run({});
+  // three Critical Stones: 3 + 3 + 3 and the 3-piece +6%; the Garment one adds 20% and the 4-piece CRIT +10
+  const c3 = run({ upper: 25304, middle: 25060, lower: 25305 }), c4 = run({ upper: 25304, middle: 25060, lower: 25305, garment: 25303 });
+  assert.equal(c3.acc.critDmg - none.acc.critDmg, 15);
+  assert.equal(c4.acc.critDmg - none.acc.critDmg, 35);
+  assert.equal(c4.acc.crit - none.acc.crit, 10);
+  assert.equal(c3.acc.crit, none.acc.crit);
+  // Variable Casting: −3 × 3 and the set's −6
+  assert.equal(run({ upper: 25172, middle: 25173, lower: 25174 }).acc.vct, 15);
+  // an Exchange pair gives back what each one takes: STR +6, INT and DEX unchanged
+  const ex = run({ middle: 25003, lower: 25012 }).acc.st;
+  assert.deepEqual([ex.str, ex.int, ex.dex], [6, 0, 0]);
+  assert.deepEqual([run({ lower: 25012 }).acc.st.str, run({ lower: 25012 }).acc.st.dex], [3, -3]);
+  // DEF (Middle) + MDEF (Lower): HIT and FLEE +5
+  const dm = run({ middle: 25001, lower: 25014 });
+  assert.deepEqual([dm.acc.def, dm.acc.mdef, dm.acc.hit, dm.acc.flee], [20, 4, 5, 5]);
+  // a stone only counts in its own slot; effects the model can't use are listed
+  assert.equal(run({ middle: 6636 }).acc.st.str, 0);
+  assert.ok(run({ garment: 25302 }).unmodelled.includes("Double Attack Stone (Garment): Double Attack Lv 3 with any weapon"));
+  assert.ok(BUILD.STONE_SLOTS.every(z => STONES.some(x => x.slot === z.k)));
+  assert.ok(STONE_SETS.every(z => z.need.every(i => BUILD.stone(i))));
 });
 
 t("a refined accessory counts its own refine lines, with no armor DEF schedule", () => {

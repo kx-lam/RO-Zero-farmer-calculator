@@ -56,6 +56,7 @@ Each table lives in its own file, so a re-export after a patch only touches that
 | `exp.js` | EXP tables |
 | `equipment.js`, `cards.js`, `refine.js`, `jobs.js`, `skills.js` | Gear, refine, job and skill data for the build simulator. Written by `tools/export_prontera.py`. |
 | `affixes.js` | Random options per pool (monster drop, MVP, forging, activation, Glast Heim), gear type and option slot, with min–max and whether it's a %. Written by `tools/export_affixes.py`. |
+| `stones.js` | Costume enchant stones (one per costume slot) as bonus lines, and the stone sets. Made by hand from rozerodb's item descriptions. |
 
 ## Tools
 

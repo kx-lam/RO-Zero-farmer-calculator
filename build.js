@@ -193,6 +193,10 @@ const BUILD=(()=>{
   function optLines(opts){if(!Array.isArray(opts))return {...parseOptions(opts),off:[]};const lines=[],off=[];
     optRows(opts).filter(x=>+x.v).forEach(x=>{const o=OPT_BY[x.k];if(o.line)lines.push([...o.line,o.neg?-x.v:+x.v]);else off.push(`${o.label.replace(/ %$/,"")} ${x.v}${o.pct?"%":""}`)});
     return {lines,bad:[],off}}
+  // costume enchant stones: one per costume slot, each only in its own slot
+  const STONE_SLOTS=[{k:"upper",label:"Upper"},{k:"middle",label:"Middle"},{k:"lower",label:"Lower"},{k:"garment",label:"Garment"}];
+  const stone=id=>(typeof STONES!=="undefined"?STONES:[]).find(x=>x.id===+id)||null;
+  const stonesWorn=sel=>STONE_SLOTS.map(z=>stone((sel||{})[z.k])).filter((x,i)=>x&&x.slot===STONE_SLOTS[i].k);
   // does a bonus group apply? r: item refine, rs: combined refine of a set, lv: base level, cls: job slugs
   // ("Acolyte Class" in game covers Priest and Monk, so a 2nd job also matches its 1st job)
   const groupOn=(g,ctx)=>(g.r==null||ctx.refine>=g.r)&&(g.rs==null||ctx.refineSum>=g.rs)&&(g.lv==null||ctx.baseLv>=g.lv)&&(!g.cls||!g.cls.length||g.cls.includes(ctx.jobSlug)||g.cls.includes(ctx.firstSlug));
@@ -214,6 +218,9 @@ const BUILD=(()=>{
       if(s.k==="shield"){if((it.slot||[]).includes("weapon"))wpnL=it;else shield=true}gearMatk+=it.matk||0;gearDef+=it.def||0;gearMdef+=it.mdef||0;refDef+=rd});
     worn.forEach(w=>{const ctx={...ctxBase,refine:w.r};applyGroups(A,w.it.g,ctx,w.it.name);w.cards.forEach(c=>applyGroups(A,c.g,ctx,c.name));
       const o=optLines((gear[w.slot]||{}).opts);o.lines.forEach(b=>apply(A,b,w.it.name+" option"));o.bad.forEach(x=>A.unmodelled.push(`${w.it.name} option not understood: ${x}`));o.off.forEach(x=>A.unmodelled.push(`${w.it.name} option not counted: ${x}`))});
+    // costume enchant stones (data/stones.js): b.stones = {upper, middle, lower, garment} -> stone id, plus the sets they complete
+    const st=stonesWorn(b.stones);st.forEach(x=>{(x.b||[]).forEach(l=>apply(A,l,x.name));if(x.off)A.unmodelled.push(`${x.name}: ${x.off}`)});
+    const ids=st.map(x=>x.id);(typeof STONE_SETS!=="undefined"?STONE_SETS:[]).forEach(z=>{if(z.need.every(i=>ids.includes(i)))z.b.forEach(l=>apply(A,l,z.name))});
     // consumables and buffs picked on the Character tab: plain bonus lines on top of the gear
     (b.extra||[]).forEach(x=>apply(A,x,"consumable"));
     // sets: every piece worn; "combined refine" sums the pieces' refines
@@ -242,5 +249,5 @@ const BUILD=(()=>{
       lw:dual?lw:"",lwAtk:dual?f(((wpnL.atk||0)+refineAt(wpnL,(gear.shield||{}).refine)[0])*(1+A.atkPct/100)):0,lwElem:dual&&wpnL.el?cap(wpnL.el):"Neutral"};
     return {fields,acc:A,shield,jobBonus:jb,total:tot,status:S,worn:worn.map(w=>({name:w.it.name,slot:w.slot,refine:w.r,cards:w.cards.map(c=>c.name)})),unmodelled:A.unmodelled}}
 
-  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines,optGear,optChoices}})();
+  return {SLOTS,CARD_FOR,WTYPE,STAT6,FIRST_OF,SHIELD_ASPD,DUAL_W,LEFT_ASPD,dualOk,item,jobBonus,refineAt,status,compute,curve,parseOptions,OPTIONS,OPT_MAX,optRows,optLines,optGear,optChoices,STONE_SLOTS,stone,stonesWorn}})();
 if(typeof module!=="undefined")module.exports=BUILD;

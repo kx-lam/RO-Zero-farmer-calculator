@@ -220,6 +220,15 @@ function optBoxes(slot,g,it){const ch=BUILD.optChoices(slot,it),gk=BUILD.optGear
   const one=(x,i)=>{const o=x&&ch.find(c=>c.k===x.k),saved=x&&!o?BUILD.OPTIONS.find(c=>c.k===x.k):null,r=o&&o.range;
     return `<div class="opt"><select data-opt="${i}"><option value="">${x?"remove":"+ option"}</option>${saved?`<optgroup label="Saved"><option value="${saved.k}">${esc(saved.label)}</option></optgroup>`:""}${list}</select>${x?`<input data-optv="${i}" type="number" step="any"${r?` min="${r[0]}" max="${r[1]}" placeholder="${r[0]}–${r[1]}" title="${esc(o.label)}: ${r[0]}–${r[1]}"`:""} value="${esc(x.v??"")}">`:""}</div>`};
   return `<div class="opts">${rows.map(one).join("")}${rows.length<BUILD.OPT_MAX?one(null,rows.length):""}</div>`}
+// costume enchant stones: a list per costume slot, each stone with what it gives
+const STONE_FX={str:"STR",agi:"AGI",vit:"VIT",int:"INT",dex:"DEX",luk:"LUK",crit:"CRIT",hit:"HIT",flee:"FLEE",def:"DEF",mdef:"MDEF",hp:"MaxHP",sp:"MaxSP",aspd:"ASPD",
+  atk_percent:"ATK %",matk_percent:"MATK %",hp_percent:"MaxHP %",sp_percent:"MaxSP %",crit_damage_percent:"Critical damage %",cast_time_variable_percent:"Variable cast %"};
+const stoneFx=x=>x.off||x.b.map(([t,k,g,v])=>{const l=k==="size"?`Damage vs ${g} %`:STONE_FX[t]||t,pc=/ %$/.test(l);return `${l.replace(/ %$/,"")} ${v>0?"+":""}${v}${pc?"%":""}`}).join(", ");
+function renderStones(){const sel=buildOf(C()).stones||{},all=typeof STONES!=="undefined"?STONES:[];
+  $("stoneRow").innerHTML=BUILD.STONE_SLOTS.map(z=>`<label>${z.label}<select data-stone="${z.k}"><option value="">none</option>${all.filter(x=>x.slot===z.k)
+    .map(x=>`<option value="${x.id}"${+sel[z.k]===x.id?" selected":""}>${esc(x.name.replace(/ \((Upper|Middle|Lower|Garment)\)$/,""))}: ${esc(stoneFx(x))}</option>`).join("")}</select></label>`).join("")}
+$("stoneRow").addEventListener("change",e=>{const k=e.target.dataset.stone;if(!k)return;const b=buildOf(C());b.stones=b.stones||{};
+  if(e.target.value)b.stones[k]=+e.target.value;else delete b.stones[k];save();renderAll()});
 function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
   const rows=BUILD.SLOTS.map(s=>{const g0=b.gear[s.k]||{},items=gearChoices(s.k),cards=cardChoices(s.k,g0.id&&BUILD.item(g0.id));GEAR_LISTS["g_"+s.k]=pickList(items);GEAR_LISTS["c_"+s.k]=pickList(cards);
     lists+=`<datalist id="gl_${s.k}">${[...GEAR_LISTS["g_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist><datalist id="cl_${s.k}">${[...GEAR_LISTS["c_"+s.k].keys()].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`;
@@ -229,7 +238,7 @@ function renderGearTable(){const c=C(),b=buildOf(c);GEAR_LISTS={};let lists="";
     return `<tr data-slot="${s.k}"><td>${s.k==="shield"&&state.job==="Assassin"?"Shield / left hand":s.label}</td><td><input class="item" list="gl_${s.k}" placeholder="${items.length?"none":"no items for this job"}" value="${esc(it?labelOf(it,items):"")}"></td>
       <td>${refinable?`<input class="ref" type="number" min="0" max="20" value="${num(g.refine)}">`:""}</td><td><div class="cards">${cardBoxes}</div></td>
       <td>${it?optBoxes(s.k,g,it):""}</td></tr>`}).join("");
-  $("gearTable").tBodies[0].innerHTML=rows;$("gearLists").innerHTML=lists;
+  $("gearTable").tBodies[0].innerHTML=rows;$("gearLists").innerHTML=lists;renderStones();
   BUILD.SLOTS.forEach(s=>{const g=b.gear[s.k];if(g)BUILD.optRows(g.opts).forEach((x,i)=>{const el=$("gearTable").querySelector(`tr[data-slot="${s.k}"] [data-opt="${i}"]`);if(el)el.value=x.k})})}
 function renderBuild(){const c=C(),on=c.mode==="build";
   if(on&&renderBuild.job!==state.job){renderBuild.job=state.job;renderGearTable()}if(!on)renderBuild.job=null;

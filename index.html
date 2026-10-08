@@ -93,6 +93,8 @@
       <div class="note" id="jobBonusNote"></div>
       <div class="scroll"><table id="gearTable"><thead><tr><th>Slot</th><th>Item</th><th>Refine</th><th>Cards</th><th>Random options</th></tr></thead><tbody></tbody></table></div>
       <div id="gearLists"></div>
+      <div class="note" style="margin-top:6px" title="One stone per costume slot, from the Costume Enchanter (Prontera Cash Room). Stones that complete a set add its bonus too">Costume enchant stones:</div>
+      <div class="form" id="stoneRow" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
       <details class="note">
         <summary>Check against the game</summary>
         <div style="margin:6px 0">Type totals from your status window (ATK/DEF: both parts added; FLEE without "+N"). ✓ = match; a number = how far off. Max HP/SP here replace the computed ones.</div>
@@ -572,6 +574,7 @@
 <script src="data/recovery.js"></script>
 <script src="data/skills.js"></script>
 <script src="data/affixes.js"></script>
+<script src="data/stones.js"></script>
 <script src="build.js"></script>
 <!-- app code, split by section; these run in order and share one global scope (plain scripts, so the page still opens from file://) -->
 <script src="js/game.js"></script>
