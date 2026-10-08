@@ -31,7 +31,6 @@ Any job, Mages included, can add a spell from a card, weapon or scroll that proc
 ## Cards any job can slot
 
 - **Vitata:** SP cost +25%, and the Heal Lv1 you cast costs SP and time you aren't attacking. In build mode a Vitata Card in your gear already counts its SP cost.
-- **Hunter Fly:** HP back from physical attacks, so less HP lost per minute.
 - **Side Winder:** basic attacks hit twice some of the time, right hand only. With Double Attack learned the card adds nothing.
 - **Creamy:** Teleport Lv1, so the Zeny Hunter can teleport past monsters you skip. Its 10 SP a cast isn't counted.
 - **Phen / Bloody Butterfly:** casts can't be interrupted, variable cast +25% / +30%. Build mode reads them from your gear.
@@ -44,13 +43,19 @@ A hit that lands while you cast interrupts it and you start again, so with λ hi
 
 Left blank, SP regen per 8 s is worked out: 1 + Max SP/100 + INT/6, plus more from INT 120, raised by SP Recovery +% gear. Increase SP Recovery from your Skills card adds Lv × (3 + 0.2% of Max SP) every 10 s on top, and consumables that restore SP over time add theirs, so type only the natural tick if you type one. Natural regen and Increase SP Recovery stop at 70% weight.
 
+## HP back from cards
+
+- **Hunter Fly:** physical attacks have a chance to restore HP every second for 5 s, so less HP lost per minute.
+
+HP Recovery +x% cards (Muka, Zombie, Wooden Golem, Merman) raise natural HP regen; they aren't modelled, so count them in "HP back per minute".
+
 ## SP back from cards
 
 - **Dracula:** attacks have a chance to restore SP every second for 7 s.
 - **Dark Priest:** a Sage gets 1 SP per physical hit that lands.
 - **+5 SP per kill weapon cards** (Beetle King, Caterpillar, Driller, Nereid, Phendark, Tri-Joint, Zombie Master): when a melee physical attack kills that race, spread over the fight; not with Spell Fist.
 
-Card SP keeps coming when you're overweight, unlike natural regen. "SP Recovery +x%" (Eggyra, Sohee, Merman) raises natural SP regen: build mode reads it from your gear, and in Status window mode you add an "SP recovery" line under Equipment stats. HP Recovery +x% cards aren't modelled; count them in "HP back per minute".
+Card SP keeps coming when you're overweight, unlike natural regen. "SP Recovery +x%" (Eggyra, Sohee, Merman) raises natural SP regen: build mode reads it from your gear, and in Status window mode you add an "SP recovery" line under Equipment stats.
 
 ## Energy Coat (Mage, Wizard, Sage)
 
