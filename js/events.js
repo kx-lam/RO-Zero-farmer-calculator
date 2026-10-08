@@ -120,12 +120,24 @@ function pasteLine(line){const pct="(\\d+(?:\\.\\d+)?)\\s*%?(?:[^\\d\\n]*?(\\d+(
   if(m)return +m[1]>23||+m[2]>59?null:[+m[1],+m[2],+m[3],m[4]!=null?+m[4]:null];
   if(/\d:\d/.test(line))return null;m=line.match(new RegExp("^[^\\d\\n]*?"+pct));return m?[null,null,+m[1],m[2]!=null?+m[2]:null]:null}
 function guessLevel(s,t,lv,p){const prev=[...s.entries].filter(e=>e.t<t).sort((a,b)=>b.t-a.t)[0];return prev&&prev.lv===lv&&prev.pct-p>=50?lv+1:lv}
-$("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const [h,m]=($("fTime").dataset.auto==="1"?nowTime():$("fTime").value||nowTime()).split(":").map(Number);const t=entryTime(h,m,pickedDay());
+// the time the form logs at: the clock, or the date and time you typed
+function formTime(){const [h,m]=($("fTime").dataset.auto==="1"?nowTime():$("fTime").value||nowTime()).split(":").map(Number);return entryTime(h,m,pickedDay())}
+$("addForm").addEventListener("submit",e=>{e.preventDefault();const s=cur();const t=formTime();
   s.entries=s.entries.filter(x=>x.t!==t);const lvIn=num($("fLevel").value,60),pIn=num($("fPct").value),lvG=guessLevel(s,t,lvIn,pIn);
   $("pasteMsg").textContent=lvG!==lvIn?`EXP % went down a lot, so this entry is saved as Lv ${lvG}.`:"";
   const ent={t,lv:lvG,pct:pIn};if($("fJob").value!==""){ent.jpct=num($("fJob").value);const pv=[...s.entries].filter(e=>e.t<t&&e.jpct!=null).sort((a,b)=>b.t-a.t)[0];if(pv&&pv.jpct-ent.jpct>=50&&num(C().jobLv))C().jobLv=Math.min(jobMax(),num(C().jobLv)+1)}s.entries.push(ent);autoResume(s,t);if(!s.job)s.job=state.job;
   if(s.job===state.job&&num(C().jobLv)>0&&s.entries.every(x=>x.t<=t))ent.jlv=num(C().jobLv);
   if(C().baseLv!==lvG&&s.entries.every(x=>x.t<=t)){const c0=C(),b0=derived(c0);c0.baseLv=lvG;shiftByStats(c0,b0)}save();renderAll();syncChar();resetForm(true);$("fPct").focus()});
+// a death costs 10% base EXP, 5% with the shop item. The EXP % box is your EXP just before dying: it goes in through the form like any entry,
+// then a second entry a second later has it less the penalty, so the EXP gained up to the death still counts
+$("dieItem").addEventListener("change",e=>{state.dieItem=e.target.checked;save();renderTracker()});
+$("dieBtn").addEventListener("click",()=>{const box=$("fPct").value,pen=diePct();
+  if(box===""){$("pasteMsg").textContent="Type your EXP % from just before you died, then press Died.";$("fPct").focus();return}
+  const s=cur(),t=formTime(),before=num(box),after=Math.max(0,Math.round((before-pen)*100)/100);$("addForm").requestSubmit();
+  const pre=s.entries.find(x=>x.t===t);if(!pre||$("fPct").value)return;
+  const ent={t:t+1000,lv:pre.lv,pct:after,died:pen};if(pre.jpct!=null)ent.jpct=pre.jpct;if(pre.jlv)ent.jlv=pre.jlv;
+  s.entries=s.entries.filter(x=>x.t!==ent.t);s.entries.push(ent);save();renderAll();
+  $("pasteMsg").textContent=`Died: logged ${before}% then ${after}% (−${pen}%).`});
 $("pasteAdd").addEventListener("click",()=>{const s=cur();let lv=num($("fLevel").value,60),n=0,ups=0;
   const [h0,m0]=nowTime().split(":").map(Number),lines=$("pasteBox").value.split(/\n/).map(pasteLine).filter(Boolean).map(([h,m,...r])=>h==null?[h0,m0,...r]:[h,m,...r]);
   const ts=pasteTimes(lines,pickedDay()),parsed=[...new Map(lines.map(([,,pct,jpct],i)=>[ts[i],{t:ts[i],pct,jpct}])).values()].sort((a,b)=>a.t-b.t);
