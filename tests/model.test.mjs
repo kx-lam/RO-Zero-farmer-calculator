@@ -878,6 +878,27 @@ t("damage against Boulder Dwarves counts only against Boulder Dwarves, from card
   setup("Knight", { mode: "status", eq: [] });
 });
 
+t("Equipment stats: Fill from gear turns the gear saved in Build from gear into lines, and the lines count like the gear", () => {
+  const own = [{ name: "Event Ring", opts: [{ k: "dmg_race_demon", v: 5 }, { k: "mdmg_race_demon", v: 5 }, { k: "res_ele_fire", v: 10 }, { k: "mele_fire", v: 4 }] }];
+  setup("Knight", { mode: "status", eq: [], build: { base: { str: 1, agi: 1, vit: 1, int: 1, dex: 1, luk: 1 }, gear: {} } });
+  assert.equal(run("gearSaved(C())"), false);
+  run(`C().build.special={ring:313627,own:${JSON.stringify(own)}}`);              // Taming Ring egg: physical damage +1%
+  assert.equal(run("gearSaved(C())"), true);
+  assert.deepEqual(JSON.parse(run("JSON.stringify(gearEqRows(C()))")), [
+    { by: "race", t: "Demon", ch: "both", v: 5 }, { by: "all", t: "", ch: "phys", v: 1 }, { by: "myEle", t: "Fire", ch: "both", v: 4 }, { by: "takenEle", t: "Fire", ch: "both", v: -10 }]);
+  // the filled lines give status window mode the same bonuses build mode reads from the gear
+  run("C().eq=gearEqRows(C());applyBuild()");
+  const fromEq = run("JSON.stringify(C().bx)");
+  run("C().mode='build';applyBuild()");
+  const bx = JSON.parse(run("JSON.stringify(C().bx)")), eq = JSON.parse(fromEq);
+  for (const k of ["phys", "magic", "myEle", "taken", "exp", "critRace", "spCost", "spRec", "hpRec"]) assert.deepEqual(eq[k], bx[k], k);
+  // CRIT vs a race: a flat line, counted against that race only
+  setup("Knight", { mode: "status", eq: [{ by: "critRace", t: "Brute", ch: "both", v: 7 }] });
+  assert.equal(run("critRace({race:'Brute'})"), 7);
+  assert.equal(run("critRace({race:'Demon'})"), 0);
+  setup("Knight", { mode: "status", eq: [] });
+});
+
 t("gear from the client check: Guild options are GvG-only, race CRIT and damage taken are in", () => {
   const g = id => run(`JSON.stringify((EQUIP.concat(CARDS).find(e=>e.id===${id})||{}).g||null)`);
   assert.equal(g(560003), "null");                     // Advanced Guild Fist: Guillotine Fist cast -30% in Siege only

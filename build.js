@@ -212,7 +212,7 @@ const BUILD=(()=>{
     (g.b||[]).forEach(b=>{const per=b[4];const k=(per?Math.floor(ctx.refine/per):1)*lk;if(k<=0)return;const bb=b.slice();bb[3]=(+b[3]||0)*k;apply(A,bb,src)})})}
 
   // ---- the whole build ----
-  // b = {baseLv, jobLv, base:{str..luk}, gear:{slot:{id, refine, cards:[ids]}}, hpBase?, spBase?}; job = "Knight"
+  // b = {baseLv, jobLv, base:{str..luk}, gear:{slot:{id, refine, cards:[ids]}}, stones?, special?, extra?, hpBase?, spBase?}; job = "Knight"
   function compute(b,job,aspdBase){
     const A=blank(),lv=Math.max(1,+b.baseLv||1),jobLv=Math.max(1,+b.jobLv||1),ctxBase={baseLv:lv,jobSlug:String(job).toLowerCase(),firstSlug:String(FIRST_OF[job]||job).toLowerCase(),refineSum:0};
     const gear=b.gear||{},worn=[];let wpn=null,wpnL=null,shield=false,weaponAtk=0,gearAtk=0,gearMatk=0,refAtk=0,refMatk=0,refDef=0,gearDef=0,gearMdef=0;
@@ -230,6 +230,9 @@ const BUILD=(()=>{
     const ids=st.map(x=>x.id);(typeof STONE_SETS!=="undefined"?STONE_SETS:[]).forEach(z=>{if(z.need.every(i=>ids.includes(i)))z.b.forEach(l=>apply(A,l,z.name))});
     // Taming Ring (Special Equipment, Accessory Right): b.special.ring = the pet egg enchant sealed in it (data/special.js)
     const egg=tamingEgg((b.special||{}).ring);if(egg){egg.b.forEach(l=>apply(A,l,`Taming Ring (${egg.name})`));if(egg.off)A.unmodelled.push(`Taming Ring (${egg.name}): ${egg.off}`)}
+    // other special equipment the lists don't have: b.special.own = [{on, name, opts:[{k, v}]}], effects picked from the affix list
+    ((b.special||{}).own||[]).forEach(x=>{if(!x||x.on===false)return;const nm=String(x.name||"").trim()||"Special equipment",o=optLines(x.opts);
+      o.lines.forEach(l=>apply(A,l,nm));o.bad.forEach(y=>A.unmodelled.push(`${nm} not understood: ${y}`));o.off.forEach(y=>A.unmodelled.push(`${nm} not counted: ${y}`))});
     // consumables and buffs picked on the Character tab: plain bonus lines on top of the gear
     (b.extra||[]).forEach(x=>apply(A,x,"consumable"));
     // sets: every piece worn; "combined refine" sums the pieces' refines

@@ -95,6 +95,8 @@
       <div id="gearLists"></div>
       <div class="note" style="margin-top:6px" title="The Special Equipment tab: one enchant stone per costume slot (Costume Enchanter, Prontera Cash Room; stones that complete a set add its bonus too) and the Taming Ring with the pet egg sealed in it">Special equipment: costume enchant stones and the Taming Ring</div>
       <div class="form" id="stoneRow" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))"></div>
+      <div id="specialOwn" class="eqlist"></div>
+      <div class="bar"><button type="button" class="small" id="specialAdd">+ Add other special equipment</button><span class="note">Special equipment the lists above don't have: name it and pick its effects from the affix list</span></div>
       <details class="note">
         <summary>Check against the game</summary>
         <div style="margin:6px 0">Type totals from your status window (ATK/DEF: both parts added; FLEE without "+N"). ✓ = match; a number = how far off. Max HP/SP here replace the computed ones.</div>
@@ -138,7 +140,8 @@
     <details class="card sub" id="eqPanel" open>
       <summary><b>Equipment stats</b> <span class="note">% lines from Equipment Stats that the status window doesn't show</span></summary>
       <div id="eqList" class="eqlist"></div>
-      <div class="bar"><button type="button" class="small" id="eqAdd">+ Add a line</button><span class="note">Skip flat lines like STR +2; your status window has them.</span></div>
+      <div class="bar"><button type="button" class="small" id="eqAdd">+ Add a line</button><button type="button" class="small" id="eqFill">Fill from gear</button><span class="note">Skip flat lines like STR +2; your status window has them. Fill from gear copies the lines of the gear you set up in Build from gear.</span></div>
+      <div class="note" id="eqFillNote"></div>
     </details>
     <details class="card" style="padding:12px 14px;gap:8px;background:var(--bg)" open>
       <summary><b>Attack details</b> <span class="note" id="atkSummary"></span></summary>
