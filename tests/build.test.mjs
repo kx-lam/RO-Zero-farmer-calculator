@@ -254,6 +254,18 @@ t("Taming Ring: the pet egg sealed in it adds its bonus", () => {
   assert.ok(TAMING_EGGS.every(x => x.b.length || x.off));
 });
 
+t("other special equipment: named rows with effects from the affix list, counted while ticked", () => {
+  const run = own => BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: {}, special: { own } }, "Knight", aspdBase);
+  const row = { name: "Event Ring", opts: [{ k: "dmg_race_demon", v: 5 }, { k: "res_ele_fire", v: 10 }, { k: "crit", v: 3 }, { k: "mdmg_ele_fire", v: 4 }] };
+  const r = run([row]), none = run([]);
+  assert.equal(r.acc.phys.race.Demon, 5);
+  assert.equal(r.acc.taken.ele.Fire, -10);                                       // resist: less damage taken
+  assert.equal(r.acc.crit - none.acc.crit, 3);
+  assert.ok(r.unmodelled.includes("Event Ring not counted: Magic Damage to Fire enemies 4%"));
+  assert.equal(run([{ ...row, on: false }]).acc.phys.race.Demon, undefined);     // unticked: not worn
+  assert.equal(run([{ opts: [{ k: "atk", v: 10 }] }]).acc.atk, 10);               // no name, still counted
+});
+
 t("a refined accessory counts its own refine lines, with no armor DEF schedule", () => {
   const r = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { acc1: { id: 7, refine: 7 } } }, "Knight", aspdBase);
   const z = BUILD.compute({ baseLv: 3, jobLv: 1, base, gear: { acc1: { id: 7, refine: 0 } } }, "Knight", aspdBase);
