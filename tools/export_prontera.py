@@ -4,7 +4,8 @@
     python tools/export_prontera.py --refresh  # refetch list, refine, job and skill pages (new items and skill changes after a patch), keep cached item pages
 
 Pages are fetched one per second and cached in tools/cache/ (gitignored). Delete a cached file to refetch it.
-Writes: data/equipment.js (EQUIP, SETS), data/cards.js (CARDS), data/refine.js (REFINE), data/jobs.js (JOBDATA), data/skills.js (SKILLS).
+Writes: data/equipment.js (EQUIP, SETS), data/cards.js (CARDS), data/refine.js (REFINE), data/skills.js (SKILLS).
+data/jobs.js (job bonus, base HP / SP) comes from tools/export_jobs.py: roz.prontera.info has the classic tables, not Zero's.
 """
 import json, os, re, sys, time, urllib.request
 
@@ -221,17 +222,6 @@ def main():
     refine = {s["key"]: [[x["bonus_atk"], x["bonus_matk"], x["bonus_def"]] for x in s["steps"]] for s in rf}
     write("refine.js", f"// Refine bonus totals at +1, +2, ... per schedule: [ATK, MATK, DEF] ({src})", f"const REFINE={js(refine)};")
 
-    jobs = {}
-    for j in JOBS:
-        d = nuxt(fetch(f"/stats/planner?class={j.lower()}", refresh))
-        p = next(v for k, v in d.items() if k.startswith("stat-planner-"))
-        if p["job_class"]["name"].lower() != j.lower():
-            print(f"  {j}: planner returned {p['job_class']['name']}, skipped", flush=True)
-            continue
-        bonus = {}
-        for b in p["job_bonuses"]:
-            bonus.setdefault(b["stat"], []).append(b["job_level"])
-        jobs[j] = {"bonus": bonus, "hp": [x["value"] for x in p["curves"]["base_hp"]], "sp": [x["value"] for x in p["curves"]["base_sp"]]}
     # skill trees: per job the planner returns Novice, 1st and 2nd job trees
     skills = {}
     for j in JOBS:
@@ -255,9 +245,7 @@ def main():
     write("skills.js", f"// Skill trees per job: Novice, 1st and 2nd job trees with points, and per skill slug, name, max level, slot (grid position),\n"
           f"// passive, free (quest skill, no points), el, pre: [[skill slug, level]], f: damage formula, lv: per level [SP, damage %, hits, variable cast ms, fixed cast ms,\n"
           f"// after-cast delay ms, cooldown ms, description], g: bonus groups ({src})", f"const SKILLS={js(skills)};")
-    write("jobs.js", f"// Per job: bonus = job levels that give +1 to each stat; hp / sp = base Max HP / SP at base level 1, 2, ... ({src})",
-          f"const JOBDATA={js(jobs)};")
-    print(f"wrote {len(equip)} equipment, {len(card_rows)} cards, {len(sets)} sets, {len(refine)} refine schedules, {len(jobs)} jobs", flush=True)
+    print(f"wrote {len(equip)} equipment, {len(card_rows)} cards, {len(sets)} sets, {len(refine)} refine schedules", flush=True)
     if skipped:  # these are missing from the data files; rerun to retry them
         print(f"WARNING: {len(skipped)} item(s) failed and were left out: {', '.join(skipped)}", flush=True)
 

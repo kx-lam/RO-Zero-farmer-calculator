@@ -962,6 +962,20 @@ t("ASPD potion and buffs from others (RO樂園攻速計算機 values)", () => {
   assert.equal(run(`SKFX.buffStat.filter(b=>["agi","dex"].includes(b[0])).reduce((a,b)=>a+b[3],0)`), 10);   // Falcon Eyes (True Sight): AGI, DEX +5
 });
 
+t("Max SP from Dance Lessons with any weapon, Max HP from Angelus", () => {
+  setup("Dancer", { atkTxt: "100+100", aspd: 160, weapon: "Bow", maxHp: 1000, maxSp: 300, st: { vit: "9", int: "11" }, intTxt: "11",
+    cons: [], pbuffs: {}, buffs: {}, skills: { "dance-lessons": 10 } });
+  const sk = () => JSON.parse(run(`SKFX=skillEffects(C());JSON.stringify({stat:SKFX.stat,mastery:SKFX.mastery})`));
+  let fx = sk();
+  assert.deepEqual(fx.stat.map(b => [b[0], b[3]]), [["sp_percent", 10]]);   // with a bow: only the Max SP % (a Dancer with no whip had it in game)
+  assert.equal(fx.mastery.length, 0);
+  run(`C().weapon="Whip"`); fx = sk();
+  assert.ok(fx.stat.some(b => b[0] === "sp_percent" && b[3] === 10) && fx.stat.some(b => b[0] === "crit") && fx.mastery.length === 1);
+  run(`C().pbuffs={angelus:{on:true,lv:10}};SKFX=skillEffects(C());applyBuild();applyConsumables()`);
+  assert.ok(run(`JSON.stringify(aspdBuffLines())`).includes('"hp",null,null,500'));   // Zero's Angelus: Max HP +50 per level
+  assert.equal(run(`cf("maxHp")`), 1500);
+});
+
 t("consumables: + and +% per main stat, old food buffs move into the table", () => {
   setup("Knight", { atkTxt: "100+300", aspd: 160, weapon: "Two-handed sword", st: { str: "50", agi: "80", vit: "1", int: "1", dex: "40", luk: "1" }, intTxt: "1",
     potOn: false, cons: [], consStat: { str: { n: 10, p: 10 } }, pbuffs: { agiFood: { on: true, lv: 7 }, dexFood: { on: false, lv: 5 } }, buffs: {}, skills: {},

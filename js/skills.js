@@ -28,11 +28,12 @@ function levelPreset(p,c){const s=presetSkill(p),a={...p};if(!s||!hasTree(c))ret
   if(p.zeny!=null){const z=String(lo[7]).match(/Zeny Cost:?\s*([\d,]+)/i);if(z)a.zeny=+z[1].replace(/,/g,"")}
   a.name=/Lv\s*\d+/.test(p.name)?p.name.replace(/Lv\s*\d+/,"Lv"+lv):`${p.name} Lv${lv}`;return {a,lv,s}}
 const refreshPreset=c=>{if(c.preset>=0){const p=JOBS[state.job].p[c.preset];if(p)c.a=levelPreset(p,c).a}};
-// passives: values come from the skill's own description at the learned level; this table only says what they need
+// passives: values come from the skill's own description at the learned level; this table only says what they need.
+// any: bonus lines that count with any weapon (Music / Dance Lessons' Max SP %, checked on a Dancer with no whip)
 const SK_PASSIVE={"sword-mastery":{w:["Dagger","One-handed sword"]},"two-handed-sword-mastery":{w:["Two-handed sword"]},"spear-mastery":{w:["One-handed spear","Two-handed spear"]},
   "mace-mastery":{w:["One-handed mace","Two-handed mace"]},"axe-mastery":{w:["One-handed axe","Two-handed axe"]},"axe-mastery-2":{w:["One-handed axe","Two-handed axe"]},
-  "katar-mastery":{w:["Katar"]},"advanced-katar-mastery":{w:["Katar"]},"iron-fists":{w:["Knuckle","Bare hands"]},"study":{w:["Book"]},"music-lessons":{w:["Musical instrument"]},
-  "dance-lessons":{w:["Whip"]},"weaponry-research":{},"demon-bane":{races:["Undead","Demon"]},"beastbane":{races:["Brute","Insect"]},"owls-eye":{},"vultures-eye":{},
+  "katar-mastery":{w:["Katar"]},"advanced-katar-mastery":{w:["Katar"]},"iron-fists":{w:["Knuckle","Bare hands"]},"study":{w:["Book"]},"music-lessons":{w:["Musical instrument"],any:["sp_percent"]},
+  "dance-lessons":{w:["Whip"],any:["sp_percent"]},"weaponry-research":{},"demon-bane":{races:["Undead","Demon"]},"beastbane":{races:["Brute","Insect"]},"owls-eye":{},"vultures-eye":{},
   "improve-dodge":{},"flee":{},"faith":{},"soul-drain":{},"meditation":{},"spiritual-thrift":{},"plagiarism":{},"hilt-binding":{}};
 // self-buffs you can switch on; added on top of the status window like consumables
 const SK_BUFF={"two-hand-quicken":{w:["Two-handed sword"]},"spear-quicken":{w:["One-handed spear","Two-handed spear"]},"adrenaline-rush":{w:["One-handed axe","Two-handed axe","One-handed mace","Two-handed mace"]},
@@ -68,7 +69,8 @@ function skillFx(desc,c){const d=String(desc||""),o={mastery:0,pct:0,spCost:0,my
   return o}
 // all effects from learned passives and switched-on buffs, for the current weapon
 function skillEffects(c){const out={mastery:[],pct:0,spCost:0,myEle:{},physEle:{},stat:[],buffStat:[]};if(!hasTree(c))return out;const S=skOf(state.job),w=c.weapon;
-  const take=(slug,cond,isBuff)=>{const s=S[slug],lv=skLv(c,slug);if(!s||lv<=0)return;if(cond.w&&!cond.w.includes(w))return;const fx=skillFx(skRow(s,lv)[7],c);
+  const take=(slug,cond,isBuff)=>{const s=S[slug],lv=skLv(c,slug);if(!s||lv<=0)return;const off=cond.w&&!cond.w.includes(w);if(off&&!cond.any)return;const fx=skillFx(skRow(s,lv)[7],c);
+    if(off){(isBuff?out.buffStat:out.stat).push(...fx.stat.filter(b=>cond.any.includes(b[0])));return}
     if(SK_ASPD[slug]){if(slug==="study")fx.stat=fx.stat.filter(b=>b[0]!=="aspd_percent");fx.stat.push(...SK_ASPD[slug](lv))}
     if(fx.mastery)out.mastery.push({v:fx.mastery,races:cond.races||null});out.pct+=fx.pct;out.spCost+=fx.spCost;for(const k in fx.myEle)out.myEle[k]=(out.myEle[k]||0)+fx.myEle[k];for(const k in fx.physEle)out.physEle[k]=(out.physEle[k]||0)+fx.physEle[k];
     (isBuff?out.buffStat:out.stat).push(...fx.stat);(s.g||[]).forEach(g=>(g.b||[]).forEach(b=>(isBuff?out.buffStat:out.stat).push(b)))};
