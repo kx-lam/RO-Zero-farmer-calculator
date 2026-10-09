@@ -54,7 +54,8 @@ Each table lives in its own file, so a re-export after a patch only touches that
 | `elem.js` | Monster element, HIT/FLEE |
 | `sizes.js` | Monster size and race |
 | `exp.js` | EXP tables |
-| `equipment.js`, `cards.js`, `refine.js`, `jobs.js`, `skills.js` | Gear, refine, job and skill data for the build simulator. Written by `tools/export_prontera.py`. |
+| `equipment.js`, `cards.js`, `refine.js`, `skills.js` | Gear, refine and skill data for the build simulator. Written by `tools/export_prontera.py`. |
+| `jobs.js` | Job bonus stats and base Max HP / SP per base level. Written by `tools/export_jobs.py`. |
 | `cardnames.js` | The name each card gives the gear it's in, as the equipment window shows it ("Healing" for Vitata Card). Written by `tools/export_cardnames.py`. |
 | `affixes.js` | Random options per pool (monster drop, MVP, forging, activation, Glast Heim), gear type and option slot, with min–max and whether it's a %. Written by `tools/export_affixes.py`. |
 | `stones.js` | Costume enchant stones (one per costume slot) as bonus lines, and the stone sets. Made by hand from rozerodb's item descriptions. |
@@ -69,7 +70,8 @@ All scripts use only the Python standard library.
 | `python tools/export_spawns.py [--client PATH]` | Rewrites `data/spawn.js` from `navi_mob.lub` in your installed client's `data.grf` (read-only). Default client path: `C:\Gravity\RagnarokZero`. |
 | `python tools/export_mapnames.py [--client PATH]` | Sets the map names in `data/maps.js` to the names your installed client shows in game (read-only). |
 | `python tools/export_prices.py [--refresh]` | Writes `data/prices.js`, `data/weights.js` and `data/itemtypes.js`, and checks the prices add up to each monster's loot value. |
-| `python tools/export_prontera.py [--refresh]` | Writes the gear, refine, job and skill data. |
+| `python tools/export_prontera.py [--refresh]` | Writes the gear, refine and skill data. |
+| `python tools/export_jobs.py [--refresh]` | Writes `data/jobs.js` from rAthena's pre-renewal job tables with Zero's changes (see the top of the script). |
 | `python tools/export_cardnames.py [--refresh]` | Writes `data/cardnames.js`: each card's name in the equipment window, from divine-pride.net's item pages, for the cards in `data/cards.js`. Run it after `export_prontera.py` picks up new cards. |
 | `python tools/export_affixes.py` | Writes `data/affixes.js` from rozerodb's Affixes Simulator page (its data is in the page itself; there is no API). |
 | `python tools/check_maps.py` | Compares `data/spawn.js` with the cross-check source and lists missing monsters and spawn counts that differ. Monsters marked as upcoming are expected to show up as missing. |
@@ -90,4 +92,4 @@ node tests/model.test.mjs    # damage and tracker maths, loaded with a stand-in 
 node tests/stamp.test.mjs    # index.html carries no ?v= stamps, and the deploy stamps every file
 ```
 
-`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time, the monster table filters and recovery item costs. GitHub Actions runs every test, and checks that `tools/export_prontera.py` compiles, on each pull request and push to `main` (`.github/workflows/tests.yml`). Each push to `main` also deploys the page (`.github/workflows/pages.yml`).
+`model.test.mjs` covers damage per hit, hit chance, cast time, party share, EXP and job EXP rates, walking time, the monster table filters and recovery item costs. GitHub Actions runs every test, and checks that the data exporters compile, on each pull request and push to `main` (`.github/workflows/tests.yml`). Each push to `main` also deploys the page (`.github/workflows/pages.yml`).

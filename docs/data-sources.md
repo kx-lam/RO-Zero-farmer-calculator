@@ -5,7 +5,8 @@
 The numbers are estimates. Skill values and formulas follow the sources below and may differ from the live server after a patch, so check them against your own EXP logs.
 
 - Monsters, drops, NPC prices and skills: [rozerodb.com](https://rozerodb.com)
-- Gear, cards, refine and job data: [roz.prontera.info](https://roz.prontera.info)
+- Gear, cards and refine: [roz.prontera.info](https://roz.prontera.info)
+- Job bonus stats and base HP / SP: [rAthena](https://github.com/rathena/rathena/tree/master/db/pre-re)'s pre-renewal `job_stats.yml` and `job_basepoints.yml`, with Zero's changes worked out from in-game status windows (see `tools/export_jobs.py`). The same job bonus table as [ROZero Planner](https://rozeroplanner.com)
 - The names cards give gear in the equipment window ("Healing" for Vitata Card): [divine-pride.net](https://www.divine-pride.net/database/item/4053)
 - Random options (affixes) per gear type, pool and slot, with their min–max: [rozerodb.com Affixes Simulator](https://rozerodb.com/tools/affixes)
 - Costume enchant stones and their sets: item descriptions on [rozerodb.com](https://rozerodb.com/guides/enchant), cross-checked with [midgardhub.com](https://midgardhub.com/guides/enchant-stones)

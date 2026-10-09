@@ -14,7 +14,7 @@ function applyBuild(){const c=C();if(c.mode!=="build"){BUILD_LAST=null;c.bx=eqTo
     rangePct:F.rangePct,skillPct:A.skill+match(A.skillOf),vctPct:F.vctPct+match(A.vctOf),fctPct:F.fctPct+match(A.fctOf),acdPct:F.acdPct,ignDef:F.ignDef,ignMdef:F.ignMdef,
     weapon:F.weapon,wElem:F.wElem,lw:F.lw,lwAtk:F.lwAtk,lwElem:F.lwElem,st:{...(c.st||{}),...F.st},bx:{phys:A.phys,magic:A.magic,myEle:A.myEle,taken:A.taken,exp:A.exp,critRace:A.critRace,spCost:A.spCost,spRec:A.spRec,hpRec:A.hpRec}});
   c.shield=r.shield;if(F.aspd!=null)c.aspd=F.aspd;if(F.maxHp!=null)c.maxHp=F.maxHp;if(F.maxSp!=null)c.maxSp=F.maxSp;
-  // the exported base HP/SP tables don't match Zero yet, so in-game Max HP / SP typed under "Check against the game" win
+  // in-game Max HP / SP typed under "Check against the game" win: they include anything the build can't see (buffs, a stale job change)
   const ck=buildOf(c).check||{};if(num(ck.hp)>0)c.maxHp=num(ck.hp);if(num(ck.sp)>0)c.maxSp=num(ck.sp)}
 // ---- consumables & buffs: the main stats as {str:{n, p}, ...} (+n and +n% of the total stat), then rows {on, name, eff} for
 // anything else, typed like random options ("ATK +20, ASPD +10%") ----
@@ -103,13 +103,14 @@ const PBUFF=[
   {k:"clementia",name:"Clementia (Priest)",lv:[1,70,50,"Priest Job Lv"],fx:j=>{const v=10+Math.floor(j/10);return [["str",v],["int",v],["dex",v]]},
     how:"Blessing Lv 10 + Priest Job Lv/10"},
   {k:"incAgi",name:"Increase AGI",lv:[1,10,10],fx:l=>[["agi",2+l],["aspd_percent",l]]},
+  {k:"angelus",name:"Angelus",lv:[1,10,10],fx:l=>[["hp",50*l]],how:"Zero's skill text; its VIT DEF +5% per level isn't counted"},
   {k:"canto",name:"Canto Candidus (Priest)",fx:()=>[["agi",19],["aspd_percent",17]]},
   {k:"riff",name:"Impressive Riff (Bard)",lv:[1,10,10],fx:l=>[["aspd_percent",l===10?20:1+2*(l-1)]]},
   {k:"adren",name:"Adrenaline Rush (from a Blacksmith)",w:AXE_MACE,fx:()=>[["aspd_mod",6],["aspd_percent",10]],eff:"potion/skill value 6, ASPD +10%; axes and maces"}];
 const pbuffOf=c=>{if(!c.pbuffs||typeof c.pbuffs!=="object")c.pbuffs={};return c.pbuffs};
 const pbLv=(b,o)=>b.lv?Math.min(b.lv[1],Math.max(b.lv[0],num(o.lv,b.lv[2]))):0;
 // what it does at level lv (the level you typed, else the default)
-const pbEff=(b,lv=b.lv?b.lv[2]:0)=>b.eff||b.fx(lv).map(([t,v])=>t==="aspd_percent"?`ASPD +${v}%`:t==="aspd_mod"?`potion/skill value ${v}`:`${t.toUpperCase()} +${v}`).join(", ")+(b.how?` (${b.how})`:"");
+const pbEff=(b,lv=b.lv?b.lv[2]:0)=>b.eff||b.fx(lv).map(([t,v])=>t==="aspd_percent"?`ASPD +${v}%`:t==="aspd_mod"?`potion/skill value ${v}`:t==="hp"?`Max HP +${v}`:`${t.toUpperCase()} +${v}`).join(", ")+(b.how?` (${b.how})`:"");
 // a buff counts when ticked and it fits your weapon. It doesn't stack with the same buff switched on in your Skills card, and
 // Clementia replaces Blessing, Canto Candidus replaces Increase AGI
 const PB_SELF={blessing:"blessing",incAgi:"increase-agility",adren:"adrenaline-rush"},PB_OVER={blessing:"clementia",incAgi:"canto"};
