@@ -1371,4 +1371,26 @@ t("base-level skills scale only above Lv100, except the three Zero skills missin
   assert.equal(run(`levelPreset(${sb},C()).a.pct`), 1100);
 });
 
+t("shield skills add the shield's weight + 4 × its refine to their %", () => {
+  const pre = name => `({...JOBS.Crusader.p.find(p=>p.name.startsWith(${JSON.stringify(name)}))})`;
+  setup("Crusader", { st: {}, shieldW: 130, shieldRef: 7 });               // a +7 Shield (weight 130), typed in
+  run(`C().a=${pre("Rapid Smiting")}`);
+  near(run(`pctEff()`), 2600 + 130 + 4 * 7);
+  run(`C().a=${pre("Shield Boomerang")}`);
+  near(run(`pctEff()`), 400 + 130 + 4 * 7);
+  run(`C().a=${pre("Smite")}`);                                            // Smite takes none of it
+  near(run(`pctEff()`), 200);
+  // build mode reads the Shield row, not the boxes: a +4 Guard (460058) weighs 30
+  run(`C().a=${pre("Rapid Smiting")};C().mode='build';C().build={base:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},gear:{shield:{id:460058,refine:4,cards:[]}}};applyBuild()`);
+  assert.equal(run(`BUILD.item(460058).w`), 30);
+  near(run(`pctEff()`), 2600 + 30 + 4 * 4);
+  run(`C().build.gear={};applyBuild()`);                                   // no shield: no bonus
+  near(run(`pctEff()`), 2600);
+  // every shield the data has carries its weight
+  assert.equal(run(`EQUIP.filter(x=>(x.slot||[]).includes("shield")&&!(x.w>0)).map(x=>x.name).join()`), "");
+  // a preset saved before the flag existed picks it up again
+  run(`C().mode='status';C().preset=JOBS.Crusader.p.findIndex(p=>p.name.startsWith("Rapid Smiting"));delete C().a.shw`);
+  assert.equal(run(`C().a.shw`), true);
+});
+
 console.log(`${n} tests passed`);

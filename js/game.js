@@ -30,6 +30,7 @@ const sizeMod=(m,w)=>{const t=WEAPONS[w]||WEAPONS[WREN[w]]||WEAPONS["Bare hands"
 // type: phys / magic / auto · pct per hit · hits per use · el ("W" = weapon/arrow element) · cast = rozerodb base cast (lower it for your DEX/gear) · delay = cooldown · sp · targets
 // what each use costs (catalysts from rAthena's renewal skill_db; prices and weights in data/consumables.js, see useItems in model.js):
 // consumes: [{item, qty}] by item name · arrows: arrows per use with a bow, instrument or whip (basic attacks always fire one) · zeny: zeny per use (Mammonite, scaled to the learned level)
+// shw: shield skills (Shield Boomerang, Rapid Smiting / Shield Chain) add the shield's weight + 4 × its refine to their % (Landgris: 80×SLV+SHW+SRL*4, 600+400×SLV+SHW+SRL*4)
 const A=(name,type,pct,hits,el,cast,delay,sp,targets,note,extra)=>({name,type,pct,hits,el,cast,delay,sp,targets,note:note||"",...(extra||{})});
 const BASIC=A("Basic attack","auto",100,1,"W",0,0,0,1);
 // Zero skill data from Landgris ROCalculator (skills_zero.json + Zero Global overrides): fixed / variable cast, cooldown, global delay,
@@ -56,8 +57,8 @@ const JOBS={
    A2("Spear Stab Lv10","phys",300,1,"W",9,2,"Spear only. Hits everything in a line",Z(0,0,0,0)),A2("Spear Boomerang Lv5","phys",350,1,"W",10,1,"Spear only. Range 11",Z(0,0,0,0)),
    A2("Clashing Spiral Lv5","phys",400,5,"W",30,1,"5 hits, scales with base level and weapon weight",Z(0.12,0.44,0.5,0.3,{blv:true})),A2("Traumatic Blow Lv5","phys",300,1,"W",23,1,"",Z(0,0,0,0)),A2("Vital Strike Lv10","phys",150,1,"W",20,1,"Spear only",Z(0,0,0,0)),...SWORD,BASIC]},
  "Crusader":{w:"One-handed sword",p:[A2("Holy Cross Lv10","phys",450,1,"Holy",20,1,"+2×VIT%",Z(0,0,0,0,{sadd:[["vit",2]]})),A2("Holy Cross Lv10 (spear)","phys",900,1,"Holy",20,1,"Spear: (450 + 5×VIT)% × 2",Z(0,0,0,0,{sadd:[["vit",10]]})),
-   A2("Grand Cross Lv10","phys",500,3,"Holy",100,3,"Uses ATK and MATK, costs 20% of your HP. Modelled on ATK",Z(0.3,1.2,1,0)),A2("Shield Boomerang Lv5","phys",400,1,"Neutral",12,1,"+ shield weight + 4×shield refine",Z(0,0,0,0)),
-   A2("Smite Lv5","phys",200,1,"W",10,1,"Shield only",Z(0,0,0,0)),A2("Rapid Smiting Lv5","phys",2600,1,"W",40,1,"Shield only, + shield weight and refine",Z(0.2,0.8,0,0)),A2("Cannon Spear Lv5","phys",600,1,"W",28,3,"Spear only. (120 + STR)% × 5, × base level / 100 above Lv100",Z(0.1,0.4,0,1,{blv:true,sadd:[["str",5]]})),
+   A2("Grand Cross Lv10","phys",500,3,"Holy",100,3,"Uses ATK and MATK, costs 20% of your HP. Modelled on ATK",Z(0.3,1.2,1,0)),A2("Shield Boomerang Lv5","phys",400,1,"Neutral",12,1,"+ shield weight + 4 × shield refine %",Z(0,0,0,0,{shw:true})),
+   A2("Smite Lv5","phys",200,1,"W",10,1,"Shield only",Z(0,0,0,0)),A2("Rapid Smiting Lv5","phys",2600,1,"W",40,1,"Shield only, + shield weight + 4 × shield refine %",Z(0.2,0.8,0,0,{shw:true})),A2("Cannon Spear Lv5","phys",600,1,"W",28,3,"Spear only. (120 + STR)% × 5, × base level / 100 above Lv100",Z(0.1,0.4,0,1,{blv:true,sadd:[["str",5]]})),
    A2("Gloria Domini Lv5","magic",1450,1,"Holy",50,1,"",Z(0.28,1.12,0,0)),...SWORD,BASIC]},
  "Wizard":{w:"One-handed staff",p:[A2("Jupitel Thunder Lv10","magic",100,12,"Wind",47,1,"",Z(0.56,2.24,0,0)),A2("Heaven's Drive Lv5","magic",200,5,"Earth",44,3,"5x5 area, +INT%",Z(0.4,0.6,0.5,0.3,{sadd:[["int",1]]})),
    A2("Napalm Vulcan Lv5","magic",350,5,"Ghost",70,2,"3x3 area, scales with base level",Z(0.1,0.4,0.3,0.5,{blv:true})),A2("Storm Gust Lv10","magic",570,3,"Water",78,5,"(570 + INT)% per hit, up to 10 hits but monsters freeze after ~3",Z(1.2,4.8,2.5,0.3,{sadd:[["int",1]]})),

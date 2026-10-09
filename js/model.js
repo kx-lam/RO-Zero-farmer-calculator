@@ -59,7 +59,13 @@ const delaySec=()=>Math.max(0,num(C().a.delay)*(1-num(C().acdPct)/100));
 const useSec=()=>{const a=C().a;if(a.type==="auto"||a.type==="spellfist")return 1/atkPerSec();return Math.max(castEff()+Math.max(delaySec(),1/atkPerSec()),0.1)};
 // base-level skills: × BaseLv/100 only above Lv100, except the three Zero skills missing that check (blvBug, see game.js)
 // cart skills (Cart Revolution): +a.cart % per 8,000 cart weight, capped at a full 8,000 cart
-const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});if(num(a.cart))p+=num(a.cart)*Math.min(8000,Math.max(0,num(c.cartW)))/8000;if(!a.blv)return p;const lv=num(c.baseLv,99);return p*(a.blvBug?lv:Math.max(100,lv))/100};
+// shield skills (a.shw: Shield Boomerang, Rapid Smiting): + shield weight + 4 × shield refine %. Build mode reads the Shield row
+// (a left-hand weapon doesn't count); otherwise the Shield weight / refine boxes
+const shieldWR=(c=C())=>{if(c.mode==="build"){const g=((c.build&&c.build.gear)||{}).shield,it=g&&g.id&&BUILD.item(g.id);
+    return it&&(it.slot||[]).includes("shield")?{w:num(it.w),r:num(g.refine),name:it.name}:{w:0,r:0,name:""}}
+  return {w:Math.max(0,num(c.shieldW)),r:Math.max(0,num(c.shieldRef))}};
+const shieldPct=(c=C())=>{const s=shieldWR(c);return s.w+4*s.r};
+const pctEff=()=>{const c=C(),a=c.a;let p=num(a.pct);(a.sadd||[]).forEach(([k,f])=>{const v=statVal(c,k);if(v!=null)p+=v*f});if(num(a.cart))p+=num(a.cart)*Math.min(8000,Math.max(0,num(c.cartW)))/8000;if(a.shw)p+=shieldPct(c);if(!a.blv)return p;const lv=num(c.baseLv,99);return p*(a.blvBug?lv:Math.max(100,lv))/100};
 const targets=()=>Math.max(1,num(C().a.targets,1));
 // magic: true for magic damage (spells, Spell Fist, Shadow Spell auto-casts). Each race / size / element / name bonus is
 // physical-only, magic-only or both (race / size / element default to both, as before the setting existed)
