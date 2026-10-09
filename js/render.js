@@ -30,6 +30,11 @@ function renderChar(){renderAspdBuffs();potInfo();
   // base-level skills: what the BaseLv/100 factor does at your level (Soul Destroyer, Axe Tornado and Triangle Shot miss the Lv100 check)
   if(a.blv){const lv=num(c.baseLv,99);$("atkSummary").textContent+=a.blvBug?` · Zero bug: this skill takes × base level / 100 below Lv100 too (× ${lv}/100 at Lv ${lv}): ${Math.round(pctEff())}% per hit`
     :` · base level only raises it above Lv100${lv>100?` (× ${lv}/100)`:", so no change at Lv "+lv}: ${Math.round(pctEff())}% per hit`}
+  // shield skills: what the shield adds to the skill %. Build mode shows the Shield row's weight and refine in the boxes, read-only
+  {const b=c.mode==="build",s=shieldWR(c);$("shieldWrap").hidden=!a.shw;
+    [["shieldW",s.w],["shieldRef",s.r]].forEach(([id,v])=>{const el=$(id);el.disabled=b;if(document.activeElement!==el)el.value=b&&!s.name||!b&&!v?"":v})}
+  if(a.shw){const s=shieldWR(c);$("atkSummary").textContent+=c.mode==="build"&&!s.name?" · no shield in the Shield row, so no shield bonus"
+    :` · ${s.name?s.name+": ":""}shield weight ${s.w} + 4 × refine ${s.r} = +${shieldPct(c)}%: ${Math.round(pctEff())}% per hit`}
   if(dualOn()){const h=handPct();$("atkSummary").textContent+=a.type==="auto"?` · dual wield: right hand ${h.right}% + left ${c.lw} ${h.left}% (${leftEl()})`:" · dual wield: skills use the right hand only"}
   const us=useSec(),need=spNeedPerSec()*60,reg=regenPerSec()*60,ips=itemsPerSec(),rf=restFactor();
   {const oc=skRate("overcharge");$("mercNote").textContent=oc?`Overcharge: NPCs pay you +${oc}%`:""}
