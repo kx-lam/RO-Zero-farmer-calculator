@@ -17,11 +17,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Build and deploy are separate jobs so the uploaded artifact is listed by the time deploy-pages looks for it
+  # (in one job it can look half a second after the upload and find nothing).
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,5 +32,17 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+          # One name per attempt: a re-run keeps the earlier attempt's artifact, and two with one name fail the deploy.
+          name: github-pages-${{ github.run_attempt }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
