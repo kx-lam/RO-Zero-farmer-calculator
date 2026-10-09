@@ -1435,4 +1435,12 @@ t("skill check: Grimtooth, the Monk combo, Acid Bomb and Axe Boomerang", () => {
   assert.equal(run(`EQUIP.find(x=>x.name==="Novice Battle Axe").w`), undefined);
 });
 
+t("preset cast times and delays match the in-game skill table", () => {
+  // fixed / variable cast and max(cooldown, after-cast delay) at the preset's level, for every preset the table has a row for
+  const bad = run(`(()=>{const out=[];for(const j in JOBS){state.job=j;for(const p of JOBS[j].p){const s=presetSkill(p);if(!s||p.fct==null)continue;
+    const r=skRow(s,s.max),near=(a,b)=>Math.abs(a-b)<1e-9;
+    if(!near(p.fct,(r[4]||0)/1000)||!near(p.vct,(r[3]||0)/1000)||!near(p.delay,Math.max(r[5]||0,r[6]||0)/1000))out.push(j+": "+p.name)}}return out.join(", ")})()`);
+  assert.equal(bad, "");
+});
+
 console.log(`${n} tests passed`);
